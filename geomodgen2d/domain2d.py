@@ -42,6 +42,27 @@ class Domain2D():
             
         self.check = True
 
+    def update_domain(self, new_domain2D):
+        """
+        Update the current domain's spatial parameters with those from a new 2D domain.
+
+        This method ensures that the spatial extent and dimensions of the current domain match those of the new domain. 
+        If they match, it updates the internal range and discretization values (x and z ranges, and their respective deltas).
+        This method is used for remeshing functions.
+
+        Parameters:
+        new_domain2D : Domain2D
+            An instance of a 2D domain from which to copy the spatial configuration.
+        """
+        assert self.span_x == new_domain2D.span_x, f"x-span mismatch: {self.span_x} != {new_domain2D.span_x}"
+        assert self.span_z == new_domain2D.span_z, f"z-span mismatch: {self.span_z} != {new_domain2D.span_z}"
+        assert self.dim == new_domain2D.dim, f"Dimension mismatch: {self.dim} != {new_domain2D.dim}"
+
+        self._x_ranges = new_domain2D.x_ranges
+        self._z_ranges = new_domain2D.z_ranges
+        self._del_x = new_domain2D.del_x
+        self._del_z = new_domain2D.del_z
+
     @property
     def x_ranges(self):
         return self._x_ranges
@@ -87,7 +108,7 @@ def check_spacing_compability(current_del, new_del):
             return False
     return True
 
-def check_for_remeshing_coordinate_compatibility(current_domain2D, new_span_x, new_span_z, new_del_x, new_del_z):
+def check_for_remeshing_coordinate_compatibility(current_domain2D:Domain2D, new_del_x:float, new_del_z:float):
     ## Changed from check_refined_coordinate_compatibility ():
     """
     Checks the compatibility of a remeshing coordinate grid with the original grid specifications.
@@ -99,12 +120,8 @@ def check_for_remeshing_coordinate_compatibility(current_domain2D, new_span_x, n
         new coordinates to check    
     """
 
-    remeshed_2D_domain = Domain2D(new_span_x, new_span_z, new_del_x, new_del_z)  #Check init compabilities
+    remeshed_2D_domain = Domain2D(current_domain2D.span_x, current_domain2D.span_z, new_del_x, new_del_z)  #Check init compabilities
     
-    assert current_domain2D.span_x == remeshed_2D_domain.span_x, f"Required Condition: {current_domain2D.span_x}=={new_span_x}. NOT CORRECT"
-    if current_domain2D.span_z is not None and remeshed_2D_domain.span_z is not None:
-        assert current_domain2D.span_z == remeshed_2D_domain.span_z, f"Required Condition: {current_domain2D.span_z}=={remeshed_2D_domain.span_z}. NOT CORRECT"
-
     ## No flagging, but print warning if not compatible (exactly divisible)
     check_spacing_compability(current_domain2D.del_x, remeshed_2D_domain.del_x)
     check_spacing_compability(current_domain2D.del_z, remeshed_2D_domain.del_z)

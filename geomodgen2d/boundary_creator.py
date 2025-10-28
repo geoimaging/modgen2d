@@ -48,7 +48,7 @@ class BoundaryCreator(Domain2D):
         boundary_array : numpy array: 
             A NumPy array of the same shape as the existing boundary array
         """
-        assert self.boundary_array.shape == boundary_array.shape, "New array must have same shape as previous array"
+        assert boundary_array.shape == (self.n_layers-1, len(self.x_ranges)), "New array must have same shape as previous array"
         self.boundary_array = boundary_array
 
     def generating_boundary(self, random_generator_settings_dict, rnd_no=np.random.default_rng()):
@@ -64,7 +64,7 @@ class BoundaryCreator(Domain2D):
 
             Option: a) 'uniform' (original), next boundary point at x+del_x = depth at x + uniformly generated random no.
                 random_generator_settings_dict keys:
-                    1) 'z_max_change_per_m' required: maximum change in z allowed per m
+                    1) 'max_del_z_per_m' required: maximum change in z allowed per m
                             
             Option: b) 'normal', next boundary point at x+del_x = depth at x + gaussian generated random no.
                 random_generator_settings_dict keys:
@@ -83,7 +83,7 @@ class BoundaryCreator(Domain2D):
             n_layers = self.n_layers
             random_generator_option = random_generator_settings_dict['generator_option']
             if random_generator_option=='uniform':
-                z_b_change_per_m = random_generator_settings_dict['z_max_change_per_m']
+                z_b_change_per_m = random_generator_settings_dict['max_del_z_per_m']
                 del_x = self.del_x
                 z_max_change_per_del_x = (z_b_change_per_m*del_x)
                 rnd_numbers = (rnd_no.random((self.n_layers-1, (len(self.x_ranges)-1)))-0.5)*2 #Numbers ranging from 1 and -1
@@ -229,13 +229,12 @@ class BoundaryCreator(Domain2D):
         else:
             n_interface = self.boundary_array.shape[0]
             if n_interface!=0:
-                remeshed_3D_domain = check_for_remeshing_coordinate_compatibility(self, self.span_x, self.span_z, new_del_x, self.del_z)
+                remeshed_2D_domain = check_for_remeshing_coordinate_compatibility(self, new_del_x, self.del_z)
                 x_ranges_old = self.x_ranges
                 zs = range(n_interface)
-                b_array = f.remeshing_2D_matrix(x_old = x_ranges_old, x_new = remeshed_3D_domain.x_ranges, z_old = zs, z_new = zs, matrix_2d = self.boundary_array.T, interp_method = interp_method)
-                self_copy = BoundaryCreator(remeshed_3D_domain.span_x, remeshed_3D_domain.span_z, remeshed_3D_domain.del_x, remeshed_3D_domain.del_z, self.n_layers)
-                self_copy.edit_boundary_matrix(b_array.T)
-                self.__dict__.update(self_copy.__dict__)
+                b_array = f.remeshing_2D_matrix(x_old = x_ranges_old, x_new = remeshed_2D_domain.x_ranges, z_old = zs, z_new = zs, matrix_2d = self.boundary_array.T, interp_method = interp_method)
+                self.update_domain(remeshed_2D_domain)
+                self.edit_boundary_matrix(b_array.T)
         
     def plot_boundary(self, ax=None):
         if ax is None:
@@ -296,7 +295,7 @@ class SurfaceBoundaryCreator(BoundaryCreator):
         assert generator_option in ['uniform', 'normal'], f"Only allowed options yet are uniform and normal. Provided {generator_option}"
         generator_settings_dict = {
                  'generator_option':generator_option,    # options: 'uniform', 'normal'
-                 'z_max_change_per_m':gen_param,   # Required for 'uniform' only
+                 'max_del_z_per_m':gen_param,   # Required for 'uniform' only
                  'std':gen_param     # Required for 'normal' only Mean has to be zero
                 }
         
