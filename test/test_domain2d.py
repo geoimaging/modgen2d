@@ -38,5 +38,8 @@ class TestDomain2D(unittest.TestCase):
         np.testing.assert_array_equal(remeshed_2D.x_ranges, np.arange(0.05, 5.025, 0.1))
         np.testing.assert_array_equal(remeshed_2D.z_ranges, np.array([1., 3.]))
         
+    def test_update_domain(self):
+        pass
+        
 if __name__ == "__main__":
     unittest.main()
