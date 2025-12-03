@@ -3,77 +3,211 @@
 #
 # LICENSE
 
-"""Define a three-dimensional domain that defines lithology."""
-
+"""Define a two-dimensional domain that defines lithology."""
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       
 import numpy as np
 import matplotlib.pyplot as plt
 import geomodgen2d.general_functions as f
-import geomodgen2d.utils_2d as utils_2d
-import geomodgen2d.utils_3d_functions as utils_3d_f
-import copy,scipy
+import copy,scipy,warnings
 import matplotlib.colors as mcolors
 
-from geomodgen2d.domain2d import Domain2D, check_for_remeshing_coordinate_compatibility
+from geomodgen2d.discretized_domain2d import DiscretizedDomain2D
+from geomodgen2d.interfaces_creator2d import AbstractInterfacesCreator2D
+from geomodgen2d.discretized_interfaces2d import DiscretizedInterfaces2D, SurfaceInterface2D
+from geomodgen2d.obstruction_2d import Obstruction2D
+from geomodgen2d.meta_class import _StrictProtectedMeta, _internal_classmethod
 
-        # self.lithology = np.array(lithology).astype(int)
-        # self.lithology_map = dict(lithology_map)
+class GlobalSoilInterfaceConfig(metaclass=_StrictProtectedMeta):
+    """
+    Global configuration manager for the active surface-interface instance and 
+    its processing behavior. This class acts as a centralized registry that 
+    stores the current interface, processing mode, and a revision token used 
+    to detect boundary changes.
+    """
 
-# Lithological from boundary
-# Lithological from utils
+    __slots__ = []  #Does not allow any instance variables. Only class variables.
+    
+    # central definition of DEFAULTS
+    _DEFAULTS = {
+        "_soil_interface2d_instance": None,
+        "_surface_interface2d_instance": None,
+        "_merged_interface2d_instance": None,
+        "_surface_interface_method": None,
+        "_revision_id": 0,
+        "_status_code": 0,
+    }
+    
+    # initialize class attributes once
+    # default values
+    _soil_interface2d_instance = None
+    _surface_interface2d_instance = None
+    _merged_interface2d_instance = None
+    _surface_interface_method = None
+    _revision_id = 0
+    _status_code = 0
 
-class LithologicalDomain2DFunctions(Domain2D):
+        
+    @_internal_classmethod
+    def reset(cls):
+        for key, val in cls._DEFAULTS.items():
+            setattr(cls, key, val)
+    
+    @_internal_classmethod
+    def set_soil_interface(cls, soil_interface2d_instance:DiscretizedInterfaces2D, 
+                           surface_interface2d_instance:AbstractInterfacesCreator2D = None,
+                           surface_interface_method="pile", 
+                            #   compute_immediately=False, 
+                           force_set=False):
+        """
+        Set the global soil interface configuration.
+
+        Parameters
+        ----------
+        soil_interface_class : DiscretizedInterfaces2D
+            The soil interface instance to activate globally.
+        
+        surface_interface2d_instance : DiscretizedInterfaces2D
+            The surface interface instance to activate globally.
+            surface_included_in_soil_interface must be False.
+        
+        surface_interface_method : str, default="pile"
+            Surface modification method. Valid options:
+            - "pile"  : add material
+            - "erode" : remove material
+
+        force_set : bool, default=False
+            If False and a surface interface is already set, a RuntimeError 
+            will be raised. If True, the existing interface is overwritten.
+            
+        Generates:
+        _revision_id : int or None
+            A randomly generated integer that uniquely identifies the 
+            current configuration state. Updated every time 
+            `set_surface_interface()` is called. Allows downstream systems to 
+            detect changes in surface boundaries or processing modes.
+            
+        _status_code: int
+            Either 0, 1, 2, or 99. with 0 being the best, and 99 being the worst.
+        """
+        if cls.get_revision_id() != 0 and not force_set:
+            raise RuntimeError(
+                "Surface interface already set. "
+                "Use force-set=True if you intentionally want to overwrite it.")
+        
+        if soil_interface2d_instance is None:
+            raise TypeError("soil_interface2d_instance cannot be None")
+        
+        if not isinstance(soil_interface2d_instance, AbstractInterfacesCreator2D):
+            raise TypeError("soil_interface2d_instance must be from subclass of AbstractInterfacesCreator2D class.")
+        
+        if isinstance(soil_interface2d_instance, SurfaceInterface2D):
+            raise TypeError("soil_interface2d_instance cannot of SurfaceInterface2D class.")
+
+        soil_interface2d_instance.lock_interfaces()
+        remesh = soil_interface2d_instance.remesh_interp_method
+        if surface_interface2d_instance is not None:
+            if surface_interface2d_instance.n_interfaces != 1:
+                raise ValueError(f"interface_class must have exactly one interface. Provided {surface_interface2d_instance.n_interfaces}")
+            if surface_interface2d_instance.remesh_interp_method != remesh:
+                raise ValueError(f"Remesh interp method for both surface and soil interfaces must be same. Provided {surface_interface2d_instance.remesh_interp_method} and {remesh} respectively.")
+            
+            surface_interface2d_instance.lock_interfaces()
+
+        if surface_interface_method not in ['pile', 'erode']:
+            raise ValueError(f"Methods can only be either 'pile' or 'erode'. Provided: {surface_interface_method}")
+        
+        cls._soil_interface2d_instance = soil_interface2d_instance
+        cls._surface_interface2d_instance = surface_interface2d_instance
+        cls._merged_interface2d_instance = soil_interface2d_instance.get_interfaces_matrix_with_surface(surface_interface2d_instance, surface_interface_method)
+        cls._surface_interface_method = surface_interface_method
+        
+        low = 1
+        high = 2**63    # exclusive upper bound
+        magnitude = np.random.randint(low, high, dtype=np.int64)
+        sign = 1 if np.random.random() < 0.5 else -1
+        unique_code = magnitude * sign
+        cls._revision_id  = int(unique_code) 
+            
+    @_internal_classmethod
+    def get_revision_id(cls):
+        return cls._revision_id
+    
+    @_internal_classmethod
+    def get_interface_instance(cls, type=None):
+        if type is None or type == 'merged':
+            return cls._merged_interface2d_instance
+        elif type == 'surface':
+            return cls._surface_interface2d_instance
+        elif type == 'soil_only':
+            return cls._soil_interface2d_instance
+        else:
+            raise ValueError(f"Types can be either 'surface', 'soil_only', or 'merged'/None. Provided {type}.")
+
+    @_internal_classmethod    
+    def get_config_status(cls, previous_revision_id):
+        """
+        Check whether an external module's cached configuration is still valid.
+        
+        Parameters
+        ----------
+        previous_revision_id : int
+            The revision ID previously recorded by the caller.
+        
+        Returns
+        -------
+        Boolean
+            True  : Fully consistent — same revision, same compute mode.
+            False : Revision changed
+        """
+        current_revision_id = cls.get_revision_id()
+        return previous_revision_id == current_revision_id
+    
+class LithologicalDomain2DReadOnly():
     """
     Class representing a 2D matrix (with layer_ID) with layers that can be created from a boundary or utility class.
     """
-    def __init__(self, span_x: float, span_z: float, del_x: float, del_z: float, name: str):
+    def __init__(self, domain:DiscretizedDomain2D, name: str):
         """
         Initializes the LithogolicalDomain2D instance with given spatial limits, and spacing.
         
         Parameters:
-        span_x, span_z : float
-            The upper limit for the x, and z-coordinate range.
-        del_x, del_z : float
-            The spacing interval for x, and z-coordinates.
+        domain: DiscretizedDomain3D
+            Domain in which the interfaces are to be defined.
         name: str
             The name of lithologicaldomain
         """
-        super().__init__(span_x, span_z, del_x, del_z, name)
-        self.check = False
-        self.gwt_depth=None
+        self.domain = domain
+        self.name = name
         self.lm_type = 'NA'
-        self.added_prefix = False
-        self.boundary_class = None
         self.read_only=False
-        self.layered_matrix = None
-        self.n_layers = None
-        self.overlap = False
-        self.utils_description = 'No utils'
-        self.surface_boundary = None
+        self.lithological_matrix = None
+        self.interface_config_revision_id = GlobalSoilInterfaceConfig.get_revision_id()
+        
+        #For lithologicalDomain from Interface
+        self.gwt_depth = None
+        
+        #For Lithological Domain from Obstruction2D
+        self.obstruction2D_dict = None
+
+        self.merged_lit = False
+        self.init_domain = None #None means domain has never been changed.
         
     def print(self):
-        print(f"N_z_coord = {self.layered_matrix.shape[0]}, N_x_coord = {self.layered_matrix.shape[1]}")
-        print("Layered Matrix : \n", self.layered_matrix) 
-        
-    def plot2d(self, ax=None, discrete_point_size=0, legend=True,
+        print(f"N_x_coord = {self.lithological_matrix.shape[0]}, N_z_coord = {self.lithological_matrix.shape[1]}")
+        print("Layered Matrix : \n", self.lithological_matrix.T) 
+    
+    @staticmethod
+    def get_unique_lithological_color_map(
+        lithological_matrix,
         color_map = {
         'def': plt.get_cmap('tab20', 10),      # For integer values
         'U_': plt.get_cmap('Set3', 10)   # For "U-{x}" values
     }):
-        """
-        Plots a 2D section of the layered matrix.
-
-        Parameters:
-            ax: The matplotlib axes object for the plot (default is None, which creates a new figure).
-            idx: A list specifying the axis and index to slice (e.g., ['x', 0]).
-            color_map: A dictionary that defines the color map for the values in the matrix.
-        """
-        if ax is None:
-            fig,ax = plt.subplots()
-
-        unique_values = np.unique(self.layered_matrix)
+        unique_values = np.unique(lithological_matrix)
         color_mapping = {} 
         for value in unique_values:
             assigned = False
+            # print(value, f.is_integer_value(value))
             for prefix, cmap in color_map.items():
                 if value == 'X':
                     color_mapping[value] = (1.,1.,1.,1.)#'#ffffff'
@@ -81,7 +215,7 @@ class LithologicalDomain2DFunctions(Domain2D):
                     
                 elif prefix == 'def' and f.is_integer_value(value):
                     if value == 0 or value == '0':
-                        color_mapping[value] = '#ffffff'
+                        color_mapping[value] = (1.,1.,1.,1.)#'#ffffff'
                     else:
                         # If no prefix, assume integer or digit
                         index = int(float(value)) % 10
@@ -97,85 +231,103 @@ class LithologicalDomain2DFunctions(Domain2D):
             
             # If no pattern matched, assign a random color
             if not assigned:
-                color_mapping[value] = "#" + ''.join([np.random.choice(list('0123456789ABCDEF')) for _ in range(6)])
-
-        int_map = {value: idx for idx, value in enumerate(unique_values)}
-        integer_mapped_array = np.vectorize(int_map.get)(self.layered_matrix)
-    
+                color_val = "#" + ''.join([np.random.choice(list('0123456789ABCDEF')) for _ in range(6)])
+                color_mapping[value] = mcolors.to_rgba(color_val)
+                
         # Create a colormap from the color mapping
         colors = [color_mapping[value] for value in unique_values]
+        int_map = {value: color_mapping[value] for idx, value in enumerate(unique_values)}
+        integer_mapped_array = np.array(np.vectorize(int_map.get)(lithological_matrix), dtype='float')
+        integer_mapped_array = np.transpose(integer_mapped_array, axes=(2, 1, 0))  #Adjusting for imshow
         fixed_cmap = mcolors.ListedColormap(colors)
+
+        return unique_values, color_mapping, integer_mapped_array, fixed_cmap
+    
+    def plot2d(self, ax=None, discrete_point_size=0, legend=True,
+               id2material_dict = None, title='Lithological Domain',
+               plot_boundary = False,
+               color_map = {
+                        'def': plt.get_cmap('tab20', 10),      # For integer values
+                        'U_': plt.get_cmap('Set3', 10)   # For "U-{x}" values
+                }):
+        """
+        Plots a 2D section of the layered matrix.
+
+        Parameters:
+            ax: The matplotlib axes object for the plot (default is None, which creates a new figure).
+            idx: A list specifying the axis and index to slice (e.g., ['x', 0]).
+            color_map: A dictionary that defines the color map for the values in the matrix.
+        """
+        if ax is None:
+            fig,ax = plt.subplots()
+
+        z_centers, x_centers = self.domain.z_centers, self.domain.x_centers
+        span_x, span_z = self.domain.spans
         
-        if self.dim == 1:
-            x_ranges_plt = [-self.span_z/10, self.span_z/10]
-            integer_mapped_array = np.ones([len(integer_mapped_array), 2])*integer_mapped_array
-        else:
-            x_ranges_plt = [0, self.span_x]
-            
+        unique_values, color_mapping, integer_mapped_array, fixed_cmap = LithologicalDomain2DReadOnly.get_unique_lithological_color_map(self.lithological_matrix, color_map)
+        
         # Plot the data using imshow with the fixed colormap
-        cax = ax.imshow(integer_mapped_array, cmap=fixed_cmap, extent=[x_ranges_plt[0], x_ranges_plt[1], self.span_z, 0], interpolation='none')
+        extent = [0, span_x, span_z, 0]
+        cax = ax.imshow(integer_mapped_array, cmap=fixed_cmap, extent=extent, interpolation='none')
         
-        z_data, x_data = np.meshgrid(self.z_ranges, self.x_ranges, indexing='ij')
+        # Plot gwt
+        if self.gwt_depth is not None:
+            edges_kw = dict(color='r', linestyle='dashed', linewidth=2, zorder=4000)
+            ax.plot([0, span_x], [self.gwt_depth, self.gwt_depth], **edges_kw)
+
+
+        x_data, z_data = np.meshgrid(x_centers, z_centers, indexing='ij')
         if discrete_point_size!=0:
-            ax.scatter(x_data.flatten(), z_data.flatten(), c = [color_mapping[value] for value in self.layered_matrix.flatten()], edgecolors='k', s=discrete_point_size)
+            ax.scatter(x_data.flatten(), z_data.flatten(), c = [color_mapping[value] for value in self.lithological_matrix.flatten()], edgecolors='k', s=discrete_point_size)
             
-        ax.set(xlim=x_ranges_plt, ylim = [self.span_z, 0])
+        # Plot Boundary:
+        if plot_boundary:
+            discretizedInterfaces2D_instance = GlobalSoilInterfaceConfig.get_interface_instance()
+            if discretizedInterfaces2D_instance is not None:
+                n_interface = discretizedInterfaces2D_instance.n_interfaces
+                for i in np.arange(n_interface-1, -1, -1):
+                    remesh_tech = discretizedInterfaces2D_instance.remesh_interp_method
+                    if remesh_tech == 'nearest':
+                        drawstyle = 'steps-mid'
+                    elif remesh_tech == 'linear':
+                        drawstyle = 'default'
+                        if self.init_domain is not None:
+                            warnings.warn("Looks like the lit domain has been remeshed with linear after creation.")
+                    else:
+                        warnings.warn(f"Interfaces might not reflect the exact interpolation in the plots except for 'linear' and 'nearest'. Provided {remesh_tech}.")
+                    ax.plot(discretizedInterfaces2D_instance.domain.get_interface_x_centers,
+                            discretizedInterfaces2D_instance.interfaces_matrix[:, i],
+                            linestyle='--',
+                            color='k',
+                            drawstyle=drawstyle,
+                        )
+        
         # Create a custom legend
+        handles = [plt.Line2D([0], [0], marker='s', color=color_mapping[value], markersize=10, linestyle='') for value in unique_values]
+        gwt_handle = plt.Line2D([0], [0], color='red', linestyle='--', linewidth=2, label='GWT')
+        handles.append(gwt_handle)
+        labels = list(unique_values) + ['GWT']
+    
+        if id2material_dict is not None:
+            labels = [id2material_dict[label][1] if label in id2material_dict else label for label in labels]
+            labels = [lbl.decode('utf-8') if isinstance(lbl, bytes) else lbl for lbl in labels]
+        
         if legend:
-            handles = [plt.Line2D([0], [0], marker='s', color=color_mapping[value], markersize=10, linestyle='') for value in unique_values]
             ax.legend(handles, unique_values, title="Legend", bbox_to_anchor=(1.05, 1), loc='upper left')
+        
+        if title is not None:
+            ax.set_title(title)
+            
         ax.axis('scaled')
         ax.set(
+            xlim= [0, span_x],
+            ylim= [span_z, 0],
             xlabel='X',
             ylabel='Z',
         )
         return ax
 
-    def merge_with_another_lithological_domain(self, lithologicalDomainOther, lit_id_none_list:list = ['X']):
-        """
-        Merges two lithological_domains.
-
-        Parameters:
-            self, lithologicalDomainOther: Two lithologicalDomains to merge. 
-            lit_id_none_list (list of str): List of lithological_id(s) that represent 'none' (as in utils lithological domain).
-
-        Note: Priority given to Other case. i.e, the lit_value of Other will replace the one in self unless the Other case has a value from lit_id_none_list.
-          
-        Internally, updates the current layered_matrix after merging.
-        """
-        if self.lm_type == "NA":
-            ## If NA then just copy the other lithological domain as itself.
-            self.__dict__.update(lithologicalDomainOther.__dict__)
-        else:
-            assert lithologicalDomainOther.lm_type!="NA", "lithologicalDomainOther is not defined properly (lm_type cannot be NA)"
-            
-            assert np.prod(self.x_ranges == lithologicalDomainOther.x_ranges)==1, f"Expected x_ranges = x_ranges from class, but provided {self.x_ranges} != {lithologicalDomainOther.x_ranges}"
-            assert np.prod(self.z_ranges == lithologicalDomainOther.z_ranges)==1, f"Expected z_ranges = z_ranges from class, but provided {self.z_ranges} != {lithologicalDomainOther.z_ranges}"
-            assert self.layered_matrix.shape == lithologicalDomainOther.layered_matrix.shape, f"Expected same actual grid size, but provided {self.layered_matrix.shape} != {lithologicalDomainOther.layered_matrix.shape}"
-            compare_surface_boundaries(self.surface_boundary, lithologicalDomainOther.surface_boundary)
-
-            if not isinstance(lit_id_none_list, list) or not lit_id_none_list or not all(isinstance(item, str) for item in lit_id_none_list):
-                raise ValueError("lit_id_none must be a non-empty list of strings.")
-
-            # Initialize the merged array
-            self_matrix = self.layered_matrix
-            other_matrix = lithologicalDomainOther.layered_matrix
-
-            # Masks to identify non-'none' values
-            mask_self_non_none = ~np.isin(self_matrix, lit_id_none_list)
-            mask_other_non_none = ~np.isin(other_matrix, lit_id_none_list)
-
-            # Apply the merging rules using numpy's where function
-            merged = np.where(mask_other_non_none, other_matrix, self_matrix)  # (replace it with that of other class even if merged already have values, i.e prioritize other class)
-
-            self.layered_matrix = merged
-            # lithologicalDomainMerged.lm_type = "merged_layered_matrix"
-
-            overlap_check = np.sum(mask_self_non_none * mask_other_non_none)
-            self.overlap = overlap_check>0 #Overlap with merged layers (useful for utils)
-            self.utils_description = f'{self.utils_description} + {lithologicalDomainOther.utils_description}'
-
-    def remeshing_layered_matrix(self, del_x_remeshed, del_z_remeshed, interp_method = 'nearest', replace=True):
+    def remeshing_lithological_matrix(self, new_dx, new_dz, interp_method = 'nearest', replace=True):
         """
         Coarsens/refines the layered matrix based on a coarsened coordinate class, optionally replacing the current matrix.
 
@@ -184,275 +336,284 @@ class LithologicalDomain2DFunctions(Domain2D):
             interp_method (str): The interpolation method to use ('nearest' or 'nearest_up'). Defaults to 'nearest'.
             replace (bool): Whether to replace the current matrix with the coarsened one. Defaults to False.
         """
-        
-        if self.del_x == del_x_remeshed and self.del_z == del_z_remeshed:
-            self_copy = copy.deepcopy(self)  #Makes sure the change in the object is local to this function only.
-        else:
-            self_copy = copy.deepcopy(self)  #Makes sure the change in the object is local to this function only.
-            
+        self_copy = copy.deepcopy(self)  #Makes sure the change in the object is local to this function only.
+        org_dx, org_dz = self.domain.dhs
+        if org_dx != new_dx or org_dz == new_dz:
+
             if interp_method!='nearest' and interp_method!='nearest_up':
                 raise ValueError(f"interp_method cannot be other than 'nearest' or 'nearest_up' for replacement. Provided {interp_method}")
                 
-            if self.dim == 1:
-                print("Warning: No effect of remeshing on 1D boundary generation (depth only)")
-
-            else:
-                remeshed_2D_domain = check_for_remeshing_coordinate_compatibility(self_copy, del_x_remeshed, del_z_remeshed)
-                unique_values, int_mapp = np.unique(self.layered_matrix, return_inverse=True)
-                int_mapp = int_mapp.reshape(self.layered_matrix.shape)
-                int_values = np.arange(len(unique_values))
-                remeshed_int_mapp = f.remeshing_2D_matrix(x_old = self.x_ranges, z_old = self.z_ranges, x_new = remeshed_2D_domain.x_ranges, z_new = remeshed_2D_domain.z_ranges, matrix_2d=int_mapp, interp_method=interp_method)
-                
-                self_copy.update_domain(remeshed_2D_domain)
-                self_copy.layered_matrix = unique_values[remeshed_int_mapp.astype(int)]
-                self_copy.lm_type = f'remeshed_{self_copy.lm_type}'
+            new_domain = self.domain.remesh(new_dx, new_dz)
+            
+            unique_values, int_mapp = np.unique(self.lithological_matrix, return_inverse=True)
+            int_mapp = int_mapp.reshape(self.lithological_matrix.shape)
+            int_values = np.arange(len(unique_values))
+            
+            remeshed_int_mapp = f.remeshing_2D_matrix(x_old = self.domain.x_centers, 
+                                                      z_old = self.domain.z_centers, 
+                                                      x_new = new_domain.x_centers,
+                                                      z_new = new_domain.z_centers,
+                                                      matrix_2d=int_mapp, interp_method=interp_method)
+            
+            self_copy.domain = new_domain
+            self_copy.lithological_matrix = unique_values[remeshed_int_mapp.astype(int)]
+            self_copy.lm_type = f'remeshed_{self_copy.lm_type}'
+            if self_copy.init_domain is None:
+                self_copy.init_domain = self.domain
 
         if replace:  #to verify
             # Update `self`'s attributes in-place to reflect `self_copy`
             self.__dict__.update(self_copy.__dict__)
         else:
             return self_copy
-
-class LithologicalDomain3DReadOnly(LithologicalDomain2DFunctions):
-    def __init__(self, lithological_domain_dict, boundary_class=None):
-        """
-        Get the values of all fields for read_only case from dictionary format (from loaded file.)
-        """
-        self.read_only=True
-        span_x, span_z, del_x, del_z = f.coordinate_vars(lithological_domain_dict['x_ranges'], lithological_domain_dict['z_ranges'])
-        name = lithological_domain_dict['name']  
-        super().__init__(span_x, span_z, del_x, del_z, name)
-        if 'gwt_depth' in lithological_domain_dict.keys():
-            gwt_depth = lithological_domain_dict['gwt_depth']
-        else:
-            gwt_depth = None
-            
-        self.gwt_depth = gwt_depth
-        self.layered_matrix = lithological_domain_dict['layered_matrix']
-        self.layered_matrix = np.array([s.decode('utf-8') for s in self.layered_matrix]).reshape((len(self.z_ranges), len(self.x_ranges)))
-        
-        self.lm_type = lithological_domain_dict['lm_type']
-        self.n_layers = lithological_domain_dict['n_layers']
-        self.overlap = lithological_domain_dict['overlap']
-        self.check = False#lithological_domain_dict['check']# Dont know why, but this is not being saved. rather no addn being saved. so for now using check for utils_desc.
-        self.added_prefix = lithological_domain_dict['added_prefix']
-        self.utils_description = lithological_domain_dict['check']
-        self.boundary_class = boundary_class
-        
-class LithologicalDomain2D(LithologicalDomain2DFunctions):
-    def __init__(self, span_x: float, span_z: float, del_x: float, del_z: float, name: str):
-        """
-        Initializes the LithogolicalDomain2D instance with given spatial limits, and spacing.
-        
-        Parameters:
-        span_x, span_y, span_z : float
-            The upper limit for the x, y, and z-coordinate range.
-        del_x, del_y, del_z : float
-            The spacing interval for x, y, and z-coordinates.
-        name: str
-            The name of lithologicaldomain
-        """
-        super().__init__(span_x, span_z, del_x, del_z, name)
     
-    def get_matrix_from_boundary(self, BoundaryCreator_class, gwt_depth=None): 
+    @property
+    def get_config(self):
+        pass
+    
+    @classmethod
+    def from_config(cls, config_dict):
+        pass
+      
+class LithologicalDomain2D(LithologicalDomain2DReadOnly):
+    def __init__(self, domain:DiscretizedDomain2D=None, gwt_depth=None, name:str = ''): 
         """
-        Generates a layered matrix from the provided boundary creator class.
+        Generates a LithogolicalDomain3D instance from the provided GlobalSoilInterfaceConfig.
 
-        Args:
-            BoundaryCreator_class: An object that defines the boundary array and related parameters.
-        """
-        BoundaryCreator_class = copy.deepcopy(BoundaryCreator_class)  #Makes sure the change in the object is local to this function only.
-        assert self.lm_type == 'NA', f"ERROR: The variable is already assigned with {self.lm_type}, should be 'NA'."
-        
-        self.boundary_class = BoundaryCreator_class
-        boundary_matrix = BoundaryCreator_class.boundary_array
-        
-        assert BoundaryCreator_class.span_z == self.span_z, f"Assertion Error: {BoundaryCreator_class.span_z} != {self.span_z}"
-        if boundary_matrix.shape[1] != len(self.x_ranges):
-            print(f"WARNING: Boundary matrix (Shape = {boundary_matrix.shape}) does not align with spatial_xs (shape: {len(self.x_ranges)} != {boundary_matrix.shape[1]})")
-        
-        self.n_layers = BoundaryCreator_class.n_layers
-        self.layered_matrix = layer_id_faster(boundary_matrix, self.n_layers, self.z_ranges)
-        self.layered_matrix = self.layered_matrix.astype(int)
-        self.lm_type = 'from_boundary'
-        self.overlap = False #Overlap with merged layers (useful for utils)
-        self.gwt_depth = gwt_depth
-        self.utils_description = 'Boundary'
-        
-    def add_surface_boundary_to_curr_boundary(self, SurfaceBoundaryCreator_class, method='pile'):
-        #method can be either 'pile' or 'erode'
-        assert self.surface_boundary is None, "Surface boundary has already been defined"
-        assert method in ['pile', 'erode'], f"Methods can only be either 'pile' or 'erode'. Provided: {method}"
-
-        self_copy = copy.deepcopy(self)  #Makes sure the change in the object is local to this function only.
-        self_copy.lm_type = 'NA'
-
-        assert SurfaceBoundaryCreator_class.n_layers == 2, f"The number of layers in top boundary class must be 2 (1 interface). Provided {SurfaceBoundaryCreator_class.n_layers} layers"
-        self_copy.get_matrix_from_boundary(SurfaceBoundaryCreator_class)
-        self_copy.layered_matrix-=1
-
-        assert self.layered_matrix.shape == self_copy.layered_matrix.shape, f"Expected same actual grid size, but provided {self.layered_matrix.shape} != {self_copy.layered_matrix.shape}"
-
-        if method == 'erode':
-            self.layered_matrix=(self.layered_matrix*self_copy.layered_matrix).astype(int)
-            # self_copy.plot2d()
-        else: #'pile'
-            self_copy.plot2d()
-            original_array = self.layered_matrix
-            padding = np.sum(self_copy.layered_matrix == 0, axis=0)
-            max_padding = padding.max()
-            
-            # Step 2: Create a padded array with enough space for all padding
-            padded_shape = (original_array.shape[0]+ max_padding, original_array.shape[1])
-            padded_array = np.zeros(padded_shape)
-            
-            # Step 3: Copy the original array into the padded array at the correct positions
-            for row_idx in range(original_array.shape[1]):
-                padded_array[padding[row_idx]:padding[row_idx]+original_array.shape[0], row_idx] = original_array[:,row_idx]
-                
-            # Step 4: Slice the padded array to match the original number of rows
-            self.layered_matrix = (padded_array[:original_array.shape[0], :]).astype(int)
-        self.lm_type = 'surface_boundary_added'
-        self.surface_boundary = get_dict_from_surf_boundary(SurfaceBoundaryCreator_class)
-        
-        
-class LithologicalDomain2D_from_Utils2D(LithologicalDomain2DFunctions):
-    def __init__(self, span_x: float, span_z: float, del_x: float, del_z: float, name: str, surfaceBoundaryCreator_class=None):
-        """
-        Initializes the LithogolicalDomain3D instance with given spatial limits, and spacing.
-        
         Parameters:
-        span_x, span_z : float
-            The upper limit for the x, y, and z-coordinate range.
-        del_x, del_z : float
-            The spacing interval for x, y, and z-coordinates.
+        ----------
+        domain:
+            Discretized Domain of the lithological domain
+            If None, uses same domain as GlobalSoilInterfaceConfig's merged interface.
+        gwt_depth:
+            GWT Depth in unit length. If None, assumed at the bottom/inf.
         name: str
             The name of lithologicaldomain
         """
-        super().__init__(span_x, span_z, del_x, del_z, name)
-        if surfaceBoundaryCreator_class is None:
-            self.surface_boundary = None
-        else:
-            self.surface_boundary = get_dict_from_surf_boundary(surfaceBoundaryCreator_class)
+        self.name = name
+        discretizedInterfaces2D_instance = GlobalSoilInterfaceConfig.get_interface_instance()
+        
+        if domain is not None:
+            if not discretizedInterfaces2D_instance.domain.is_equivalent(domain):
+                raise ValueError(f"Spans of interfaces [{discretizedInterfaces2D_instance.domain.spans}] and domain provided, [{domain.spans}], are not same.")
+        
+            discretizedInterfaces2D_instance = discretizedInterfaces2D_instance.remesh_interface(domain.dhs[0], domain.dhs[1])
+        
+        super().__init__(domain, name)
+        
+        discretizedInterfaces2D_instance = copy.deepcopy(discretizedInterfaces2D_instance)  #Makes sure the change in the object is local to this function only.
+        self.gwt_depth = gwt_depth
+        self.lm_type = 'from_interface_config'
+        self.lithological_matrix = layer_id_faster(discretizedInterfaces2D_instance) - 1 #-1 as top layer is "air" with ID 0, not default 1.
+        self.lithological_matrix = self.lithological_matrix.astype(int)
+        self.lithological_matrix = np.vectorize(lambda x: f"{x}")(self.lithological_matrix)
+        
+        self.obstruction_overlap = False #Overlap with merged layers (useful for utils)
+        self.obstruction_description = 'Interfaces'
+        
+        self.interface_config_revision_id = GlobalSoilInterfaceConfig.get_revision_id()
+        
+    def refresh(self):
+        """
+        Recompute the lithological domain using the latest global interface config.
+
+        Notes
+        -----
+        - This is called automatically if the interface configuration revision ID changes.
+        """
+        if self.merged_lit:
+            warnings.warn("The current lit domain was created with merging a domain with soil lit domain. That merging domain is lost/ignored on returned lit domain.")
+        # Create a fresh instance of same class
+        
+        init_lithological_matrix = self.lithological_matrix
+        domain = self.domain if self.init_domain is None else self.init_domain
+        self.__init__(domain, self.gwt_depth, self.name)
+        
+        warn_if_changed(self.lithological_matrix, init_lithological_matrix)
+        
+    def return_merged_lithological_domain(self, lithological_domain2D_list=[]):
+        """
+        Merge this LithologicalDomain2D with a list of obstruction-based lithological domains.
+
+        Parameters
+        ----------
+        lithological_domain2D_list : list of LithologicalDomain2DFromObstruction2D
+            List of obstruction-based lithological domains to merge into this one.
+
+        Returns
+        -------
+        merged_lit_domain : LithologicalDomain2D
+            A new instance of LithologicalDomain2D representing the merged result.
+        overlap_map : np.ndarray
+            Boolean matrix indicating where obstructions overlapped with the lithology.
+            (Returned from merge_lithological_domains)
+
+        Notes
+        -----
+        - If the global interface configuration has changed since creation, the domain
+          is refreshed before merging.
+        - Only obstruction-based lithological domains should be provided in the list.
+        """
+        if not GlobalSoilInterfaceConfig.get_config_status(self.interface_config_revision_id):
+            self.refresh() #Compute for new surface
+        
+        if self.merged_lit:
+            warnings.warn("The current lit domain was created with merging a domain with soil lit domain. That merging domain is lost/ignored on returned lit domain.")
+        # Create a fresh instance of same class
+        
+        domain = self.domain if self.init_domain is None else self.init_domain
             
-    def get_matrix_from_utils2d(self, Utils2d_class, utils_new_ref_points2d, rot_angles_in_degrees, added_prefix, allow_z_axis_rotation_only=True): 
+        merged_lit_domain = self.__class__(domain, self.gwt_depth, self.name)
+        
+        domains = []
+        for lit_domain in lithological_domain2D_list:
+            if not isinstance(lit_domain, LithologicalDomain2DFromObstruction2D):
+                raise TypeError(
+                    "Entries of lithological_domain2D_list must be instances of "
+                    "LithologicalDomain2DFromObstruction2D."
+                )
+            domains.append(lit_domain.domain)
+        
+        min_domain = DiscretizedDomain2D.get_minimum_domain(domains)
+        
+        merged_lit_domain.remeshing_lithological_matrix(*min_domain.dhs)
+        
+        for lit_domain in lithological_domain2D_list:
+            if not GlobalSoilInterfaceConfig.get_config_status(lit_domain.interface_config_revision_id):
+                lit_domain.refresh() #Compute for new surface
+        
+            lit_domain = lit_domain.remeshing_lithological_matrix(*min_domain.dhs, replace=False)
+            merged_lit_domain.lithological_matrix, _ = merge_lithological_domains(
+                merged_lit_domain, lit_domain
+            )
+        
+        self.merged_lit = True
+
+        return merged_lit_domain
+        
+class LithologicalDomain2DFromObstruction2D(LithologicalDomain2DReadOnly):
+    def __init__(self, domain:DiscretizedDomain2D, name: str=''):
         """
         Generates a layered matrix from a 2D utilities class.
-        Allows for rotation of the utils matrix in 3D plane, assuming 2D utils is extruded in y-direction infinitely.
-        Note: The area in the cross-section will increase.
         
-        Args:
-            Utils2d_class: 
-                An object that provides 2D utility data.
-            angles_in_degrees (list of float): 
-                Rotation angles [gamma, beta, theta] in degrees.
-            added_prefix: Optional
-                Optional prefix (Max: 8) to be added to the merged matrix (default is None). Cannot have "_", or numbers, also cannot be "".
-            allow_z_axis_rotation_only: boolean
-                If allowing rotation about z-axis only.
+        Parameters:
+        domain: DiscretizedDomain2D
+            Domain for this lithological domain.
+        obstruction2D_instance: 
+            An Obstruction2D object that provides 2D obstruction data.
+        shift_2d_ref_to_xy: Format [x,y]
+            Reference point of Obstruction2D object is shifted to this shift_2d_ref_to_xy coord.
+        added_prefix: Optional
+            Optional prefix (Max: 8) to be added to the merged matrix (default is None). Cannot have "_", or numbers, also cannot be "".
+        name: str
+            The name of lithologicaldomain
         """
+        super().__init__(domain, name)
+        self.domain = domain
+        self.name = name
+
+        assert self.lm_type == 'NA', f"ERROR: The variable is already assigned with {self.lm_type}, should be 'NA'."
+        self.obstruction2d_dict_list = []        
+        self.obstruction_overlap = False
+        
+    def add_obstruction2D(self, obstruction2D_instance:Obstruction2D, shift_ref2d_to_xy, added_prefix=None):
+        ## Do all checks.
+        if not GlobalSoilInterfaceConfig.get_config_status(self.interface_config_revision_id):
+            self.refresh() #Compute for new surface
+        
+        shift_ref2d_to_xy = np.asarray(shift_ref2d_to_xy)
+        if shift_ref2d_to_xy.shape != (2,):
+            raise ValueError("shift_ref2d_to_xy must have shape (2,)")
+
         assert f.is_valid_prefix(added_prefix), f"added_prefix cannot have '_' or numbers. Cannot be '', or more than 8 lettered. Provided '{added_prefix}'"
         
         # Note utils_3d is already shifted
-        Utils2d_class = copy.deepcopy(Utils2d_class)  #Makes sure the change in the object is local to this function only.
-        assert self.lm_type == 'NA', f"ERROR: The variable is already assigned with {self.lm_type}, should be 'NA'."
-        assert Utils2d_class.shape is True, "Utils2d_class is not defined properly"
+        obstruction2D_instance = copy.deepcopy(obstruction2D_instance)  #Makes sure the change in the object is local to this function only.
+        assert obstruction2D_instance.shape is True, "obstruction2D_instance is not defined properly"
                 
-        #Here the shift can be negative, and 
-        assert f.is_close(self.del_x, Utils2d_class.refining_factor * Utils2d_class.del_x_utils), (
-            f"Inconsistent 'del_x' value detected: Expected 'del_x' = refining_factor ({Utils2d_class.refining_factor}) × del_x_utils ({Utils2d_class.del_x_utils}) = {Utils2d_class.refining_factor * Utils2d_class.del_x_utils}, but received {self.del_x}.")
-
-        assert f.is_close(self.del_z, Utils2d_class.refining_factor * Utils2d_class.del_z_utils), (
-            f"Inconsistent 'del_z' value detected: Expected 'del_z' = refining_factor ({Utils2d_class.refining_factor}) × del_z_utils ({Utils2d_class.del_z_utils}) = {Utils2d_class.refining_factor * Utils2d_class.del_z_utils}, but received {self.del_z}.")
-
-        utils_new_ref_in_grids = np.array([f.get_nearest_centered_grid_point(utils_new_ref_points2d[0],self.del_z,True), f.get_nearest_centered_grid_point(utils_new_ref_points2d[1],self.del_x,True)])
-        if self.surface_boundary is not None:
-            surface_boundary_array = self.surface_boundary['boundary_array']
-            assert self.surface_boundary['del_x'] == self.del_x, f"Expected del_x = del_x from Surface boundary class, but provided {self.del_x} != {self.surface_boundary['del_x']}"
-
-            ## Adjusting shift accounting for surface accordingly
-            z_shift_for_surf = adjust_utils_with_surface_boundary(utils_new_ref_in_grids, surface_boundary_array)
-            utils_new_ref_in_grids[0] += f.get_nearest_centered_grid_point(z_shift_for_surf,self.del_z,True)
-            
-        else:
-            surface_boundary_array = None
-            
-        ## Making sure ref_coord2d lies in one of the grid point so that there is minimum distortion.
-        ref_coord2d_in_grid = f.get_nearest_ref_point_in_grid_from_utilsgrid(Utils2d_class, self.del_x, self.del_z)
-        shift_points2d_in_grid = utils_new_ref_in_grids - ref_coord2d_in_grid
-        shift_points2d = [f.get_centered_grid_point_from_index(shift_points2d_in_grid[0], self.del_z),
-                          f.get_centered_grid_point_from_index(shift_points2d_in_grid[1], self.del_x)]
-        rot_flag = utils_3d_f.check_rotation_angles(rot_angles_in_degrees)
+        # Get y_shift_from_surfaceBoundaryConfig
+        y_shift_for_surface_adj = self._get_y_shift_adjusted_for_surface(shift_ref2d_to_xy)
+        shift_ref2d_to_xy[1]+=y_shift_for_surface_adj
         
-        if rot_flag:
-            layered_matrix_coord_table, layered_matrix_grid_table, utils_addn_description = utils_3d_f.get_rotated_utils_grid(Utils2d_class, shift_points2d, rot_angles_in_degrees, allow_z_axis_rotation_only)
-        else:
-            layered_matrix_coord_table, layered_matrix_grid_table = utils_3d_f.get_table_from_utils2d(Utils2d_class, shift_points2d)
-            layered_matrix_coord_table, layered_matrix_grid_table = layered_matrix_coord_table[:, 2:], layered_matrix_grid_table[2:] # first two points in 2D is actually reference points. *y_plot because 2d shapes repeated over y_direction.
-            # Assert all elements in the 2nd row are 0
-            assert np.all(layered_matrix_coord_table[1, :] == 0), "All elements in row 1 must be 0"
-            # Extract rows 0 and 2
-            layered_matrix_coord_table = layered_matrix_coord_table[[0, 2], :]
-            utils_addn_description = ''
-            
-        # interp = scipy.interpolate.NearestNDInterpolator(layered_matrix_coord_table.T, layered_matrix_grid_table)
-        # print(layered_matrix_coord_table.T, layered_matrix_grid_table)
-        Z, X = np.meshgrid(self.z_ranges, self.x_ranges, indexing='ij')
-        points_orig = np.vstack([Z.ravel(), X.ravel()]).T  # Shape: (M, 3)
-        tree = scipy.spatial.cKDTree(layered_matrix_coord_table.T)
-        _, idx = tree.query(points_orig)
-        vals_back = layered_matrix_grid_table[idx].reshape(Z.shape)  # shape: same as original
-        self.layered_matrix = vals_back.astype(int)  # if not already int   
-        # val = interp(Z, X)
-        # self.layered_matrix = val.astype(int)
-        lithologicalDomain_matrix = self.layered_matrix
+        # Get Lithological Matrix from obstacle
+        X, Z = np.meshgrid(self.domain.x_centers, self.domain.z_centers, indexing='ij')
+        points_orig = np.vstack([X.ravel(), Z.ravel()]).T  # Shape: (M, 3)
+        N = points_orig.shape[0]
+        
+        chunk_size = 1000000 #Max chuck per one time.
+        vals_all = np.zeros(N, dtype=int)
+        for start in range(0, N, chunk_size):
+            end = min(start + chunk_size, N)
+            vals_all[start:end] = obstruction2D_instance.query_points_in_obstruction(points_orig, shift_ref2d_to_xy)    
+        vals_all = vals_all.reshape(X.shape)
+        lithological_domain_matrix = vals_all.astype(int)
 
         if added_prefix is not None:
-            lithologicalDomain_matrix = np.vectorize(lambda x: f"{added_prefix}_{x}")(lithologicalDomain_matrix)
-            mask_b_nonzero = (lithologicalDomain_matrix == f"{added_prefix}_0")
-            lithologicalDomain_matrix = np.where(mask_b_nonzero, 'X', lithologicalDomain_matrix)  
+            lithological_domain_matrix = np.vectorize(lambda x: f"{added_prefix}_{x}")(lithological_domain_matrix)
+            mask_b_nonzero = (lithological_domain_matrix == f"{added_prefix}_0")
+            lithological_domain_matrix = np.where(mask_b_nonzero, 'X', lithological_domain_matrix)  
             self.added_prefix = True
             
-        self.layered_matrix = lithologicalDomain_matrix        
-        self.lm_type = 'from_utils'
-        self.overlap = False #Overlap with merged layers (useful for utils)
-        self.utils_description = Utils2d_class.description + utils_addn_description
-
-def get_dict_from_surf_boundary(surfaceBoundaryCreator_class):
-    assert surfaceBoundaryCreator_class.boundary_array.shape[0]==1, f"surface boundaries must have only one interfaces. Found {surfaceBoundaryCreator_class.boundary_array.shape[0]}"
-    assert surfaceBoundaryCreator_class.n_layers == 2, f"The number of layers in top boundary class must be 2 (1 interface). Provided {surfaceBoundaryCreator_class.n_layers} layers"
-    surface_boundary = {'span_x': surfaceBoundaryCreator_class.span_x,
-                        'del_x': surfaceBoundaryCreator_class.del_x,
-                        'span_z': surfaceBoundaryCreator_class.span_z,
-                        'del_z': surfaceBoundaryCreator_class.del_z,
-                        'boundary_array': surfaceBoundaryCreator_class.boundary_array}
-    
-    return surface_boundary
-
-def compare_surface_boundaries(dict1, dict2):
-    
-    if dict1 is None and dict2 is None:
-        return True
-    
-    # Check if both dicts have the same keys
-    if dict1.keys() != dict2.keys():
-        return False
-
-    # Compare each value
-    for key in dict1:
-        val1 = dict1[key]
-        val2 = dict2[key]
-
-        if isinstance(val1, np.ndarray) and isinstance(val2, np.ndarray):
-            if not np.array_equal(val1, val2):
-                return False
-        else:
-            if val1 != val2:
-                return False
-
-    return True
+        obstruction2D_dict = {
+            'obstruction_inst': obstruction2D_instance,
+            'shift_ref2d_to_xy': shift_ref2d_to_xy,        
+            'added_prefix': added_prefix,   
+            'y_shift_for_surface_adj': y_shift_for_surface_adj,
+        }  
+        new_lit_domain_dict = {
+            'lm_type': 'lith',
+            'domain':self.domain,
+            'lithological_matrix':lithological_domain_matrix,
+            'interface_config_revision_id':self.interface_config_revision_id,
+        }
         
-def layer_id_faster(processed_boundary, n_layers, spatial_z_ranges):
+        ## Merging with all existing lithological matrix if exist
+        self.lithological_matrix, obstruction_overlap = merge_lithological_domains(self, new_lit_domain_dict)        
+        self.lm_type = 'lith'
+        self.obstruction_overlap |= obstruction_overlap #Or
+        self.obstruction2d_dict_list.append(obstruction2D_dict)  
+        
+    def refresh(self):
+        init_lithological_matrix = self.lithological_matrix
+        
+        obstruction2d_dict_list = self.obstruction2d_dict_list
+        self.__init__(self.domain, self.name)
+        for obs in obstruction2d_dict_list:
+            self.add_obstruction2D(obs['obstruction_inst'], obs['shift_ref2d_to_xy'], obs['added_prefix'])
+        
+        warn_if_changed(self.lithological_matrix, init_lithological_matrix)
+        
+    def _get_y_shift_adjusted_for_surface(self, shift_ref2d_to_xy):
+        ## Check if surface config changed after definition: All this is handled by redefining this class (in merged case.)
+        _, surface_interface = GlobalSoilInterfaceConfig.get_interface_instance().seperate_surface_interface()
+        
+        ## Make sure domains dhs are consistent
+        if not (
+            len(self.domain.spans) == len(surface_interface.domain.spans)
+            and all(f.is_close(a, b) for a, b in zip(self.domain.spans,
+                                                surface_interface.domain.spans))
+        ):
+            raise ValueError(
+                "The domains' spans are not consistent. "
+                f"Lithological domain has spans {self.domain.spans}, "
+                f"while surface interface has {surface_interface.domain.spans}"
+            )
+    
+        if all(f.is_close(a, b) for a, b in zip(self.domain.spans,
+                                                surface_interface.domain.spans)):
+            surface_interface.remesh_interface(self.domain.dhs[0], self.domain.dhs[1])
+    
+        # Find coord in surface_interface nearest to x_coord of .
+        surface_x_coords = surface_interface.domain.get_interface_x_centers
+        interp_ref_zs = f.remeshing_2D_matrix(x_old = surface_x_coords, x_new = [shift_ref2d_to_xy],
+                                    z_old = [1], z_new = [1], matrix_2d = surface_interface.interfaces_matrix, interp_method = surface_interface.remesh_interp_method)
+
+
+        # Find the x_coordinate
+        z_shift = interp_ref_zs[0]    
+        return z_shift
+
+def layer_id_faster(discretizedInterfaces2D_instance:DiscretizedInterfaces2D):
     """
     Assigns layer IDs to soil points based on processed boundary values and spatial depth ranges.
 
@@ -469,36 +630,160 @@ def layer_id_faster(processed_boundary, n_layers, spatial_z_ranges):
     """
     # Will be layered 1,2,3...
     # Initializing all soil points are last layers
-    layer_matrix = np.full((len(spatial_z_ranges), processed_boundary.shape[1]), n_layers)
+    n_layers = discretizedInterfaces2D_instance.n_layers
+    
+    # Ignore the two edges of interfaces_matrix; they serve only for remeshing and fall outside the model bounds.
+    processed_boundary = discretizedInterfaces2D_instance.interfaces_matrix
+    processed_boundary = processed_boundary[1:-1, :]
 
-    compare_matrix = np.ones_like(layer_matrix)*spatial_z_ranges.T[:, None]
+    spatial_z_ranges = discretizedInterfaces2D_instance.domain.z_centers
+    
+    layer_matrix = np.full((processed_boundary.shape[0], len(spatial_z_ranges)), n_layers)
+
+    compare_matrix = np.ones_like(layer_matrix)*spatial_z_ranges.T[None]
     # print(compare_matrix)
     processed_boundary[processed_boundary <= 0] = -1
     processed_boundary[processed_boundary >= spatial_z_ranges[-1]] = spatial_z_ranges[-1]+1
     
     for i in range(n_layers-1):
-        boundary_matrix = np.tile(processed_boundary[i,:], (len(spatial_z_ranges), 1))
+        boundary_matrix = np.tile(processed_boundary[:,i], (len(spatial_z_ranges), 1)).T
         # print(boundary_matrix)
         layer_matrix-=(boundary_matrix>=compare_matrix)
 
     return layer_matrix
 
-def adjust_utils_with_surface_boundary(utils_ref_in_grids, surface_boundary_array):  
-    z_shift = 0
-    if surface_boundary_array is not None:
-        surf_z_max_grid, surf_x_max_grid = surface_boundary_array.shape
-        assert surf_z_max_grid == 1, "Surface boundary class can only have one interface."
-        # Find the x_coordinate
-        if utils_ref_in_grids[1] <= 0:
-            ref_x = 0
-        elif utils_ref_in_grids[1] >= surf_x_max_grid:
-            ref_x = surf_x_max_grid
-        else:
-            ref_x = utils_ref_in_grids[1]      
+def _extract_lithological_fields(ld):
+    """
+    Extract lithological domain fields from either a ReadOnly object or a dict.
+
+    Parameters
+    ----------
+    ld : LithologicalDomain2DReadOnly or dict
+        Either a domain object with attributes (lm_type, domain,
+        lithological_matrix, interface_config_revision_id)
+        or a dict containing these keys.
+
+    Returns
+    -------
+    tuple
+        A 4-tuple: (lm_type, domain, lithological_matrix, interface_config_revision_id)
+
+    Raises
+    ------
+    KeyError
+        If `ld` is a dict and required keys are missing.
+    """
+    if isinstance(ld, dict):
+        return (
+            ld["lm_type"],
+            ld["domain"],
+            ld["lithological_matrix"],
+            ld["interface_config_revision_id"]
+        )
+    else:
+        return (
+            ld.lm_type,
+            ld.domain,
+            ld.lithological_matrix,
+            ld.interface_config_revision_id
+        )
         
-        # find the y_shift
-        z_shift = surface_boundary_array[0,int(ref_x)]
-    return z_shift
+def merge_lithological_domains(lithological_domain_A, lithological_domain_B, lit_id_none_list=['X']):
+    """
+    Merge two lithological domains (either ReadOnly objects or dicts).
+
+    Priority rule: Values from Domain B overwrite values from Domain A,
+    except when B contains a 'none' lithological ID (specified in `lit_id_none_list`).
+
+    Parameters
+    ----------
+    lithological_domain_A : LithologicalDomain2DReadOnly or dict
+        First lithological domain. May be a ReadOnly object or a dict with keys:
+        'lm_type', 'domain', 'lithological_matrix', 'interface_config_revision_id'.
+
+    lithological_domain_B : LithologicalDomain2DReadOnly or dict
+        Second lithological domain. Priority is given to this domain during merge.
+        Must match domain size, extents, and surface revision ID of A.
+
+    lit_id_none_list : list of str, optional
+        List of lithology IDs that represent "none" (i.e., no material).
+        Defaults to ['X'].
+
+    Returns
+    -------
+    merged_matrix : np.ndarray
+        A numpy array representing the merged lithological matrix.
+
+    overlap : bool
+        True if both domains had non-none values at the same grid locations,
+        indicating overlapping materials (useful for obstruction/utility detection).
+
+    Notes
+    -----
+    - Supports both dict-based and ReadOnly object inputs.
+    - Domain B overwrites A, unless its value is a 'none' ID.
+    - Overlap detection checks where both A and B have valid (non-none) values.
+    """
+
+    lm_type_A, domain_A, matrixA, rev_id_A = _extract_lithological_fields(lithological_domain_A)
+    lm_type_B, domain_B, matrixB, rev_id_B = _extract_lithological_fields(lithological_domain_B)
+
+    # Checks
+    assert lm_type_B != "NA", "lm_type cannot be NA"
+    
+    if lm_type_A == "NA":
+        return matrixB, False
+
+    if domain_A != domain_B:
+        raise TypeError(
+            f"Domains of A and B do not match. "
+            f"A: spans={domain_A.spans}, dhs={domain_A.dhs}; "
+            f"B: spans={domain_B.spans}, dhs={domain_B.dhs}"
+        )
+
+    if matrixA.shape != matrixB.shape:
+        raise ValueError(
+            f"Expected same lithological domain matrices size, got {matrixA.shape} != {matrixB.shape}"
+        )
+
+    if rev_id_A != rev_id_B:
+        raise ValueError("Surface config revision IDs do not match. Both A and B must be for same interfaces configuration. Refresh if needed") ##TODO
+
+    if not isinstance(lit_id_none_list, list) or not lit_id_none_list or not all(isinstance(item, str) for item in lit_id_none_list):
+        raise ValueError("lit_id_none_list must be a non-empty list of strings.")
+
+    # Masks to identify non-'none' values
+    mask_A_non_none = ~np.isin(matrixA, lit_id_none_list)
+    mask_B_non_none = ~np.isin(matrixB, lit_id_none_list)
+
+    # B overwrites A 
+    merged_lithological_matrix = np.where(mask_B_non_none, matrixB, matrixA)
+    # (replace it with that of B even if merged already have values, i.e prioritize B)
+
+    # Overlap detection - #Check if overlap with merged layers (useful for obstructions)
+    overlap = np.sum(mask_A_non_none * mask_B_non_none)>0
+    return merged_lithological_matrix, overlap
+
+    # self.lithological_matrix = merged
+    # self.overlap = overlap_check>0 #Overlap with merged layers (useful for utils)
+    # self.utils_description = f'{self.utils_description} + {lithological_domain_B.utils_description}'
+
+def warn_if_changed(a, b, msg="On refreshing the lithological domain, lithological_matrix changed."):
+    if a is None and b is None:
+        changed = False
+    elif a is None or b is None:
+        changed = True
+    elif np.isscalar(a) and np.isscalar(b):
+        changed = a != b
+    elif isinstance(a, np.ndarray) and isinstance(b, np.ndarray):
+        changed = not np.array_equal(a, b)
+    else:
+        # one is scalar, the other is array → consider changed
+        changed = True
+
+    if changed:
+        warnings.warn(msg)
+
 
 
 

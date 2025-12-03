@@ -3,6 +3,6 @@
 #
 # LICENSE
 
-"""Metadata for geomodgen3d."""
+"""Metadata for geomodgen2d."""
 
-__version__ = "0.0.1"
+__version__ = "0.0.2"
