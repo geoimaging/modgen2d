@@ -1,188 +1,242 @@
-import geomodgen2d
+import geomodgen2d, warnings
 import numpy as np
 from testing_tools import unittest, TestCase
+from geomodgen2d import discretized_interfaces2d
 
-class TestUtils2D(TestCase):
-    @classmethod
-    def setUpClass(cls):
-        cls.Utils1D_1 = geomodgen2d.utils_2d.Utils1D(lz=6, del_z=0.4, util_id=2)
-        cls.Utils1D_2 = geomodgen2d.utils_2d.Utils2D(del_x=0, del_z=0.4)  #Should be same as above
+class TestLithologicalDomain2D(TestCase):
+    def setUp(self):
+        self.domain2D = geomodgen2d.discretized_domain2d.DiscretizedDomain2D(
+            span_x=5, span_z=4, dx=1, dz=1
+        )
+        self.boundary2D = discretized_interfaces2d.DiscretizedInterfaces2D(
+            domain=self.domain2D, n_interfaces=3, rng=np.random.default_rng(2))
         
-        cls.Utils2D_1 = geomodgen2d.utils_2d.Utils2D(del_x=0.2, del_z=0.4)
-        cls.Utils2D_2 = geomodgen2d.utils_2d.Utils2D(del_x=0.4, del_z=0.8)
-            # span_x=6, span_z=4, del_x=1.5, del_z=0.5, n_layers=4)
-    
-    def test_utils_shape_assert_checks(self):
-        self.assertRaises(AssertionError, geomodgen2d.utils_2d.Utils2D, 0, 0) #del_z<=0
-        self.assertRaises(AssertionError, geomodgen2d.utils_2d.Utils2D, -0.1, -0.1) #del_x<=0
+        boundary = [[0.97, 3.39, 3.39],
+                    [0.97, 3.39, 3.39],
+                        [1.41, 3.5, 3.67],
+                        [1.85, 3.1, 3.95],
+                        [2.29, 2.7, 4.23],
+                        [2.73, 2.73, 4.51],
+                        [2.73, 2.73, 4.51]]
         
-    def test_check_util_id(self):
-        self.assertEqual(geomodgen2d.utils_2d.check_util_id(2),2)
-        self.assertEqual(geomodgen2d.utils_2d.check_util_id(2.00),2)
-        self.assertRaises(ValueError, geomodgen2d.utils_2d.check_util_id, 0) 
-        self.assertRaises(ValueError, geomodgen2d.utils_2d.check_util_id, 0.3) 
-        self.assertRaises(ValueError, geomodgen2d.utils_2d.check_util_id, -1) 
-        
-    def test_utils_1d(self):
-        self.assertRaises(AssertionError, self.Utils1D_1.utils_1d, 2, 1) #Error shape already defined
-        self.assertRaises(AssertionError, self.Utils2D_2.utils_1d, 2, 1) #Dim2 error
-        self.assertRaises(AssertionError, self.Utils1D_2.utils_1d, -1, 1) #Negative lz
-        self.assertRaises(AssertionError, self.Utils1D_2.utils_1d, 0, 1) #Negative lz
-        self.assertRaises(ValueError, self.Utils1D_2.utils_1d, 1, 0) #Non-positive integer index
-        self.assertRaises(ValueError, self.Utils1D_2.utils_1d, 1, 1.2) #Non-positive integer index
-        self.assertRaises(ValueError, self.Utils1D_2.utils_1d, 1, -1) #Non-positive integer index
-        
-        self.Utils1D_2.utils_1d(lz=6, util_id=2)
-        np.testing.assert_array_equal(self.Utils1D_2.grid, np.array([[2],[2],[2],[2],[2],[2],[2],[2],[2],[2],[2],[2],[2],[2],[2],[2]]))
-        self.assertListAlmostEqual(self.Utils1D_2.ref_coord_in_grids,[0,0])
-        
-        # Asserting both ways of definition is same
-        np.testing.assert_array_equal(self.Utils1D_2.grid, self.Utils1D_1.grid)
-        self.assertListAlmostEqual(self.Utils1D_2.ref_coord_in_grids, self.Utils1D_1.ref_coord_in_grids)
-                                        
-        self.Utils1D_2.clear_utils_properties()
-        self.Utils1D_2.rectangle_2d(lx=0, lz=6, util_id=2)
-        np.testing.assert_array_equal(self.Utils1D_2.grid, self.Utils1D_1.grid)
-        self.assertListAlmostEqual(self.Utils1D_2.ref_coord_in_grids,[8,0])
-        
-        self.Utils1D_2.clear_utils_properties()
-        self.Utils1D_2.utils_1d(lz=1.05, util_id=2)
-        np.testing.assert_array_equal(self.Utils1D_2.grid, np.array([[2],[2],[2],[2]]))  #Changed lz as it is not exactly divisible by del_x. (Nearest round off integer)!!
-        self.assertListAlmostEqual(self.Utils1D_2.ref_coord_in_grids,[0,0])
-        
-    def test_rectangle2d(self):
-        self.assertRaises(AssertionError, self.Utils1D_1.rectangle_2d, 2, 3, 1) #Error shape already defined
-        self.assertRaises(AssertionError, self.Utils1D_2.rectangle_2d, 2, 3, 1) #Dim1 error
-        self.assertRaises(AssertionError, self.Utils2D_2.rectangle_2d, -1, 1, 1) #Negative lx
-        self.assertRaises(AssertionError, self.Utils2D_2.rectangle_2d, 1, -1, 1) #Negative ly
-        self.assertRaises(ValueError, self.Utils2D_2.rectangle_2d, 1, 1, 0) #Non-positive integer index
-        self.assertRaises(ValueError, self.Utils2D_2.rectangle_2d, 1, 1, 1.2) #Non-positive integer index
-        self.assertRaises(ValueError, self.Utils2D_2.rectangle_2d, 1, 1, -1) #Non-positive integer index
-        self.assertRaises(ValueError, self.Utils2D_2.rectangle_2d, 1, 1, 1, 'not mid or top') #Error ref value
-        # No checks for input parameters, so be more extra careful
-        
-        self.Utils2D_2.rectangle_2d(lx=1.2, lz=1.6, util_id=2)
-        np.testing.assert_array_equal(self.Utils2D_2.grid, np.array([[2,2,2,2],[2,2,2,2],[2,2,2,2]]))
-        self.assertListAlmostEqual(self.Utils2D_2.ref_coord_in_grids,[1,2])
-        
-        self.Utils2D_2.clear_utils_properties()
-        self.Utils2D_2.rectangle_2d(lx=.8, lz=1.5, util_id=2)
-        np.testing.assert_array_equal(self.Utils2D_2.grid, np.array([[2,2,2],[2,2,2], [2,2,2]]))  #Changed lz as it is not exactly divisible by del_x. (Nearest round off integer)!!
-        self.assertListAlmostEqual(self.Utils2D_2.ref_coord_in_grids,[1,1])  #Mid means 1.5, 1.5 but, now it is 1,1 (integer division)
-        
-        self.Utils2D_2.clear_utils_properties()
-        self.Utils2D_2.rectangle_2d(lx=.7, lz=1.5, util_id=2, ref='top')
-        np.testing.assert_array_equal(self.Utils2D_2.grid, np.array([[2,2,2],[2,2,2],[2,2,2]]))  #Changed lz as it is not exactly divisible by del_x. (Nearest round off integer)!!
-        self.assertListAlmostEqual(self.Utils2D_2.ref_coord_in_grids,[0,1])  #Mid means 1.5, 1.5 but, now it is 1,1 (integer division)
-        
-    def test_circle2d(self):
-        self.assertRaises(AssertionError, self.Utils1D_1.circular_2d, 2, 1) #Error shape already defined
-        self.assertRaises(AssertionError, self.Utils1D_2.circular_2d, 2, 1) #Dim1 error
-        self.assertRaises(AssertionError, self.Utils2D_2.circular_2d, 0, 1) #Negative r
-        self.assertRaises(AssertionError, self.Utils2D_2.circular_2d, -1, 1) #Negative r
-        self.assertRaises(ValueError, self.Utils2D_2.circular_2d, 1, 0) #Non-positive integer index
-        self.assertRaises(ValueError, self.Utils2D_2.circular_2d, 1, 1.2) #Non-positive integer index
-        self.assertRaises(ValueError, self.Utils2D_2.circular_2d, 1, -1) #Non-positive integer index
-        self.assertRaises(ValueError, self.Utils2D_2.circular_2d, 1, 1, 'not mid or top') #Error ref value
-        # No checks for input parameters, so be more extra careful
-        
-        self.Utils2D_1.circular_2d(r = .6, util_id=2)
-        np.testing.assert_array_equal(self.Utils2D_1.grid, np.array([[0, 0, 0, 2, 0, 0, 0],
-                                                                     [0, 2, 2, 2, 2, 2, 0],
-                                                                     [0, 2, 2, 2, 2, 2, 0],
-                                                                     [0, 0, 0, 2, 0, 0, 0]]))
-        self.assertListAlmostEqual(self.Utils2D_1.ref_coord_in_grids,[2,3])
-        
-        self.Utils2D_1.clear_utils_properties()
-        self.Utils2D_1.circular_2d(r = .45, util_id=2)
-        np.testing.assert_array_equal(self.Utils2D_1.grid, np.array([[0,0,0,0,0],
-                                                                     [0,2,2,2,2],
-                                                                     [0,2,2,2,0]]))  #r is fixed.!!
-        self.assertListAlmostEqual(self.Utils2D_1.ref_coord_in_grids,[1,2])  #Mid means .45, .45 but, now it is .6,.4 (integer division)
-        
-        self.Utils2D_1.clear_utils_properties()
-        self.Utils2D_1.circular_2d(r=.45, util_id=2, ref='top')
-        np.testing.assert_array_equal(self.Utils2D_1.grid, np.array([[0,0,0,0,0],
-                                                                     [0,2,2,2,2],
-                                                                     [0,2,2,2,0]]))  #r is fixed.!!
-        self.assertListAlmostEqual(self.Utils2D_1.ref_coord_in_grids,[0,2])  #Mid means .45, .45 but, now it is .6,.4 (integer division)
-        
-    
-    def test_shift_grid_both_axes(self):
-        self.assertRaises(AssertionError, self.Utils1D_2.shift_grid_both_axes, 0, 1) #shape not defined
-        self.assertRaises(AssertionError, self.Utils2D_2.shift_grid_both_axes, 3, 1) #shape not defined
-        
-        #1D check
-        self.Utils1D_2.utils_1d(lz=2, util_id=2)
-        self.assertRaises(AssertionError, self.Utils1D_2.shift_grid_both_axes, 2, 1) #cannot shift in x_axis error
-        self.assertRaises(ValueError, self.Utils1D_2.shift_grid_both_axes, 0, -1) #non-negative number
-        self.assertRaises(ValueError, self.Utils1D_2.shift_grid_both_axes, 0, 0.4) #must be integer
+        self.boundary2D.set_interfaces_matrix(boundary)
 
-        self.Utils1D_2.shift_grid_both_axes(0,2)
-        np.testing.assert_array_equal(self.Utils1D_2.grid, np.array([[0],[0],[2],[2],[2],[2],[2],[2]]))
-        self.assertListAlmostEqual(self.Utils1D_2.ref_coord_in_grids,[2,0])
+        self.domain2D = self.domain2D.remesh(1.25)
+        self.surface_boundary2D = discretized_interfaces2d.SurfaceInterface2D(
+            domain=self.domain2D, rng=np.random.default_rng(2))
+        self.surface_boundary2D.set_interfaces_matrix([[0.6], [0.2], [0], [1], [1.2], [0.5]])
         
-        #2D check
-        self.Utils2D_2.rectangle_2d(lx=.8, lz=1.2, util_id=2)
-        self.assertRaises(ValueError, self.Utils2D_2.shift_grid_both_axes, -1, 1) #non-negative number
-        self.assertRaises(ValueError, self.Utils2D_2.shift_grid_both_axes, -1, -1) #non-negative number
-        self.assertRaises(ValueError, self.Utils2D_2.shift_grid_both_axes, 1.2, 1) #must be integer
-        self.assertRaises(ValueError, self.Utils2D_2.shift_grid_both_axes, 1, 0.4) #must be integer
-              
-        self.Utils2D_2.shift_grid_both_axes(3,2)
-        np.testing.assert_array_equal(self.Utils2D_2.grid, np.array([[0,0,0,0,0,0],[0,0,0,0,0,0],[0,0,0,2,2,2],[0,0,0,2,2,2]]))
-        self.assertListAlmostEqual(self.Utils2D_2.ref_coord_in_grids,[3,4])
-    
-    def test_shift_one_axis(self):
-        self.assertRaises(AssertionError, self.Utils1D_2.shift_grid_one_axis, 'x', 0) #shape not defined
-        self.assertRaises(AssertionError, self.Utils2D_2.shift_grid_one_axis, 'x', 3) #shape not defined
-        
-        #1D check
-        self.Utils1D_2.utils_1d(lz=2, util_id=2)
-        self.assertRaises(AssertionError, self.Utils1D_2.shift_grid_one_axis, 'x', 1) #cannot shift in x_axis error
-        self.assertRaises(ValueError, self.Utils1D_2.shift_grid_one_axis, 'z', -1) #non-negative number when allow_negative_shift False (default)
-        self.assertRaises(ValueError, self.Utils1D_2.shift_grid_one_axis, 'z', 0.4) #must be integer
-        self.assertRaises(ValueError, self.Utils1D_2.shift_grid_one_axis, 'z', -0.4, True) #must be integer
+        self.obs2D1 = geomodgen2d.obstruction_2d.Obstruction2D(dl=0.5, ref_xz_symbolic=('C', 0), snap_to_dl=False)  #Should be same as above
+        self.obs2D1.circular_2d(2, 1)
 
-        self.Utils1D_2.shift_grid_one_axis('z',2)
-        np.testing.assert_array_equal(self.Utils1D_2.grid, np.array([[0],[0],[2],[2],[2],[2],[2],[2]]))
-        self.assertListAlmostEqual(self.Utils1D_2.ref_coord_in_grids,[2,0])
+        self.obs2D2 = geomodgen2d.obstruction_2d.Obstruction2D(dl=0.5, ref_xz_symbolic=('0', 0), snap_to_dl=False)  #Should be same as above
+        self.obs2D2.rectangle_2d(3, 2, 2)
+
+
+    def test_GSIConfig_set_soil_interface(self):
+        # GeneralConfigTest
+        glob_config = geomodgen2d.lithological_domain2d.GlobalSoilInterfaceConfig
+        glob_config.reset()
         
-        self.Utils1D_2.clear_utils_properties()
-        self.Utils1D_2.utils_1d(lz=2, util_id=2)
-        self.Utils1D_2.shift_grid_one_axis('z',-2, True)
-        np.testing.assert_array_equal(self.Utils1D_2.grid, np.array([[2],[2],[2],[2]]))
-        self.assertListAlmostEqual(self.Utils1D_2.ref_coord_in_grids,[-2,0])
+        # Trying to set a boundary with multiple interfaces as Surface Boundary
+        self.assertRaises(ValueError, glob_config.set_soil_interface, self.boundary2D, self.boundary2D)
+        self.assertRaises(TypeError, glob_config.set_soil_interface, None, self.boundary2D)
+        self.assertRaises(TypeError, glob_config.set_soil_interface, self.domain2D, self.boundary2D)
+        self.assertRaises(TypeError, glob_config.set_soil_interface, self.surface_boundary2D, self.boundary2D)
+        self.assertRaises(ValueError, glob_config.set_soil_interface, self.boundary2D, self.boundary2D)
         
-        #2D check
-        self.Utils2D_2.rectangle_2d(lx=.8, lz=1.2, util_id=2)
-        self.assertRaises(ValueError, self.Utils2D_2.shift_grid_one_axis, 'x', -1) #non-negative number when allow_negative_shift False (default)
-        self.assertRaises(ValueError, self.Utils2D_2.shift_grid_one_axis, 'z', -1) #non-negative number when allow_negative_shift False (default)
-        self.assertRaises(ValueError, self.Utils2D_2.shift_grid_one_axis, 'x', -1.1, True) #must be integer 
-        self.assertRaises(ValueError, self.Utils2D_2.shift_grid_one_axis, 'z', 0.4) #must be integer
-              
-        self.Utils2D_2.shift_grid_one_axis('x',3)
-        self.Utils2D_2.shift_grid_one_axis('z',2)
-        np.testing.assert_array_equal(self.Utils2D_2.grid, np.array([[0,0,0,0,0,0],[0,0,0,0,0,0],[0,0,0,2,2,2],[0,0,0,2,2,2]]))
-        self.assertListAlmostEqual(self.Utils2D_2.ref_coord_in_grids,[3,4])
+        glob_config.set_soil_interface(self.boundary2D, self.surface_boundary2D)
+        # Trying to attempt to re setting the surface Config without "force set"
+        self.assertRaises(RuntimeError, glob_config.set_soil_interface, self.boundary2D, None)
         
-        self.Utils2D_2.clear_utils_properties()
-        self.Utils2D_2.rectangle_2d(lx=.8, lz=1.2, util_id=2)
-        self.Utils2D_2.shift_grid_one_axis('x',-1, True)
-        self.Utils2D_2.shift_grid_one_axis('z',2)
-        np.testing.assert_array_equal(self.Utils2D_2.grid, np.array([[0,0],[0,0],[2,2],[2,2]]))
-        self.assertListAlmostEqual(self.Utils2D_2.ref_coord_in_grids,[3,0])
+        rev_id_init = glob_config.get_revision_id()
+        glob_config.set_soil_interface(self.boundary2D, self.surface_boundary2D, force_set=True)
+        
+        # Assert revision id is changed once GSIConfig surface interface changed.
+        self.assertNotAlmostEqual(rev_id_init, glob_config.get_revision_id())
+        
+        # Now Changing with Variable (if we can duplicate and have multiple config)
+        glob_config2 = geomodgen2d.lithological_domain2d.GlobalSoilInterfaceConfig
+        self.assertAlmostEqual(glob_config.get_revision_id(), geomodgen2d.lithological_domain2d.GlobalSoilInterfaceConfig.get_revision_id())
+        self.assertAlmostEqual(glob_config.get_revision_id(), glob_config2.get_revision_id())
+        
+        self.assertRaises(RuntimeError, glob_config2.set_soil_interface, self.boundary2D, None)
+        self.assertRaises(RuntimeError, geomodgen2d.lithological_domain2d.GlobalSoilInterfaceConfig.set_soil_interface, self.boundary2D, None)      
     
-    def test_expand_grid(self):
+        with self.assertRaises(AttributeError):
+            domain = geomodgen2d.lithological_domain2d.GlobalSoilInterfaceConfig._merged_interface2d_instance.domain
+
+        with self.assertRaises(AttributeError):
+            geomodgen2d.lithological_domain2d.GlobalSoilInterfaceConfig._merged_interface2d_instance = self.boundary2D
+        
+        with self.assertRaises(AttributeError):
+            geomodgen2d.lithological_domain2d.GlobalSoilInterfaceConfig._merged_interface2d_instance.domain = self.boundary2D.domain
+
+    # def test_GSIConfig_evaluate_consistency(self):
+        
+    #     glob_config = geomodgen2d.lithological_domain2d.GlobalSoilInterfaceConfig #Short form
+    #     rev_id_curr = glob_config.get_revision_id()
+    #     # Checking initial conditions (i.e No config defined. revision_id = 0).
+    #     self.assertEqual(glob_config.evaluate_consistency(0), 0) #Same config as 
+    #     self.assertEqual(rev_id_curr, 0)
+    #     self.assertEqual(glob_config._status_code, 0)
+
+    #     # Save previous revision id and then update new config (as if new surface defined.)
+    #     rev_id_prev = rev_id_curr 
+    #     glob_config.set_surface_interface(self.surface_boundary2D)
+    #     rev_id_curr = glob_config.get_revision_id()
+    #     self.assertEqual(glob_config.evaluate_consistency(rev_id_prev), 1) # Means changed but not so much changed.
+    #     self.assertEqual(glob_config._status_code, 1)
+ 
+    #     # Checking meaning of 1
+    #     self.assertNotEqual(glob_config.get_unique_code(rev_id_prev), glob_config.get_unique_code(rev_id_curr))
+    #     self.assertFalse(glob_config.get_compute_immediately(rev_id_prev))
+    #     self.assertFalse(glob_config.get_compute_immediately(rev_id_curr))
+        
+    #     rev_id_prev = rev_id_curr 
+    #     glob_config.set_surface_interface(self.surface_boundary2D, compute_immediately=True, force_set=True)
+    #     rev_id_curr = glob_config.get_revision_id()
+    #     self.assertEqual(glob_config.evaluate_consistency(rev_id_prev), 2) # Means changed but not so much changed.
+    #     self.assertEqual(glob_config._status_code, 2)
+        
+    #     # Checking meaning of 2
+    #     self.assertNotEqual(glob_config.get_unique_code(rev_id_prev), glob_config.get_unique_code(rev_id_curr))
+    #     self.assertFalse(glob_config.get_compute_immediately(rev_id_prev))
+    #     self.assertTrue(glob_config.get_compute_immediately(rev_id_curr))
+        
+    #     rev_id_prev = rev_id_curr 
+    #     glob_config.set_surface_interface(self.surface_boundary2D, compute_immediately=True, force_set=True)
+    #     rev_id_curr = glob_config.get_revision_id()
+    #     self.assertEqual(glob_config.evaluate_consistency(rev_id_prev), 99) # Means changed but not so much changed.
+    #     self.assertEqual(glob_config._status_code, 99)
+        
+    #     # Checking meaning of 99
+    #     self.assertNotEqual(glob_config.get_unique_code(rev_id_prev), glob_config.get_unique_code(rev_id_curr))
+    #     self.assertTrue(glob_config.get_compute_immediately(rev_id_prev))
+    #     # self.assertTrue(glob_config.get_compute_immediately(rev_id_curr))  #Does not matter.
+        
+    #     rev_id_prev = rev_id_curr 
+    #     self.assertEqual(glob_config.evaluate_consistency(rev_id_prev), 0) # Means changed but not so much changed.
+    #     self.assertEqual(glob_config._status_code, 99)  ## Though most recent consistency check was flagged 0, but status code is 3, as that is the worst case ever.
+    #     # Checking meaning of 0
+    #     self.assertEqual(glob_config.get_unique_code(rev_id_prev), glob_config.get_unique_code(rev_id_curr))
+    #     self.assertEqual(glob_config.get_compute_immediately(rev_id_prev), glob_config.get_compute_immediately(rev_id_curr))
+
+    def test_lit_domain_interface(self):
+        geomodgen2d.lithological_domain2d.GlobalSoilInterfaceConfig.reset()
+        geomodgen2d.lithological_domain2d.GlobalSoilInterfaceConfig.set_soil_interface(self.boundary2D, None, 'pile')
+        domain = geomodgen2d.lithological_domain2d.GlobalSoilInterfaceConfig.get_interface_instance().domain
+        lit = geomodgen2d.lithological_domain2d.LithologicalDomain2D(domain, 1.8)
+        lit_matrix = [['1', '2', '2', '4'],
+                        ['1', '2', '2', '2'],
+                        ['1', '1', '2', '3'],
+                        ['1', '1', '2', '3'],
+                        ['1', '1', '1', '3']]
+
+        self.assertArrayEqual(lit.lithological_matrix, lit_matrix)
+
+        geomodgen2d.lithological_domain2d.GlobalSoilInterfaceConfig.set_soil_interface(self.boundary2D, self.surface_boundary2D, 'pile', True)
+        lit = geomodgen2d.lithological_domain2d.LithologicalDomain2D(domain, 1.8)
+        lit_matrix_w_surface = [['0', '1', '2', '2'],
+                                ['1', '2', '2', '2'],
+                                ['0', '1', '1', '2'],
+                                ['0', '1', '1', '2'],
+                                ['1', '1', '1', '3']]
+        
+        lit_matrix_w_surface = [['1', '2', '2', '2'], 
+                                ['1', '2', '2', '2'], 
+                                ['1', '1', '2', '2'], 
+                                ['0', '1', '1', '2'], 
+                                ['0', '1', '1', '1']]
+        
+        self.assertArrayEqual(lit.lithological_matrix, lit_matrix_w_surface)
+                    
+    def test_lit_domain_obs2d_and_merging(self):
+        for setting in [1,2,3,4,5]:
+        
+            remesh_interp_method = 'nearest'
+            boundary_dh = 1
+            surf_type = 'erode'
+            obs_dhx = 0.5
+            obs_dhz = 0.5
+            
+            if setting == 1:
+                to_npz = r'./test/data/lit_domain_test_coarse_nearest.npz'
+            elif setting == 2:
+                remesh_interp_method = 'linear'
+                surf_type = 'pile'
+                to_npz = r'./test/data/lit_domain_test_coarse_linear.npz'
+            elif setting == 3:
+                remesh_interp_method = 'nearest'
+                boundary_dh = 0.25
+                surf_type = 'erode'
+                obs_dhx = 0.2
+                obs_dhz = 0.1
+                to_npz = r'./test/data/lit_domain_test_dense_linear.npz'
+            elif setting == 4:
+                remesh_interp_method = 'linear'
+                boundary_dh = 0.25
+                surf_type = 'pile'
+                obs_dhx = 0.2
+                obs_dhz = 0.1
+                to_npz = r'./test/data/lit_domain_test_dense_nearest.npz'
+            else:
+                surf_type = 'pile'
+                to_npz = r'./test/data/lit_domain_test_coarse_nearest_pile.npz'
+
+            gwt_depth = 1.8
+            
+            self.boundary2D.remesh_interp_method = remesh_interp_method
+            self.surface_boundary2D.remesh_interp_method = remesh_interp_method
+            
+            data = np.load(to_npz)
+            loaded_dict = {key: data[key] for key in data.files}
+
+            self.assertArrayAlmostEqual(loaded_dict['boundary2D_matrix'], self.boundary2D.interfaces_matrix)
+            self.assertArrayAlmostEqual(loaded_dict['surfboundary2D_matrix'], self.surface_boundary2D.interfaces_matrix)
+
+            geomodgen2d.lithological_domain2d.GlobalSoilInterfaceConfig.reset()
+            geomodgen2d.lithological_domain2d.GlobalSoilInterfaceConfig.set_soil_interface(self.boundary2D, self.surface_boundary2D, surf_type)
+            
+            domain2D_lit = geomodgen2d.discretized_domain2d.DiscretizedDomain2D(
+                span_x=5, span_z=4, dx=boundary_dh, dz=boundary_dh
+            )
+
+            name = 'lit_domain1'
+            lit = geomodgen2d.lithological_domain2d.LithologicalDomain2D(domain2D_lit, gwt_depth, name)
+
+            domain2D_obs = geomodgen2d.discretized_domain2d.DiscretizedDomain2D(
+                        span_x=5, span_z=4, dx=obs_dhx, dz=obs_dhz
+                    )       
+            
+            obs1_ref_point = [1.25, .74] #edge cases... minus .01 to the left 
+            obs2_ref_point = [1.38,1.44]
+
+            obs_lit = geomodgen2d.lithological_domain2d.LithologicalDomain2DFromObstruction2D(domain2D_obs, 'obst')
+            # obs_lit.add_obstruction2D(obs2D1, [1.4,1.7], 'U')
+            obs_lit.add_obstruction2D(self.obs2D1, obs1_ref_point, 'U')
+            obs_lit.add_obstruction2D(self.obs2D2, obs2_ref_point, 'U')
+
+            self.assertArrayEqual(loaded_dict['obs_lit_matrix'], obs_lit.lithological_matrix)
+            
+            merged_lit = lit.return_merged_lithological_domain([obs_lit])
+            self.assertArrayEqual(loaded_dict['merged_lit_matrix'], merged_lit.lithological_matrix)
+
+            ## Method2 of getting merged_lit
+            lit = geomodgen2d.lithological_domain2d.LithologicalDomain2D(domain2D_lit, gwt_depth, name)
+            obs_lit1 = geomodgen2d.lithological_domain2d.LithologicalDomain2DFromObstruction2D(domain2D_obs, 'obst')
+            obs_lit1.add_obstruction2D(self.obs2D1, obs1_ref_point, 'U')
+
+            obs_lit2 = geomodgen2d.lithological_domain2d.LithologicalDomain2DFromObstruction2D(domain2D_obs, 'obst')
+            obs_lit2.add_obstruction2D(self.obs2D2, obs2_ref_point, 'U')
+
+            merged_lit = lit.return_merged_lithological_domain([obs_lit1, obs_lit2])
+            self.assertArrayEqual(loaded_dict['merged_lit_matrix'], merged_lit.lithological_matrix)
+        
+    def test_remeshing(self):
         pass
     
-    def test_scale_shapes(self):
-        pass
-    
-    def test_merge_shapes(self):
-        pass
-    
-    def test_clear_utils_properties(self):
+    def test_refresh_equality(self):
         pass
 
         

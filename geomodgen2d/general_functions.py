@@ -36,14 +36,14 @@ def is_close(a, b, tol=1e-8):
 def get_span_del_from_ranges(ranges):
     return (ranges[0] + ranges[-1]), (ranges[1] - ranges[0])
 
-def check_util_id(util_id):
-    if not is_integer_value(util_id):
-        raise ValueError(f"Invalid util_id, must be positive integer. Provided {util_id}")
-    util_id = check_integer(float(util_id))
-    if util_id<=0:
-        raise ValueError(f"Invalid util_id, must be positive integer. Provided {util_id}")
+def check_obstruction_id(obstruction_id):
+    if not is_integer_value(obstruction_id):
+        raise ValueError(f"Invalid obstruction_id, must be positive integer. Provided {obstruction_id}")
+    obstruction_id = check_integer(float(obstruction_id))
+    if obstruction_id<=0:
+        raise ValueError(f"Invalid obstruction_id, must be positive integer. Provided {obstruction_id}")
             
-    return util_id
+    return obstruction_id
 
 def is_valid_prefix(added_prefix):
     case_ = True
@@ -79,10 +79,6 @@ def remeshing_2D_matrix(x_old, x_new, z_old, z_new, matrix_2d, interp_method='li
     extrapolate : boolean, optional
         Flag if extrapolate
     """
-    del_x_old = x_old[1] - x_old[0]
-    del_z_old = z_old[1] - z_old[0]
-    del_x_new = x_new[1] - x_new[0]
-    del_z_new = z_new[1] - z_new[0]
     new_matrix_2d = matrix_2d
     
     if extrapolate:
@@ -90,11 +86,11 @@ def remeshing_2D_matrix(x_old, x_new, z_old, z_new, matrix_2d, interp_method='li
     else:
         fill_value = 0
         
-    if del_x_old != del_x_new or del_z_old!=del_z_new:
-        interp = scipy.interpolate.RegularGridInterpolator((z_old,x_old), matrix_2d,
+    if not np.array_equal(x_old, x_new) or not np.array_equal(z_old, z_new):
+        interp = scipy.interpolate.RegularGridInterpolator((x_old,z_old), matrix_2d,
                                      bounds_error=False, fill_value=fill_value, method=interp_method) #None means extrapolate outside the bounds
-        zg, xg = np.meshgrid(z_new, x_new, indexing='ij')
-        new_matrix_2d = interp((zg, xg))
+        xg, zg = np.meshgrid(x_new, z_new, indexing='ij')
+        new_matrix_2d = interp((xg, zg))
     return new_matrix_2d
 
 def upsample_2d_blocks(x_coord, y_coord, x_coord_new, y_coord_new, matrix_2d):

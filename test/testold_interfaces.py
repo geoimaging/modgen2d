@@ -12,8 +12,18 @@ import unittest
 class TestBoundaryCreator(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.boundary1D = geomodgen2d.boundary_creator.BoundaryCreator(span_x=None, span_z=6, del_x=0.2, del_z=2, n_layers=3)
-        cls.boundary2D = geomodgen2d.boundary_creator.BoundaryCreator(span_x=6, span_z=4, del_x=1.5, del_z=0.5, n_layers=4)
+        # 2D domain with default units
+        cls.domain2D1 = geomodgen2d.discretized_domain2d.DiscretizedDomain2D(
+            span_x=5, span_z=4, dx=1, dz=1
+        )
+        
+        cls.boundary2D1 = geomodgen2d.interfaces_creator2d.AbstractInterfacesCreator2D(
+            domain=cls.domain2D1, n_interfaces=3, rng=np.random.default_rng(2))
+        
+    
+        cls.boundary2D = geomodgen2d.interfaces_creator2d.AbstractInterfacesCreator2D(
+            domain=cls.domain2D1, n_interfaces=0, rng=np.random.default_rng(2))
+                
         cls.boundary_sett= {
     'generator_settings_dict':{
                  'generator_option':'uniform',    # options: 'uniform', 'normal', 'fbm'
@@ -30,7 +40,27 @@ class TestBoundaryCreator(unittest.TestCase):
                         },
     'boundary_overlap_bottom_priority':True,
     }
-        cls.rnd_no_gen = np.random.default_rng(seed=3)
+           
+    def test_rough_boundary(self):
+        # Note: no runtime error checks for these random generators
+        random_generator_settings_dict = {
+                 'generator_option':'uniform',    # options: 'uniform', 'normal', 'fbm'
+                 'max_dz_per_unit_length':1.5,}
+        self.boundary2D1.generate_rough_interfaces(random_generator_settings_dict)
+        assert self.boundary2D1.io.interfaces_matrix.shape == (5,3)
+
+        random_generator_settings_dict = {
+                 'generator_option':'normal',    # options: 'uniform', 'normal', 'fbm'
+                 'std':0.2,}
+        self.boundary2D1.generate_rough_interfaces(random_generator_settings_dict)
+
+        random_generator_settings_dict = {
+                 'generator_option':'fbm',    # options: 'uniform', 'normal', 'fbm'
+                 'H':0.75,  # Required for 'fbm' only
+                 'method':'daviesharte',   # Required for 'fbm' only
+                 'length':15,   # Required for 'fbm' only
+        }
+        self.boundary2D1.generate_rough_interfaces(random_generator_settings_dict)
         
     def test_edit_boundary(self):
         # When Correct
