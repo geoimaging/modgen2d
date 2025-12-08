@@ -55,15 +55,15 @@ class TestGeneralFunctions(TestCase):
     #     self.assertRaises(ValueError, geomodgen2d.utils_2d.check_util_id, -1) 
         
     def test_is_valid_prefix(self):
-        self.assertRaises(TypeError, f.is_valid_prefix, [12,23])
-        self.assertTrue(f.is_valid_prefix(None))
-        self.assertFalse(f.is_valid_prefix(""))
-        self.assertFalse(f.is_valid_prefix('AQWEQWEQE'))
-        self.assertFalse(f.is_valid_prefix('A8A'))
-        self.assertFalse(f.is_valid_prefix('A_'))
-        self.assertFalse(f.is_valid_prefix('_V'))
-        self.assertFalse(f.is_valid_prefix('1'))
-        self.assertTrue(f.is_valid_prefix('ABA'))
+        self.assertRaises(TypeError, f.is_valid_feature_id, [12,23])
+        self.assertTrue(f.is_valid_feature_id(None))
+        self.assertFalse(f.is_valid_feature_id(""))
+        self.assertFalse(f.is_valid_feature_id('AQWEQWEQE'))
+        self.assertFalse(f.is_valid_feature_id('A8A'))
+        self.assertFalse(f.is_valid_feature_id('A_'))
+        self.assertFalse(f.is_valid_feature_id('_V'))
+        self.assertFalse(f.is_valid_feature_id('1'))
+        self.assertTrue(f.is_valid_feature_id('ABA'))
 
     def coordinate_vars(x_ranges, z_ranges):
         pass
