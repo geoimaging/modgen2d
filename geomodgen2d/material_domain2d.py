@@ -36,28 +36,7 @@
 #         all_main_properties_instance (object): A AllMainProperties instance.
 #         """
         
-#         # 1) Check if material_type_random_gen_dict is in correct format.
-#         # a. All keys in correct format - CHECKED above
-#         # b. All values are random generator of type 'choice', and 'constant'.
-#         self.material_rnd_gen = material_type_random_gen_dict
-#         for key,val in material_type_random_gen_dict.items():
-#             assert isinstance(key, str), f"All keys in material_type_random_gen_dict must be a string. {key} is not a string."
-#             assert isinstance(val, RandomGenerators.RandomGenerator), 'All vals in material_type_random_gen_dict must be a RandomGenerator instance. The value for key {key} is not one.'
-#             assert val.rg_type in ['constant', 'choice'], f"The random generator must be defined with either constant or choice (discrete_choice, or discrete2continuous_pdf). Found {val.rg_type}"
-        
-#         # 2) AllMainProperties and material_type_random_gen_dict are at sync.
-#         assert isinstance(all_main_properties_instance, AllMainProperties), "all_main_properties_instance must be a AllMainProperties instance"
-#         self.all_main_properties_instance = all_main_properties_instance
-        
-#         all_main_properties_instance.check()  #Internal check
-        
-#         self.features_id = material_type_random_gen_dict.keys()
-#         assert 'def' in self.features_id, "'def' must be in feature_id list (i.e., a key in material_type_random_gen_dict)."
-        
-#         features_id_1 = self.features_id
-#         features_id_2 = all_main_properties_instance.features_w_id.keys()
-#         assert set(features_id_1).issubset(set(features_id_2)), f"features_id from AllMainProperties instance contains elements not present in material_type_random_gen_dict. Missing: {set(features_id_1) - set(features_id_2)}"
-
+#         
 #         # 3) Making sure the lithological_domain2D_instance_list is correct.        
 #         self.lithological_domain2D_instance_list = lithological_domain2D_instance_list
         

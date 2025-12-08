@@ -525,7 +525,10 @@ class LithologicalDomain2DFromObstruction2D(LithologicalDomain2DReadOnly):
         if shift_ref2d_to_xy.shape != (2,):
             raise ValueError("shift_ref2d_to_xy must have shape (2,)")
 
-        assert f.is_valid_prefix(added_prefix), f"added_prefix cannot have '_' or numbers. Cannot be '', or more than 8 lettered. Provided '{added_prefix}'"
+        if added_prefix is not None:
+            valid_prefix, msg = f.is_valid_feature_id(added_prefix)
+            if not valid_prefix:
+                raise ValueError(msg)
         
         # Note utils_3d is already shifted
         obstruction2D_instance = copy.deepcopy(obstruction2D_instance)  #Makes sure the change in the object is local to this function only.

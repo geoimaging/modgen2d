@@ -45,11 +45,50 @@ def check_obstruction_id(obstruction_id):
             
     return obstruction_id
 
-def is_valid_prefix(added_prefix):
-    case_ = True
-    if added_prefix is not None:
-        case_ = added_prefix != "" and len(added_prefix) <= 8 and not bool(re.search(r"[_0-9]", added_prefix))
-    return case_  
+def is_valid_feature_id(added_prefix):
+    """
+    Checks if a prefix is valid based on rules:
+    1. Must be a string.
+    2. Must not contain digits or underscores.
+    3. Must be <= 8 characters.
+    4. Must not be empty or 'def'.
+    """
+    
+    msg = f"Feature Ids/added_prefix must be a string, cannot have '_' or numbers. Cannot be '', or more than 8 lettered. Provided '{added_prefix}'"
+    if not isinstance(added_prefix, str):
+        return False, msg
+    
+    if added_prefix == "":
+        return False, msg
+    
+    if added_prefix == "def":
+        return False, "Feature id: 'def' is reserved for soils. It cannot be used for added_prefix."
+    
+    if len(added_prefix) > 8:
+        return False, msg
+    
+    if re.search(r"[_0-9]", added_prefix):
+        return False, msg
+    
+    return True, msg
+
+def validate_feature_ids_list(features_ids_list:list):
+    """
+    Validates a list of feature IDs.
+    
+    Rules:
+    1. Must contain 'def'.
+    2. All other keys must be valid feature IDs (checked via is_valid_feature_id).
+    """
+    if 'def' not in features_ids_list:
+        raise KeyError("Key must contain 'def'")
+    
+    invalid = [
+        k for k in features_ids_list
+        if k != 'def' and not is_valid_feature_id(k) # only one underscore allowed at end
+    ]
+    if invalid:
+        raise KeyError(f"Invalid keys (must end with '_', no digits, no other underscores): {invalid}")
 
 def coordinate_vars(x_ranges, z_ranges):
     del_x, del_z = x_ranges[0]*2, z_ranges[0]*2
@@ -211,9 +250,26 @@ def replace_vals_in_array(np_array, replace_list = None, replace_with = None):
         # replaced_mat = np.take(replace_with, indices_matrix.flatten())
         return replaced_mat
     
-class ReadOnlyDict(dict):
+class FixedKeyDict(dict):
+    """
+    Dictionary with fixed keys: existing keys can be updated, 
+    but new keys cannot be added. Works recursively for nested dicts.
+    """
     def __setitem__(self, key, value):
         if key not in self:
             raise KeyError(f"Key '{key}' cannot be added to this dictionary.")
-        else:
-            super().__setitem__(key, value)
+        
+        current_value = self[key]
+        # If both current value and new value are dicts, recursively wrap
+        if isinstance(current_value, dict) and isinstance(value, dict):
+            value = FixedKeyDict(value)
+        
+        # If type mismatch between dict and non-dict, raise error
+        elif isinstance(current_value, dict) != isinstance(value, dict):
+            raise TypeError(
+                f"Cannot update key '{key}': type mismatch "
+                f"(current type: {type(current_value).__name__}, "
+                f"new type: {type(value).__name__})"
+            )
+        
+        super().__setitem__(key, value)
