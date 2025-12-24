@@ -98,12 +98,7 @@ class TestFeaturesConfig(TestCase):
         )
         
         fc.reset()
-        self.assertEqual(set(fc.get_feature_ids()), [])
-        
-        
-
-
-
+        self.assertEqual(fc.get_feature_ids(), [])
         
 if __name__ == "__main__":
     unittest.main()

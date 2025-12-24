@@ -6,7 +6,6 @@
 """Define a three-dimensional domain that defines a material."""
 
 import numpy as np
-import re
 from geomodgen2d.general_functions import validate_feature_ids_list, is_valid_feature_id
 from geomodgen2d.random_generators import RandomGeneratorAbstract, DiscreteChoice, Constant
 
@@ -62,11 +61,18 @@ class FeaturesConfig:
                 f"Duplicate values found in material_type_distribution for feature '{feature_id}'. "
                 f"Duplicates: { [p for p in props if props.count(p) > 1] }"
             )
-            
+        
+        clean_props = [
+            str(p) if isinstance(p, (np.str_, np.bytes_)) else  # convert NumPy strings → Python str
+            p.item() if isinstance(p, np.generic) else           # convert other NumPy scalars → native Python numbers
+            p                                                  # leave everything else as-is
+            for p in props
+        ]
+        
         self._feature_ids_mapping[feature_id] = {
             'description':feature_description,
             'material_type_distribution': material_type_distribution,
-            'material_type_list': props,
+            'material_type_list': clean_props,
         }
         
     def remove_feature(self, feature_id:str):

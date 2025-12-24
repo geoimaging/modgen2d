@@ -1,0 +1,38 @@
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "specfem3d_prepost"
+version = "0.2.0"
+description = "Preprocessing and postprocessing tools for SPECFEM3D"
+readme = "README.md"
+requires-python = ">=3.12"
+
+authors = [{ name = "Sanish Bhochhibhoya", email = "sbhochhi@vt.edu" }]
+license = { text = "MIT" }
+
+dependencies = [
+    "numpy",
+    "matplotlib",
+    "scipy",
+    "pandas",
+    "h5py",
+    "obspy",
+    # Git dependency for your private repo
+    "geomodgen3d @ git+ssh://git@github.com/geoimaging/miss-model-generation.git@dev_sonice_codes"
+
+]
+
+# Optional dev dependencies
+[project.optional-dependencies]
+dev = ["pytest", "sphinx", "coverage"]
+
+# Random placeholder as not public yet.
+[project.urls]
+Homepage = "https://randomfornow.com/specfem3dprepost_miss"
+Issues = "https://randomfornow.com/specfem3dprepost_miss/issues"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["specfem3dprepost_miss*"]

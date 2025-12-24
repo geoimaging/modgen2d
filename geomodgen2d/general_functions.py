@@ -90,6 +90,12 @@ def validate_feature_ids_list(features_ids_list:list):
     if invalid:
         raise KeyError(f"Invalid keys (must end with '_', no digits, no other underscores): {invalid}")
 
+def format_lith_ids(feature_id, vals):
+    if feature_id == 'def':
+        return [str(v) for v in vals]
+    else:
+        return [f"{feature_id}_{v}" for v in vals]
+    
 def coordinate_vars(x_ranges, z_ranges):
     del_x, del_z = x_ranges[0]*2, z_ranges[0]*2
     span_x, span_z = x_ranges[-1]+del_x/2, z_ranges[-1]+del_z/2
@@ -273,3 +279,54 @@ class FixedKeyDict(dict):
             )
         
         super().__setitem__(key, value)
+
+def validate_processed_property_dict(processed_property_dict):
+    """
+    Validates if the given dictionary follows the required format:
+    
+    {
+        'layer_ID': {'wet': {'mean': float, 'mean_bm': float (optional), 'stdev/cov': float, 'stdev_type':string}, 
+                     'dry': {'mean': float, 'mean_bm': float (optional), 'stdev/cov': float, 'stdev_type':string}},
+        'layer_ID2': {'wet': {'mean': float, 'mean_bm': float (optional), 'stdev/cov': float, 'stdev_type':string}, 
+                     'dry': {'mean': float, 'mean_bm': float (optional), 'stdev/cov': float, 'stdev_type':string}},
+        'layer_ID3': {'both': {'mean': float, 'mean_bm': float (optional), 'stdev/cov': float, 'stdev_type':string}},                      
+        ...
+    }
+
+    Parameters:
+    property_dict : dict
+        Dictionary containing layer IDs as keys and their corresponding mean and standard deviation values as nested dictionaries.
+
+    Returns:
+    processed_property dict; adjusted if mean_bm (optional) is not provided.
+    """
+    if processed_property_dict is not None:
+        assert isinstance(processed_property_dict, dict), "Input must be a dictionary."
+        
+        for key, value in processed_property_dict.items():
+            assert isinstance(value, dict), f"Value for key '{key}' must be a dictionary."
+            
+            # Assert that layer_ID contains either 'wet' and 'dry' or 'both'
+            assert ('wet' in value and 'dry' in value) or 'both' in value, f"Layer '{key}' must contain both 'wet' and 'dry', or 'both'."
+
+            # Check for wet, dry, or all layer types
+            for subkey, subvalue in value.items():
+                if subkey!= 'layer0_air':
+                    assert subkey in ['wet', 'dry', 'both'], f"Subkey '{subkey}' for key '{key}' is invalid. Expected 'wet', 'dry', or 'both'."
+                    assert isinstance(subvalue, dict), f"Subvalue for '{subkey}' in layer '{key}' must be a dictionary."
+                    
+                    # Validate mean and stdev for each layer type
+                    assert 'mean' in subvalue, f"'{subkey}' layer for key '{key}' must contain 'mean'."
+                    assert 'stdev/cov' in subvalue, f"'{subkey}' layer for key '{key}' must contain 'stdev/cov'."
+                    assert 'stdev_type' in subvalue, f"'{subkey}' layer for key '{key}' must contain 'stdev_type'."
+                    assert isinstance(subvalue['mean'], (int, float)), f"'mean' for '{subkey}' in layer '{key}' must be a number."
+                    assert isinstance(subvalue['stdev/cov'], (int, float)), f"'stdev/cov' for '{subkey}' in layer '{key}' must be a number."
+                    assert subvalue['stdev_type'] in ['stdev', 'cov'], "stdev_type must be either 'stdev', or 'cov'."
+                    
+                    # 'mean_bm' is optional, but if present, must be a number
+                    if 'mean_bm' in subvalue:
+                        assert isinstance(subvalue['mean_bm'], (int, float)), f"'mean_bm' for '{subkey}' in layer '{key}' must be a number (if provided)."
+                    else:
+                        processed_property_dict[key][subkey]['mean_bm'] = 0.0
+
+    return processed_property_dict

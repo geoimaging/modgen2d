@@ -92,6 +92,9 @@ class DiscretizedInterfaces2D(AbstractInterfacesCreator2D):
         if surface_interface2d_instance.n_interfaces != 1:
             raise ValueError(f"SurfaceInterfaces2D must have 1 interface only. Provided {surface_interface2d_instance.n_interfaces}")
         
+        if np.min(surface_interface2d_instance.interfaces_matrix)!=0:
+            raise ValueError(f"The surface_interface2d_instance must have the min value of its inteface matrix as 0. Use ._adjust_for_top_surface_interface first if needed.")
+        
         if self.remesh_interp_method != surface_interface2d_instance.remesh_interp_method:
             raise ValueError(f"Interpolation methods of this ('{self.remesh_interp_method}') and surfaceInterface2D instance ('{self.remesh_interp_method}') does not match.")
         ## Make sure domains dhs are consistent
@@ -114,18 +117,20 @@ class DiscretizedInterfaces2D(AbstractInterfacesCreator2D):
         n_interfaces = self.n_interfaces + 1
         new_instance = DiscretizedInterfaces2D(self.domain, n_interfaces, self.remesh_interp_method, self.rng)
         
+        ## TODO: To discuss if worth it, or just do single creation and use erode. (Ie no surface distinction)
         if surface_interface_method == 'erode':
             # Preserve the reference_point_x value's 1D profile if not None
             if self._reference_point_x is not None:
                 lock_status = surface_interface2d_instance._locked
-                init_zero_val = surface_interface2d_instance.interfaces_matrix[0,0]
+                # init_zero_val = surface_interface2d_instance.interfaces_matrix[0,0]
                 surface_interface2d_instance._locked = False #Temporary unlock
                 
-                surface_interface2d_instance.update_interfaces_depth([0], self._reference_point_x)
-                surf_interface_matrix = surface_interface2d_instance.interfaces_matrix
+                # surface_interface2d_instance.update_interfaces_depth([0], self._reference_point_x)
+                # surf_interface_matrix = surface_interface2d_instance.interfaces_matrix
                 
                 #Retrace back
-                surface_interface2d_instance.update_interfaces_depth(init_zero_val, [init_zero_val])
+                # surface_interface2d_instance.update_interfaces_depth([init_zero_val], init_zero_val)
+                # surf_interface_matrix = surface_interface2d_instance.interfaces_matrix
                 surface_interface2d_instance._locked = lock_status
             
             # Perform eroding            
@@ -136,30 +141,17 @@ class DiscretizedInterfaces2D(AbstractInterfacesCreator2D):
             # 1D profile at all points are preserved when piled. so need for processing for that.
             
             # Perform piling
-            surf_interface_matrix = surface_interface2d_instance.interfaces_matrix
             new_interface_matrix = np.concatenate((np.zeros_like(surf_interface_matrix), self_interface_matrix), axis=1) 
             surf_interface_matrix = np.ones_like(new_interface_matrix)*surf_interface_matrix
             new_interface_matrix += surf_interface_matrix
             
         # Making the top of the surface_interface the top of the model too.
-        new_interface_matrix = _adjust_for_top_surface_interface(new_interface_matrix)
-        
         new_instance.set_interfaces_matrix(new_interface_matrix)
+        new_instance._adjust_for_top_surface_interface()
         new_instance.processing_interface(prioritize_lower_interface=True)
         new_instance.lock_interfaces()
         new_instance._surface_included = True
         return new_instance
-
-def _adjust_for_top_surface_interface(interfaces_matrix):
-    top_interface = interfaces_matrix[:,0]
-    top_depth = np.min(top_interface)
-    
-    # computing the shift
-    shift_matrix = np.full_like(interfaces_matrix, -top_depth) 
-    interfaces_matrix+=shift_matrix
-    if np.abs(np.min(interfaces_matrix)) <= -1e-2:
-        raise SyntaxError("The minimum should have been greater than 0.")
-    return interfaces_matrix
 
 def generate_interfaces_from_interfaces_settings_dict(domain: DiscretizedDomain2D, n_interfaces:int, interfaces_settings_dict:dict, rng, remesh_interp_method='linear'):
     """
@@ -178,12 +170,7 @@ def generate_interfaces_from_interfaces_settings_dict(domain: DiscretizedDomain2
         Dictionary defining interface generation settings.
         Example format:
         {
-            'generator_settings_dict':{
-                'generator_option':'uniform',   # options: 'uniform', 'normal', 'fbm'
-                'max_dz_per_unit_length':4.5,   # Required for 'uniform'
-                'std':2,                        # Required for 'normal'
-                'H':1, 'length':1, 'method':1,  # Required for 'fbm'
-            },
+            'rough_interface_creator_instance':rough_interface_creator_instance: AbstractRoughInterfaceCreator
             'surface_factor':0.5,                # factor applied to surface interface
             'interfaces_depths_generation':'random', 
             'interfaces_depth_reference_point_x':None, 
@@ -208,7 +195,7 @@ def generate_interfaces_from_interfaces_settings_dict(domain: DiscretizedDomain2
         Generated surface interface instance if surface_factor != 0, else None.
     
     """
-    required_keys = ['generator_settings_dict', 'interfaces_depths_generation', 'interfaces_depth_reference_point_x']
+    required_keys = ['rough_interface_creator_instance', 'interfaces_depths_generation', 'interfaces_depth_reference_point_x']
     optional_keys = ['filter_settings', 'processing_settings', 'surface_factor']
     allowed_keys = set(required_keys + optional_keys)
 
@@ -262,34 +249,12 @@ def _get_soil_interface3d_form_dict(raw_interface_instance: AbstractInterfacesCr
     AbstractInterfacesCreator2D
         Configured and locked interface instance.
     """
-    filter_settings_dict = interfaces_settings_dict.get('filter_settings_dict', None)
+    filter_settings_dict = interfaces_settings_dict.get('filter_settings', None)
     processing_settings = interfaces_settings_dict.get('processing_settings', None)
     
     #Step 1: Generate Rough Interfaces
-    generator_settings_dict = interfaces_settings_dict['generator_settings_dict']
-    
-    if 'generator_option' not in generator_settings_dict:
-        raise ValueError("'generator_option' must exist in generator_settings_dict.")
-    
-    random_generator_option = generator_settings_dict['generator_option']
-    if random_generator_option=='uniform':
-        missing = set(['max_dz_per_unit_length']) - generator_settings_dict.keys()
-        if missing:
-            raise KeyError(f"Missing required keys in generator_settings_dict for generator_option{random_generator_option}: {missing}")
-        
-    elif random_generator_option=='normal':
-        missing = set(['stdev_in_unit_length']) - generator_settings_dict.keys()
-        if missing:
-            raise KeyError(f"Missing required keys in generator_settings_dict for generator_option{random_generator_option}: {missing}")
-    
-    elif random_generator_option=='fbm':
-        missing = set(['H', 'length', 'method']) - generator_settings_dict.keys()
-        if missing:
-            raise KeyError(f"Missing required keys in generator_settings_dict for generator_option{random_generator_option}: {missing}")
-    else:
-        raise ValueError("random_generator_options can only be either 'uniform', or 'normal', or 'fbm'")
-        
-    raw_interface_instance.generate_rough_interfaces(generator_settings_dict, surface_scaling_factor=surface_factor)
+    rough_interface_creator_instance = interfaces_settings_dict['rough_interface_creator_instance']
+    raw_interface_instance.generate_rough_interfaces(rough_interface_creator_instance, surface_scaling_factor=surface_factor)
     
     #Step 2: Filter
     if filter_settings_dict is not None:
