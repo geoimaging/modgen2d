@@ -14,7 +14,7 @@ import matplotlib.colors as mcolors
 from geomodgen2d.discretized_domain2d import DiscretizedDomain2D
 from geomodgen2d.interfaces_creator2d import AbstractInterfacesCreator2D
 from geomodgen2d.discretized_interfaces2d import DiscretizedInterfaces2D, SurfaceInterface2D
-from geomodgen2d.obstruction_2d import Obstruction2D
+from geomodgen2d.obstruction2d import Obstruction2D
 from geomodgen2d.meta_class import _StrictProtectedMeta, _internal_classmethod
 
 class GlobalSoilInterfaceConfig(metaclass=_StrictProtectedMeta):
@@ -89,6 +89,8 @@ class GlobalSoilInterfaceConfig(metaclass=_StrictProtectedMeta):
         _status_code: int
             Either 0, 1, 2, or 99. with 0 being the best, and 99 being the worst.
         """
+        soil_interface2d_instance._locked = False
+        
         if cls.get_revision_id() != 0 and not force_set:
             raise RuntimeError(
                 "Surface interface already set. "
@@ -106,11 +108,13 @@ class GlobalSoilInterfaceConfig(metaclass=_StrictProtectedMeta):
         soil_interface2d_instance.lock_interfaces()
         remesh = soil_interface2d_instance.remesh_interp_method
         if surface_interface2d_instance is not None:
+            surface_interface2d_instance._locked = False
             if surface_interface2d_instance.n_interfaces != 1:
                 raise ValueError(f"interface_class must have exactly one interface. Provided {surface_interface2d_instance.n_interfaces}")
             if surface_interface2d_instance.remesh_interp_method != remesh:
                 raise ValueError(f"Remesh interp method for both surface and soil interfaces must be same. Provided {surface_interface2d_instance.remesh_interp_method} and {remesh} respectively.")
             
+            surface_interface2d_instance._adjust_for_top_surface_interface()
             surface_interface2d_instance.lock_interfaces()
 
         if surface_interface_method not in ['pile', 'erode']:
@@ -192,12 +196,69 @@ class LithologicalDomain2DReadOnly():
         self.merged_lit = False
         self.init_domain = None #None means domain has never been changed.
         
+        # lit_order to be used as order while simulating.
+        self.lit_order = None
+        
     def print(self):
         print(f"N_x_coord = {self.lithological_matrix.shape[0]}, N_z_coord = {self.lithological_matrix.shape[1]}")
         print("Layered Matrix : \n", self.lithological_matrix.T) 
     
+    ##TODO add unittests
+    def get_feature_id_and_lit_val_from_lithological_matrix(self):
+        lithological_matrix = self.lithological_matrix
+
+        if lithological_matrix is None:
+            return {}
+
+        if not isinstance(lithological_matrix, np.ndarray):
+            raise TypeError(
+                "lithological_matrix must be None or a numpy array."
+            )
+
+        # Use only unique entries (much faster and avoids duplicates)
+        arr = np.unique(lithological_matrix.astype(str))
+        arr = arr[arr != 'X']
+        
+        # mask for pure digits
+        mask_def = np.char.isdigit(arr)
+
+        # Everything else is candidate for prefix-number
+        non_def = arr[~mask_def]
+
+        # Partition by underscore
+        sep = '_'
+        result = {"def": arr[mask_def].astype(int).tolist()}
+        for s in non_def:
+            parts = s.split(sep, 1)
+
+            # Case 1: no underscore → prefix only
+            if len(parts) == 1:
+                prefix = parts[0]
+                suffix = None
+            else:
+                prefix, suffix = parts
+
+                # ERROR: suffix must be numeric
+                if not suffix.isdigit():
+                    raise ValueError(
+                        f"Invalid numeric suffix in: {s}"
+                    )
+
+                suffix = int(suffix)
+
+            result.setdefault(prefix, [])
+            if suffix is not None:
+                result[prefix].append(suffix)
+        return result
+    
+    def check_shape(self):
+        domain_shape = self.domain.shape
+        lit_shape = self.lithological_matrix.shape
+        if domain_shape != lit_shape:
+            raise ValueError(f"Matrix shape mismatch. Domain shape {domain_shape} != lit_shape {lit_shape}.")
+        
     @staticmethod
-    def get_unique_lithological_color_map(
+    def __get_unique_lithological_color_map(
         lithological_matrix,
         color_map = {
         'def': plt.get_cmap('tab20', 10),      # For integer values
@@ -243,14 +304,16 @@ class LithologicalDomain2DReadOnly():
 
         return unique_values, color_mapping, integer_mapped_array, fixed_cmap
     
-    def plot2d(self, ax=None, discrete_point_size=0, legend=True,
+    def plot(self, ax=None, discrete_point_size=0, legend=True,
                id2material_dict = None, title='Lithological Domain',
-               plot_boundary = False,
+               plot_interfaces = False,
                color_map = {
                         'def': plt.get_cmap('tab20', 10),      # For integer values
                         'U_': plt.get_cmap('Set3', 10)   # For "U-{x}" values
                 }):
         """
+        # If any change change in materialdomain too.
+        
         Plots a 2D section of the layered matrix.
 
         Parameters:
@@ -264,7 +327,7 @@ class LithologicalDomain2DReadOnly():
         z_centers, x_centers = self.domain.z_centers, self.domain.x_centers
         span_x, span_z = self.domain.spans
         
-        unique_values, color_mapping, integer_mapped_array, fixed_cmap = LithologicalDomain2DReadOnly.get_unique_lithological_color_map(self.lithological_matrix, color_map)
+        unique_values, color_mapping, integer_mapped_array, fixed_cmap = LithologicalDomain2DReadOnly.__get_unique_lithological_color_map(self.lithological_matrix, color_map)
         
         # Plot the data using imshow with the fixed colormap
         extent = [0, span_x, span_z, 0]
@@ -281,7 +344,7 @@ class LithologicalDomain2DReadOnly():
             ax.scatter(x_data.flatten(), z_data.flatten(), c = [color_mapping[value] for value in self.lithological_matrix.flatten()], edgecolors='k', s=discrete_point_size)
             
         # Plot Boundary:
-        if plot_boundary:
+        if plot_interfaces:
             discretizedInterfaces2D_instance = GlobalSoilInterfaceConfig.get_interface_instance()
             if discretizedInterfaces2D_instance is not None:
                 n_interface = discretizedInterfaces2D_instance.n_interfaces
@@ -429,7 +492,7 @@ class LithologicalDomain2D(LithologicalDomain2DReadOnly):
         domain = self.domain if self.init_domain is None else self.init_domain
         self.__init__(domain, self.gwt_depth, self.name)
         
-        warn_if_changed(self.lithological_matrix, init_lithological_matrix)
+        _warn_if_changed(self.lithological_matrix, init_lithological_matrix)
         
     def return_merged_lithological_domain(self, lithological_domain2D_list=[]):
         """
@@ -487,7 +550,7 @@ class LithologicalDomain2D(LithologicalDomain2DReadOnly):
                 merged_lit_domain, lit_domain
             )
         
-        self.merged_lit = True
+        merged_lit_domain.merged_lit = True
 
         return merged_lit_domain
         
@@ -584,7 +647,7 @@ class LithologicalDomain2DFromObstruction2D(LithologicalDomain2DReadOnly):
         for obs in obstruction2d_dict_list:
             self.add_obstruction2D(obs['obstruction_inst'], obs['shift_ref2d_to_xy'], obs['added_prefix'])
         
-        warn_if_changed(self.lithological_matrix, init_lithological_matrix)
+        _warn_if_changed(self.lithological_matrix, init_lithological_matrix)
         
     def _get_y_shift_adjusted_for_surface(self, shift_ref2d_to_xy):
         ## Check if surface config changed after definition: All this is handled by redefining this class (in merged case.)
@@ -771,7 +834,7 @@ def merge_lithological_domains(lithological_domain_A, lithological_domain_B, lit
     # self.overlap = overlap_check>0 #Overlap with merged layers (useful for utils)
     # self.utils_description = f'{self.utils_description} + {lithological_domain_B.utils_description}'
 
-def warn_if_changed(a, b, msg="On refreshing the lithological domain, lithological_matrix changed."):
+def _warn_if_changed(a, b, msg="On refreshing the lithological domain, lithological_matrix changed."):
     if a is None and b is None:
         changed = False
     elif a is None or b is None:

@@ -296,7 +296,7 @@ class MainProperty:
         self._locked = True
 
     #@property
-    def generate_sample_dict(self, feature_id, feature_material_name, all_feature_ids_list = None):
+    def generate_sample_dict(self, feature_id, feature_material_name):
         """
         Generates a dictionary containing sampled property values using provided distributions in allproperty class.
     
@@ -323,11 +323,6 @@ class MainProperty:
         if feature_material_name not in features_in_dict:
             raise ValueError(f"feature_id ({feature_material_name}) not in main_property_distribution's features. features available: {features_in_dict}")
         
-        if all_feature_ids_list is not None:
-            missing_features = set(all_feature_ids_list) - set(features_in_dict)
-            if not set(all_feature_ids_list).issubset(set(features_in_dict)):
-                raise ValueError(f"Missing elements: {missing_features}")
-            
         sample_dict_prop_id = get_random_generated_sample(self.main_property_dist[feature_id][feature_material_name])
          
         return f.FixedKeyDict(sample_dict_prop_id)
@@ -346,9 +341,9 @@ def get_random_generated_sample(material_property_dict:dict):
     assert list(material_property_dict.keys()) == ['wet', 'dry'] or list(material_property_dict.keys()) == ['both'], "Material Property Dict must have either wet and dry properties or both property."
     sample_dict_prop_id = {}
     for key in material_property_dict.keys():
-        mean = material_property_dict[key].mean_distribution.generate()[0]
+        mean = material_property_dict[key].mean_distribution.generate()
         if material_property_dict[key].stdev_distribution is not None:
-            stdev = material_property_dict[key].stdev_distribution.generate()[0]
+            stdev = material_property_dict[key].stdev_distribution.generate()
         else:
             stdev = 0
         stdev_type = material_property_dict[key].stdev_type

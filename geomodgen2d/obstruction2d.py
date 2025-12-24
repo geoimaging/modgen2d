@@ -24,7 +24,7 @@ class _Obstruction2DFunctions:
             
         ref_xz_symbolic(list): Reference positions for x and z axes. Default: ['c', 'c']
             Acceptable values: ['o', 'c'] or ['O', 'C'] or ['0', 'c'], etc. [0, '0', 'O', 'o'] and [1, 'c', 'C']
-            Example: ['o','c'] means x is at 0 and z is at center.
+            Example: ['o','c'] means x is at 0 and z is at center. Note: 'C' means center of grid, which might not be center of obstacles (depends on snap.)
         
         snap_to_dl (bool): 
             If True, generated obstruction dimensions and coordinates are snapped to be multiples of obs_grid_dl. 
@@ -41,7 +41,7 @@ class _Obstruction2DFunctions:
         self.dl = dl
         self.snap_to_dl = snap_to_dl
         self.ref_xz_symbolic = ref_xz_symbolic
-
+        self.center_in_unit_length = None
         self.shape = False #Initialized No shape
         self.grid2d = None
         self.ref_xz_override = None # Reference coordinates [x, z] if manual set 
@@ -165,8 +165,9 @@ class _Obstruction2DFunctions:
         if self.ref_xz_symbolic is not None:
             self.validate_ref_xz_symbolic_format(self.ref_xz_symbolic)
 
-            original_xs, original_zs = self.grid2d.shape
-            center_val = [original_xs*self.dl/2, original_zs*self.dl/2]
+            # original_xs, original_zs = self.grid2d.shape
+            # center_val = [original_xs*self.dl/2, original_zs*self.dl/2]
+            center_val = self.center_in_unit_length
 
             ref_xz_in_unit_length = []
             for ref_xz_each, center_val in zip(self.ref_xz_symbolic, center_val):
@@ -246,6 +247,8 @@ class _Obstruction2DShapeFunctions(_Obstruction2DFunctions):
                     new_grid[0:new_xs, :] = self.grid2d[-shift_in_grid:, :]
         
             self.grid2d = new_grid
+            self.center_in_unit_length = [self.center_in_unit_length[0] + (new_xs-original_xs)*self.dl, self.center_in_unit_length[1] + (new_zs-original_zs)*self.dl]
+            
             if self.ref_xz_override is not None:
                 self.ref_xz_override = [self.ref_xz_override[0] + (new_xs-original_xs)*self.dl, self.ref_xz_override[1] + (new_zs-original_zs)*self.dl]
             self.description += f', then shifted in {shift_axis}-axis by {shift_val_in_unit_length}'
@@ -274,6 +277,7 @@ class _Obstruction2DShapeFunctions(_Obstruction2DFunctions):
                                             matrix_2d = self.grid2d, interp_method = 'nearest')
         # Update the grid and resolution
         self.grid2d = scaled_grid
+        self.center_in_unit_length = [i*scale_factor for i in self.center_in_unit_length] # To check if it is okay for non-integer scaling
         if self.ref_xz_override is not None:
             self.ref_xz_override = [i*scale_factor for i in self.ref_xz_override] # To check if it is okay for non-integer scaling
         self.description += f', then scaled by factor of {scale_factor}'
@@ -290,7 +294,10 @@ class _Obstruction2DShapeFunctions(_Obstruction2DFunctions):
         ValueError: If new dimensions are smaller than the current grid.
         """
         assert self.shape is True
-
+        if new_grid_xlen is None:
+            new_grid_xlen = self.grid2d.shape[0]
+        if new_grid_zlen is None:
+            new_grid_zlen = self.grid2d.shape[0]
         new_grid_xlen = f.check_integer(new_grid_xlen)
         new_grid_zlen = f.check_integer(new_grid_zlen)
 
@@ -444,7 +451,7 @@ class Obstruction2D(_Obstruction2DShapeFunctions):
     def __init__(self, dl:float, ref_xz_symbolic = ['c', 'c'], snap_to_dl:bool=True):
         super().__init__(dl, ref_xz_symbolic, snap_to_dl)
                 
-    def circular_2d(self, d, obstruction_id = 1, warn_adjustments=False):
+    def circle_2d(self, d, obstruction_id = 1, warn_adjustments=False):
         """
         Generates a 2D grid representing a circle of radius r.
         The grid is filled with 1s inside the circle and 0s outside.
@@ -489,7 +496,8 @@ class Obstruction2D(_Obstruction2DShapeFunctions):
         self.grid2d = grid
         self.description = f'Circular 2d of diameter {d_adj}'
         self.shape = True
-    
+        self.center_in_unit_length = [d_adj/2, d_adj/2]
+        
     def rectangle_2d(self, lx, lz, obstruction_id=1, warn_adjustments=False):
         """
         Generates a 2D grid representing a rectangle of size lx x lz.
@@ -532,7 +540,9 @@ class Obstruction2D(_Obstruction2DShapeFunctions):
         # Determine the number of grid points based on the radius and grid resolution (del_x, del_z)
         n_utilsgrid_x = int(np.round(lx_adj / self.dl,0))
         n_utilsgrid_z = int(np.round(lz_adj / self.dl,0))
-        self.grid2d = np.full((n_utilsgrid_x, n_utilsgrid_z), obstruction_id, dtype=int)
         
+        self.grid2d = np.full((n_utilsgrid_x, n_utilsgrid_z), obstruction_id, dtype=int)
         self.description = f'Rectangular 2d of size (lx x lz) = ({lx_adj:.6g} x {lz_adj:.6g})'
         self.shape = True
+        self.center_in_unit_length = [lx_adj/2, lz_adj/2]
+        

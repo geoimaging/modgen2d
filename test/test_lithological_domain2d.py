@@ -26,10 +26,10 @@ class TestLithologicalDomain2D(TestCase):
             domain=self.domain2D, rng=np.random.default_rng(2))
         self.surface_boundary2D.set_interfaces_matrix([[0.6], [0.2], [0], [1], [1.2], [0.5]])
         
-        self.obs2D1 = geomodgen2d.obstruction_2d.Obstruction2D(dl=0.5, ref_xz_symbolic=('C', 0), snap_to_dl=False)  #Should be same as above
-        self.obs2D1.circular_2d(2, 1)
+        self.obs2D1 = geomodgen2d.obstruction2d.Obstruction2D(dl=0.5, ref_xz_symbolic=('C', 0), snap_to_dl=False)  #Should be same as above
+        self.obs2D1.circle_2d(2, 1)
 
-        self.obs2D2 = geomodgen2d.obstruction_2d.Obstruction2D(dl=0.5, ref_xz_symbolic=('0', 0), snap_to_dl=False)  #Should be same as above
+        self.obs2D2 = geomodgen2d.obstruction2d.Obstruction2D(dl=0.5, ref_xz_symbolic=('0', 0), snap_to_dl=False)  #Should be same as above
         self.obs2D2.rectangle_2d(3, 2, 2)
 
 
@@ -134,7 +134,8 @@ class TestLithologicalDomain2D(TestCase):
                         ['1', '1', '1', '3']]
 
         self.assertArrayEqual(lit.lithological_matrix, lit_matrix)
-
+        self.assertDictEqual(lit.get_feature_id_and_lit_val_from_lithological_matrix(), {'def':[1, 2, 3, 4]})
+        
         geomodgen2d.lithological_domain2d.GlobalSoilInterfaceConfig.set_soil_interface(self.boundary2D, self.surface_boundary2D, 'pile', True)
         lit = geomodgen2d.lithological_domain2d.LithologicalDomain2D(domain, 1.8)
         lit_matrix_w_surface = [['0', '1', '2', '2'],
@@ -150,6 +151,7 @@ class TestLithologicalDomain2D(TestCase):
                                 ['0', '1', '1', '1']]
         
         self.assertArrayEqual(lit.lithological_matrix, lit_matrix_w_surface)
+        self.assertDictEqual(lit.get_feature_id_and_lit_val_from_lithological_matrix(), {'def':[0, 1, 2]})
                     
     def test_lit_domain_obs2d_and_merging(self):
         for setting in [1,2,3,4,5]:

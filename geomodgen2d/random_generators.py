@@ -17,7 +17,7 @@ class RandomGeneratorAbstract(ABC):
         self.rng = rng or np.random.default_rng()
 
     @abstractmethod
-    def generate(self, size=(1,)):
+    def generate(self, size=None):
         """Return generated data"""
         pass
 
@@ -64,8 +64,15 @@ class Constant(RandomGeneratorAbstract):
         
         self.value = val
     
-    def generate(self, size=(1,)):
-        return np.full(size, self.value)
+    def generate(self, size=None):
+        # If size is None, return a single value instead of an array
+        single_value = size is None
+        size = (1,) if single_value else size
+
+        gen = np.full(size, self.value, dtype=object)
+
+        return gen[0] if single_value else gen
+        
 
 class Uniform(RandomGeneratorAbstract):
     """
@@ -79,21 +86,24 @@ class Uniform(RandomGeneratorAbstract):
     def __init__(self, low: float, high: float, rng=None):
         super().__init__(rng)
     
-        if not (isinstance(low, (int,float)) and isinstance(high, (int,float))):
-            raise TypeError("low and high must be numbers")
+        if not (isinstance(low, (int,float)) or not isinstance(high, (int,float))):
+            raise TypeError(f"low and high must be numbers. Provided {low} and {high}")
 
         if np.isnan(low) or np.isnan(high):
-            raise ValueError("low or high cannot be nan")
+            raise ValueError(f"low or high cannot be nan. Provided {low} and {high}")
         
         if low>high:
-            raise ValueError("low cannot be higher than high.")
+            raise ValueError(f"low cannot be higher than high. Provided {low} and {high}")
         
         self.low = low
         self.high = high
     
-    def generate(self, size=(1,)):
-        arr = self.rng.uniform(self.low, self.high, size=size)
-        return np.array(arr.tolist(), dtype=object)     
+    def generate(self, size=None):
+        single_value = size is None
+        size = (1,) if single_value else size
+
+        gen = np.array(self.rng.uniform(self.low, self.high, size=size).tolist(), dtype=object)
+        return gen[0] if single_value else gen
     
 class LogUniform(Uniform):
     """
@@ -109,9 +119,15 @@ class LogUniform(Uniform):
         if low<=0 or high<=0:
             raise ValueError("Lows and/or highs cannot be zero or negative")
 
-    def generate(self, size=(1,)):
-        arr = 10 ** self.rng.uniform(np.log10(self.low), np.log10(self.high), size=size)
-        return np.array(arr.tolist(), dtype=object)     
+    def generate(self, size=None):
+        # If size is None, return a single value instead of an array
+        single_value = size is None
+        size = (1,) if single_value else size
+
+        gen = 10 ** self.rng.uniform(np.log10(self.low), np.log10(self.high), size=size)
+        gen = np.array(gen.tolist(), dtype=object)  
+
+        return gen[0] if single_value else gen
 
 class Normal(RandomGeneratorAbstract):
     """
@@ -133,10 +149,16 @@ class Normal(RandomGeneratorAbstract):
         self.mean = mean
         self.stdev = stdev
 
-    def generate(self, size=(1,)):
-        arr = self.rng.normal(self.mean, self.stdev, size=size)
-        return np.array(arr.tolist(), dtype=object)     
+    def generate(self, size=None):
+        # If size is None, return a single value instead of an array
+        single_value = size is None
+        size = (1,) if single_value else size
 
+        gen = self.rng.normal(self.mean, self.stdev, size=size)
+        gen = np.array(gen.tolist(), dtype=object)  
+
+        return gen[0] if single_value else gen
+    
 class DiscreteChoice(RandomGeneratorAbstract):
 
     """
@@ -150,7 +172,7 @@ class DiscreteChoice(RandomGeneratorAbstract):
         super().__init__(rng)
         
         # Convert to numpy array if not already
-        x = np.asarray(x, dtype=object)
+        x = np.asarray(x)
         p = np.asarray(p, dtype=float) if p is not None else np.ones(x.shape) / x.shape[0]
         
         if np.isnan(p).any():
@@ -176,9 +198,15 @@ class DiscreteChoice(RandomGeneratorAbstract):
         self.x = x
         self.p = p
     
-    def generate(self, size=(1,)):
-        arr = self.rng.choice(self.x, size=size, p=self.p)
-        return np.array(arr.tolist(), dtype=object)     
+    def generate(self, size=None):
+        # If size is None, return a single value instead of an array
+        single_value = size is None
+        size = (1,) if single_value else size
+
+        gen = self.rng.choice(self.x, size=size, p=self.p)
+        gen = np.array(gen.tolist(), dtype=object)  
+
+        return gen[0] if single_value else gen
         
     def plot_pmf(self, ax=None, n=1000000):
         """

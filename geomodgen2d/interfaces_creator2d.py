@@ -6,6 +6,7 @@ import scipy
 from fbm import FBM
 
 from geomodgen2d.discretized_domain2d import DiscretizedDomain2D
+from geomodgen2d.rough_interface_creator2d import AbstractRoughInterfaceCreator, NormalInterfaceGen, UniformInterfaceGen
 import geomodgen2d.general_functions as f
 import matplotlib.pyplot as plt
 
@@ -101,7 +102,7 @@ class AbstractInterfacesCreator2D(ABC):
         
         self.interfaces_matrix = interfaces_matrix
 
-    def generate_rough_interfaces(self, random_generator_settings_dict, surface_scaling_factor=1):
+    def generate_rough_interfaces(self, rough_interface_creator_instance: AbstractRoughInterfaceCreator, surface_scaling_factor=1):
         """
         Generates a interface matrix with randomized interface points.
 
@@ -109,60 +110,17 @@ class AbstractInterfacesCreator2D(ABC):
         random_generator_option: str
             Method for random generation of interface. Options: 'uniform', 'normal', 'fbm'.
 
-        random_generator_settings_dict: dict
-            Dictionary containing all relevant settings for respective option.
-
-            Option: a) 'uniform' (original), next interface point at x+del_x = depth at x + uniformly generated random no.
-                random_generator_settings_dict keys:
-                    1) 'max_dz_per_unit_length' required: maximum change in z allowed per unit_length
-                            
-            Option: b) 'normal', next interface point at x+del_x = depth at x + gaussian generated random no.
-                random_generator_settings_dict keys:
-                    1)'std'
-                        
-            Option: c) 'fbm', interface generated based on fractional brownian motion (Cannot be replicated??)
-                random_generator_settings_dict keys:
-                    1) 'H' : Hurst index (1/2) for classical brownian motion
-                    2) 'method': Solver for fbm
+        rough_interface_creator_instance: AbstractRoughInterfaceCreator
+            RoughInterfaceCreator instance with relevant generator parameters
 
         surface_scaling_factor:
             Factor by which magnitude is to be reduced (for surface generation; If intended to have smaller undulations.)
         """
         nx, _ = self.interfaces_matrix.shape
         interfaces_matrix = np.zeros_like(self.interfaces_matrix)
+        dx = self.domain.dhs[0]
         
-        random_generator_option = random_generator_settings_dict['generator_option']
-        if random_generator_option=='uniform':
-            max_dz_per_unit_length = random_generator_settings_dict['max_dz_per_unit_length']*surface_scaling_factor
-            
-            dx = self.domain.dhs[0]
-            
-            z_max_change_per_dx = (max_dz_per_unit_length*dx)
-            rnd_numbers = (self.rng.random(((nx-1), self.n_interfaces))-0.5)*2 #Numbers ranging from 1 and -1
-            interfaces_matrix[1:, :] = rnd_numbers*z_max_change_per_dx
-            interfaces_matrix = np.cumsum(interfaces_matrix, axis=0)
-            
-        elif random_generator_option=='normal':
-            mean = 0
-            stdev = random_generator_settings_dict['stdev_in_unit_length']*surface_scaling_factor
-            rnd_numbers = self.rng.normal(loc=mean, scale=stdev, size=(nx-1, self.n_interfaces)) #Numbers ranging with mean 0
-            interfaces_matrix[1:, :] = rnd_numbers
-            interfaces_matrix = np.cumsum(interfaces_matrix, axis=0)
-        
-        elif random_generator_option=='fbm':
-            H = random_generator_settings_dict['H']
-            L = random_generator_settings_dict['length'] # *surface_scaling_factor While this gives approx scaling
-            method = random_generator_settings_dict['method']
-            n = nx - 1
-            for j in range(self.n_interfaces):
-                #generates n+1 data ie n increments
-                rnd_layer = FBM(n=n, hurst=H, length=L, method=method).fbm() * surface_scaling_factor  #Better approach
-                init_layer = interfaces_matrix[0, j]
-                rnd_layer+=init_layer
-                interfaces_matrix[:, j]= rnd_layer
-        else:
-            raise ValueError("random_generator_options can only be either 'uniform', or 'normal', or 'fbm'")
-        
+        interfaces_matrix = rough_interface_creator_instance.generate_rough_interfaces(nx, self.n_interfaces, dx=dx, surface_scaling_factor=surface_scaling_factor)
         self.set_interfaces_matrix(interfaces_matrix)
     
     def filtering_interface(self, filter_window_length=21, filter_polyorder=3):
@@ -215,7 +173,7 @@ class AbstractInterfacesCreator2D(ABC):
         elif interface_z_references == 'random':
             # Randomized and sorted, directly randomized the layer points
             rndm_numbers = self.rng.random(self.n_interfaces)
-            rndm_numbers.sort()
+            rndm_numbers.sort() ## TODO discuss sort vs random x vs other?
             reference_points_zs = rndm_numbers*span_z
         else:
             raise ValueError("interface_z_reference must be a NumPy array of float values, if not 'equidistant', or 'random'")
@@ -236,13 +194,18 @@ class AbstractInterfacesCreator2D(ABC):
         """
         interfaces_matrix = self.interfaces_matrix
         x_centers = self.domain.get_interface_x_centers
+        reference_points_zs = np.asarray(reference_points_zs, dtype=float)
         
-        if len(reference_points_zs)!=self.n_layers-1:
+        if not np.all(np.diff(reference_points_zs) >= 0):
+            raise ValueError(f"reference_points_zs must be monotonically increasing. Provided {reference_points_zs}")
+    
+        if reference_points_zs.ndim != 1 or len(reference_points_zs)!=self.n_layers-1:
             raise ValueError ( f"The provided no of reference points for interfaces ({len(reference_points_zs)}) != provided no of interfaces ({self.n_layers-1})")
 
         # Locate reference point in grid
         if reference_point_x is None: 
-            reference_point_x = x_centers[0]
+            ref_idx = 0 ## TODO: Randomize here??
+            reference_point_x = x_centers[ref_idx]
         elif not isinstance(reference_point_x, (int, float)):
             raise ValueError("reference_point_x must be a number")
         elif reference_point_x < x_centers[0] or reference_point_x > x_centers[-1]:   
@@ -296,8 +259,20 @@ class AbstractInterfacesCreator2D(ABC):
     
     def check_if_overlapping_interfaces(self):
         return np.sum(np.diff(self.interfaces_matrix)<0) > 0
-       
-    def plot(self, ax=None):
+    
+    def _adjust_for_top_surface_interface(self):
+        interfaces_matrix = self.interfaces_matrix
+        top_interface = interfaces_matrix[:,0]
+        top_depth = np.min(top_interface)
+        
+        # computing the shift
+        shift_matrix = np.full_like(interfaces_matrix, -top_depth) 
+        interfaces_matrix+=shift_matrix
+        if np.abs(np.min(interfaces_matrix)) <= -1e-2:
+            raise SyntaxError("The minimum should have been greater than 0.")
+        self.set_interfaces_matrix(interfaces_matrix) 
+     
+    def plot(self, ax=None, plot_extents=True, **kwargs):
         if ax is None:
             fig, ax = plt.subplots(figsize=[8,8])
 
@@ -320,10 +295,12 @@ class AbstractInterfacesCreator2D(ABC):
                     self.interfaces_matrix[:, i],label=i,
                     linestyle='-',
                     drawstyle=drawstyle,
+                    **kwargs,
                    # color=color_code[i],
                    )
 
-        ax.plot([0,span_x], [0,0], 'k--',[0,span_x], [span_z, span_z],'k--')
+        if plot_extents:
+            ax.plot([0,span_x], [0,0], 'k--',[0,span_x], [span_z, span_z],'k--')
         ax.set(ylim=[span_z, 0],
                xlim=[self.domain.get_interface_x_centers[0],self.domain.get_interface_x_centers[-1]],
                xlabel='Distance',
@@ -384,4 +361,6 @@ class AbstractInterfacesCreator2D(ABC):
         # if self._locked:
         #     new.lock_interfaces()
         return new
+
+
     

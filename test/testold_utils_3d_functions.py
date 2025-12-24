@@ -2,7 +2,7 @@ import geomodgen2d
 import numpy as np
 from testing_tools import unittest, TestCase
 import geomodgen2d.utils_3d_functions as utils_3d_f
-import geomodgen2d.obstruction_2d as obstruction_2d
+import geomodgen2d.obstruction2d as obstruction2d
 
 class TestGeneralFunctions(TestCase):
     
@@ -63,7 +63,7 @@ class TestGeneralFunctions(TestCase):
         np.testing.assert_array_almost_equal(x, np.array([2, 2, 2, 2, 0]))
         
     def test_get_table_from_utils2d(self):
-        Utils2D_1 = obstruction_2d.Utils2D(del_x=0.8, del_z=1.6, refining_factor=2)  
+        Utils2D_1 = obstruction2d.Utils2D(del_x=0.8, del_z=1.6, refining_factor=2)  
         Utils2D_1.rectangle_2d(lx=1.2, lz=1.6, util_id=2)
         np.testing.assert_array_equal(Utils2D_1.grid, np.array([[2,2,2,2],[2,2,2,2],[2,2,2,2]]))
         self.assertListAlmostEqual(Utils2D_1.ref_coord2d_in_grids,[1,2])

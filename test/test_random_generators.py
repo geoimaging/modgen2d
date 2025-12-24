@@ -83,7 +83,7 @@ class TestDomain2D(TestCase):
         
         
     def test_discrete_choice_generate(self):
-        x = ['a', 2, 'c'] #allowed as nupy upcast is used. 2 treated as '2'
+        x = ['a', '2', 'c'] #allowed as nupy upcast is used. 2 treated as '2'
         p = [0.2, 0.3, 0.5]
         d = random_generators.DiscreteChoice(x, p, rng=self.rng)
         self.assertArrayEqual(d.x, x)

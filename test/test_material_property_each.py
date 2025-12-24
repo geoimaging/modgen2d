@@ -4,7 +4,7 @@ from testing_tools import unittest, TestCase
 import geomodgen2d.general_functions as f
 from geomodgen2d.features_config import FeaturesConfig
 from geomodgen2d.random_generators import RandomGeneratorAbstract, DiscreteChoice, Constant
-from geomodgen2d.material_properties import PropertyDistribution, MainProperty
+from geomodgen2d.main_property_each import PropertyDistribution, MainProperty
 class TestPropertyDistribution(TestCase):
     
     def setUp(self):
