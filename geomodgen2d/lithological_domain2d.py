@@ -12,8 +12,7 @@ import copy,scipy,warnings
 import matplotlib.colors as mcolors
 
 from geomodgen2d.discretized_domain2d import DiscretizedDomain2D
-from geomodgen2d.interfaces_creator2d import AbstractInterfacesCreator2D
-from geomodgen2d.discretized_interfaces2d import DiscretizedInterfaces2D, SurfaceInterface2D
+from geomodgen2d.discretized_interfaces2d import DiscretizedInterfaces2D
 from geomodgen2d.obstruction2d import Obstruction2D
 from geomodgen2d.meta_class import _StrictProtectedMeta, _internal_classmethod
 
@@ -39,13 +38,9 @@ class GlobalSoilInterfaceConfig(metaclass=_StrictProtectedMeta):
     
     # initialize class attributes once
     # default values
-    _soil_interface2d_instance = None
-    _surface_interface2d_instance = None
-    _merged_interface2d_instance = None
-    _surface_interface_method = None
+    _discretized_interface2d_instance = None
     _revision_id = 0
     _status_code = 0
-
         
     @_internal_classmethod
     def reset(cls):
@@ -53,28 +48,16 @@ class GlobalSoilInterfaceConfig(metaclass=_StrictProtectedMeta):
             setattr(cls, key, val)
     
     @_internal_classmethod
-    def set_soil_interface(cls, soil_interface2d_instance:DiscretizedInterfaces2D, 
-                           surface_interface2d_instance:AbstractInterfacesCreator2D = None,
-                           surface_interface_method="pile", 
-                            #   compute_immediately=False, 
+    def set_soil_interface(cls, discretized_interface2d_instance:DiscretizedInterfaces2D, 
                            force_set=False):
         """
         Set the global soil interface configuration.
 
         Parameters
         ----------
-        soil_interface_class : DiscretizedInterfaces2D
-            The soil interface instance to activate globally.
+        discretized_interface2d_instance : DiscretizedInterfaces2D
+            The interface2d instance to activate globally.
         
-        surface_interface2d_instance : DiscretizedInterfaces2D
-            The surface interface instance to activate globally.
-            surface_included_in_soil_interface must be False.
-        
-        surface_interface_method : str, default="pile"
-            Surface modification method. Valid options:
-            - "pile"  : add material
-            - "erode" : remove material
-
         force_set : bool, default=False
             If False and a surface interface is already set, a RuntimeError 
             will be raised. If True, the existing interface is overwritten.
@@ -89,41 +72,22 @@ class GlobalSoilInterfaceConfig(metaclass=_StrictProtectedMeta):
         _status_code: int
             Either 0, 1, 2, or 99. with 0 being the best, and 99 being the worst.
         """
-        soil_interface2d_instance._locked = False
         
         if cls.get_revision_id() != 0 and not force_set:
             raise RuntimeError(
                 "Surface interface already set. "
                 "Use force-set=True if you intentionally want to overwrite it.")
         
-        if soil_interface2d_instance is None:
+        if discretized_interface2d_instance is None:
             raise TypeError("soil_interface2d_instance cannot be None")
         
-        if not isinstance(soil_interface2d_instance, AbstractInterfacesCreator2D):
-            raise TypeError("soil_interface2d_instance must be from subclass of AbstractInterfacesCreator2D class.")
+        if not isinstance(discretized_interface2d_instance, DiscretizedInterfaces2D):
+            raise TypeError("discretized_interface2d_instance must be from subclass of DiscretizedInterfaces2D class.")
         
-        if isinstance(soil_interface2d_instance, SurfaceInterface2D):
-            raise TypeError("soil_interface2d_instance cannot of SurfaceInterface2D class.")
-
-        soil_interface2d_instance.lock_interfaces()
-        remesh = soil_interface2d_instance.remesh_interp_method
-        if surface_interface2d_instance is not None:
-            surface_interface2d_instance._locked = False
-            if surface_interface2d_instance.n_interfaces != 1:
-                raise ValueError(f"interface_class must have exactly one interface. Provided {surface_interface2d_instance.n_interfaces}")
-            if surface_interface2d_instance.remesh_interp_method != remesh:
-                raise ValueError(f"Remesh interp method for both surface and soil interfaces must be same. Provided {surface_interface2d_instance.remesh_interp_method} and {remesh} respectively.")
-            
-            surface_interface2d_instance._adjust_for_top_surface_interface()
-            surface_interface2d_instance.lock_interfaces()
-
-        if surface_interface_method not in ['pile', 'erode']:
-            raise ValueError(f"Methods can only be either 'pile' or 'erode'. Provided: {surface_interface_method}")
+        discretized_interface2d_instance._locked = False
+        discretized_interface2d_instance.lock_interfaces()
         
-        cls._soil_interface2d_instance = soil_interface2d_instance
-        cls._surface_interface2d_instance = surface_interface2d_instance
-        cls._merged_interface2d_instance = soil_interface2d_instance.get_interfaces_matrix_with_surface(surface_interface2d_instance, surface_interface_method)
-        cls._surface_interface_method = surface_interface_method
+        cls._discretized_interface2d_instance = discretized_interface2d_instance
         
         low = 1
         high = 2**63    # exclusive upper bound
@@ -137,15 +101,8 @@ class GlobalSoilInterfaceConfig(metaclass=_StrictProtectedMeta):
         return cls._revision_id
     
     @_internal_classmethod
-    def get_interface_instance(cls, type=None):
-        if type is None or type == 'merged':
-            return cls._merged_interface2d_instance
-        elif type == 'surface':
-            return cls._surface_interface2d_instance
-        elif type == 'soil_only':
-            return cls._soil_interface2d_instance
-        else:
-            raise ValueError(f"Types can be either 'surface', 'soil_only', or 'merged'/None. Provided {type}.")
+    def get_interface_instance(cls):
+        return cls._discretized_interface2d_instance
 
     @_internal_classmethod    
     def get_config_status(cls, previous_revision_id):
@@ -347,8 +304,8 @@ class LithologicalDomain2DReadOnly():
         if plot_interfaces:
             discretizedInterfaces2D_instance = GlobalSoilInterfaceConfig.get_interface_instance()
             if discretizedInterfaces2D_instance is not None:
-                n_interface = discretizedInterfaces2D_instance.n_interfaces
-                for i in np.arange(n_interface-1, -1, -1):
+                n_soil_layers = discretizedInterfaces2D_instance.n_soil_layers
+                for i in np.arange(n_soil_layers-1, -1, -1):
                     remesh_tech = discretizedInterfaces2D_instance.remesh_interp_method
                     if remesh_tech == 'nearest':
                         drawstyle = 'steps-mid'
@@ -357,6 +314,7 @@ class LithologicalDomain2DReadOnly():
                         if self.init_domain is not None:
                             warnings.warn("Looks like the lit domain has been remeshed with linear after creation.")
                     else:
+                        drawstyle = 'steps-mid'
                         warnings.warn(f"Interfaces might not reflect the exact interpolation in the plots except for 'linear' and 'nearest'. Provided {remesh_tech}.")
                     ax.plot(discretizedInterfaces2D_instance.domain.get_interface_x_centers,
                             discretizedInterfaces2D_instance.interfaces_matrix[:, i],
@@ -467,7 +425,7 @@ class LithologicalDomain2D(LithologicalDomain2DReadOnly):
         discretizedInterfaces2D_instance = copy.deepcopy(discretizedInterfaces2D_instance)  #Makes sure the change in the object is local to this function only.
         self.gwt_depth = gwt_depth
         self.lm_type = 'from_interface_config'
-        self.lithological_matrix = layer_id_faster(discretizedInterfaces2D_instance) - 1 #-1 as top layer is "air" with ID 0, not default 1.
+        self.lithological_matrix = layer_id_faster(discretizedInterfaces2D_instance)
         self.lithological_matrix = self.lithological_matrix.astype(int)
         self.lithological_matrix = np.vectorize(lambda x: f"{x}")(self.lithological_matrix)
         
@@ -651,7 +609,7 @@ class LithologicalDomain2DFromObstruction2D(LithologicalDomain2DReadOnly):
         
     def _get_y_shift_adjusted_for_surface(self, shift_ref2d_to_xy):
         ## Check if surface config changed after definition: All this is handled by redefining this class (in merged case.)
-        _, surface_interface = GlobalSoilInterfaceConfig.get_interface_instance().seperate_surface_interface()
+        _, surface_interface = GlobalSoilInterfaceConfig.get_interface_instance().get_surface_and_subsurface_interfaces()
         
         ## Make sure domains dhs are consistent
         if not (
@@ -696,7 +654,7 @@ def layer_id_faster(discretizedInterfaces2D_instance:DiscretizedInterfaces2D):
     """
     # Will be layered 1,2,3...
     # Initializing all soil points are last layers
-    n_layers = discretizedInterfaces2D_instance.n_layers
+    n_layers = discretizedInterfaces2D_instance.n_soil_layers
     
     # Ignore the two edges of interfaces_matrix; they serve only for remeshing and fall outside the model bounds.
     processed_boundary = discretizedInterfaces2D_instance.interfaces_matrix
@@ -711,7 +669,7 @@ def layer_id_faster(discretizedInterfaces2D_instance:DiscretizedInterfaces2D):
     processed_boundary[processed_boundary <= 0] = -1
     processed_boundary[processed_boundary >= spatial_z_ranges[-1]] = spatial_z_ranges[-1]+1
     
-    for i in range(n_layers-1):
+    for i in range(n_layers):
         boundary_matrix = np.tile(processed_boundary[:,i], (len(spatial_z_ranges), 1)).T
         # print(boundary_matrix)
         layer_matrix-=(boundary_matrix>=compare_matrix)

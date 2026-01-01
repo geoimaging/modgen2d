@@ -205,14 +205,14 @@ class TestObstruction2D(TestCase):
         pass
     
     def test_query_points_in_obstruction(self):
-        self.obs2D1.circle_2d(2, 1)
+        self.obs2D2.circle_2d(2, 1)
 
         ## Test obs2d: query_points_in_obstruction
-        query_points = [[4.1,6.8], [4.11, 6.79], #Left Bottom Corner (0 due to nearest) and 1(inside)
+        query_points = [[4.0,6.8], [4.01, 6.79], #Left Bottom Corner (0 due to nearest) and 1(inside)
                         [5, 5.9], [4.6, 5.7], # Inside (1,1)
                         [4, 5], [1, 9], [10, 11], #Outside (0,0,0)
-                        [5.89, 5], [5.89, 6.8], #Right corners (0,1 due to nearest 0.5 handling)
-                        [5.89, 5.01], [5.89, 6.79], #(1,1)
+                        [5.79, 5], [5.79, 6.8], #Right corners (0,1 due to nearest 0.5 handling)
+                        [5.79, 5.01], [5.79, 6.79], #(1,1)
                     ]
         expected = [0, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1]
 

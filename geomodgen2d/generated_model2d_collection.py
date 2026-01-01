@@ -263,7 +263,7 @@ class GeneratedProfileCollection2D(GeneratedProfileCollection2DReadOnly):
                 ignore_lithological_ids=ignore_lithological_ids,
                 simulated_val_for_ignored_lit_property=simulated_val_for_ignored_lit_property)
             
-            simulated_profile = self.clip_simulated_profile(simulated_profile, min_val, max_val, warn_cliping)      
+            simulated_profile = self.clip_simulated_profile(simulated_profile, min_val, max_val, simulated_val_for_ignored_lit_property, warn_cliping)      
             self._generated_model2d_set[set_name].simulated_profiles[main_property_name] = simulated_profile
             
             merged_domain = self.merged_generated_model2d.lit_domain
@@ -285,33 +285,46 @@ class GeneratedProfileCollection2D(GeneratedProfileCollection2DReadOnly):
             
         # self.check_simulated_profile(simulated_profile_merged)
         simulated_profile_merged = self.clip_simulated_profile(simulated_profile_merged, 
-                                                               min_val, max_val, raise_error=True)      
+                                                               min_val, max_val, simulated_val_for_ignored_lit_property, raise_error=True)      
         
         self._merged_generated_model2d.simulated_profiles[main_property_name] = simulated_profile_merged
 
     @staticmethod
-    def clip_simulated_profile(simulated_profile, min_val=None, max_val=None, warn=False, raise_error=False):
+    def clip_simulated_profile(simulated_profile, min_val=None, max_val=None, warn=False,
+                            simulated_val_for_ignored_lit_property=-99999, raise_error=False):
+        
+        simulated_profile = np.array(simulated_profile)  # ensure NumPy array
+
+        # Determine min and max if not provided
+        valid_mask = simulated_profile != simulated_val_for_ignored_lit_property
+        
         if min_val is not None:
             assert isinstance(min_val, (int, float)), f"min_val must be a float/int. Provided {type(min_val)} : {min_val}"
-        else: 
-            min_val = np.min(simulated_profile)
+        else:
+            min_val = np.min(simulated_profile[valid_mask])
             
         if max_val is not None:
             assert isinstance(max_val, (int, float)), f"max_val must be a float/int. Provided {type(max_val)} : {max_val}"
         else:
-            max_val = np.max(simulated_profile)
-
-        # Check if any values will be clipped
-        values_outside_range = np.sum((simulated_profile < min_val) | (simulated_profile > max_val))
+            max_val = np.max(simulated_profile[valid_mask])
+        
+        # Check values outside the clipping range (ignoring special values)
+        values_outside_range = np.sum((simulated_profile[valid_mask] < min_val) | 
+                                    (simulated_profile[valid_mask] > max_val))
 
         if values_outside_range > 0:
+            msg = f"{values_outside_range} values were clipped to the range [{min_val}, {max_val}]. " \
+                f"Actual Range [{np.min(simulated_profile[valid_mask])}, {np.max(simulated_profile[valid_mask])}]"
             if warn:
-                warnings.warn(f"Warning: {values_outside_range} values were clipped to the range [{min_val}, {max_val}]. Actual Range [{np.min(simulated_profile)}, {np.max(simulated_profile)}]")
+                warnings.warn("Warning: " + msg)
             if raise_error:
-                raise ValueError(f"{values_outside_range} values were clipped to the range [{min_val}, {max_val}]. Actual Range [{np.min(simulated_profile)}, {np.max(simulated_profile)}]")
-                            
-        simulated_profile = np.clip(simulated_profile, min_val, max_val)
-        return simulated_profile
+                raise ValueError(msg)
+        
+        # Clip only the valid values
+        clipped_profile = simulated_profile.copy()
+        clipped_profile[valid_mask] = np.clip(simulated_profile[valid_mask], min_val, max_val)
+        
+        return clipped_profile
         
     def simulate_property_profile(
         self, main_property_name, 

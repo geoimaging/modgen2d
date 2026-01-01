@@ -1,129 +1,168 @@
+import warnings
+
 import numpy as np
+import scipy
 
-from geomodgen2d.interfaces_creator2d import AbstractInterfacesCreator2D
 from geomodgen2d.discretized_domain2d import DiscretizedDomain2D
+from geomodgen2d.rough_interface_creator2d import AbstractRoughInterfaceCreator, NormalInterfaceGen, UniformInterfaceGen
 import geomodgen2d.general_functions as f
+import matplotlib.pyplot as plt
 
-class SurfaceInterface2D(AbstractInterfacesCreator2D):
-    def __init__(self, domain: DiscretizedDomain2D, remesh_interp_method = 'linear', rng=np.random.default_rng()):
+class DiscretizedInterfaces2D:
+    def __init__(self, domain: DiscretizedDomain2D, n_soil_layers: int, generate_surface:bool, rough_interface_generator_scale:list=None, remesh_interp_method = 'linear', rng=np.random.default_rng()):
         """
-        Initializes the DiscretizedInterfaces2D instance (with only one interface) with given discretized domain2d instance.
+        Initializes the InterfaceCreator instance with given discretized domain2d instance, and number of interfaces.
         
         Parameters:
         domain2D : DiscretizedDomain2D
             The DiscretizedDomain2D instance describing the spans and dhs of the domain.
-        remesh_interp_method: str
-            Interpolation method when remeshing (default: 'linear')
-        rnd_no: 
-            Optional random number generator instance
-        """
-        n_interfaces = 1
-        super().__init__(domain, n_interfaces=n_interfaces, remesh_interp_method=remesh_interp_method, rng=rng)
-
-    def is_surface_interface(self):
-        return True
-    
-    def seperate_surface_interface(self):
-        """
-        Seperate surface interface and return main and surface interface after seperating.
-        Surface interface is the top interface.
-        """
-        raise ValueError("Already a SurfaceInterface2D. Hence, Surface interface cannot be seperated")
-        
-        
-class DiscretizedInterfaces2D(AbstractInterfacesCreator2D):
-    def __init__(self, domain: DiscretizedDomain2D, n_interfaces: int, remesh_interp_method = 'linear', rng=np.random.default_rng()):
-        """
-        Initializes the DiscretizedInterfaces2D instance with given discretized domain2d instance, and number of interfaces. 
-        
-        Parameters:
-        domain2D : DiscretizedDomain2D
-            The DiscretizedDomain2D instance describing the spans and dhs of the domain.
-        n_interfaces: float, 
+        n_soil_layers: float, 
             Number of soil interfaces in the model
+        generate_surface:bool,
+            has surface inteface or not in the model.
         remesh_interp_method: str
             Interpolation method when remeshing (default: 'linear')
         rnd_no: 
             Optional random number generator instance
         """
-        super().__init__(domain, n_interfaces=n_interfaces, remesh_interp_method=remesh_interp_method, rng=rng)
+        n_soil_layers = int(n_soil_layers)
+        blank_interfaces = np.ones((domain.interface_shape[0], 
+                                     n_soil_layers,
+                                     )) * np.nan
+        
+        self.domain = domain
+        self.interfaces_matrix = blank_interfaces
+        # check shape of interfaces is compatible
+        if domain.interface_shape[:-2] != self.interfaces_matrix.shape[:-2]:
+            msg = f"Shape of domain {domain.interface_shape[:-2]} and "
+            msg += f"interfaces {self.interfaces_matrix.shape[:-2]} are not the same."
+            raise ValueError(msg)
+        
+        self.n_soil_layers = n_soil_layers
+        self.generate_surface = generate_surface
+        self.set_rough_interface_generator_scale(rough_interface_generator_scale)
+        
+        self.n_soil_soil_interfaces = n_soil_layers-1
+        self.remesh_interp_method = remesh_interp_method
+        self.rng = rng
+        self._locked = False #Don't allow change in generated interfaces.
+        self._reference_point_x = None #Reference point x used during updating interfaces,
 
+    @property
+    def shape(self):
+        return (len(self.domain.get_interface_x_centers), self.n_soil_layers)
+
+    def get_rough_interface_generator_scale(self):
+        return self.rough_interface_generator_scale
+        
+    def set_rough_interface_generator_scale(self, rough_interface_generator_scale):
+        if rough_interface_generator_scale is None:
+            rough_interface_generator_scale = [int(self.generate_surface), 1]
+        
+        rough_interface_generator_scale = np.asarray(rough_interface_generator_scale, dtype=float)
+        if rough_interface_generator_scale.ndim != 1:
+            raise ValueError("rough_interface_generator_scale must be a 1-D array or scalar")
+
+        if len(rough_interface_generator_scale)==1 and rough_interface_generator_scale[0]!=0:
+            warnings.warn("rough_interface_generator_scale is [0] and hence only horizontal interfaces will be created if not corrected.")
+    
+        adj_rough_interface_generator_scale = np.full(self.n_soil_layers, rough_interface_generator_scale[-1], dtype=float)
+        min_len = min(len(rough_interface_generator_scale), self.n_soil_layers)
+        adj_rough_interface_generator_scale[:min_len] = rough_interface_generator_scale[:min_len]
+        
+        self.check_rough_interface_generator_scale(adj_rough_interface_generator_scale)
+        self.rough_interface_generator_scale = adj_rough_interface_generator_scale    
+        
     def is_surface_interface(self):
-        return False
+        return self.n_soil_layers==1
     
-    def seperate_surface_interface(self):
-        """
-        Seperate surface interface and return main and surface interface after seperating.
-        Surface interface is the top interface.
-        """
-        if self.n_interfaces == 0:
-            raise ValueError("Surface interface cannot be seperated, provided the interface class has no interfaces. Need at least one to seperate.")
+    def check_rough_interface_generator_scale(self, rough_interface_generator_scale):
+        rough_interface_generator_scale = np.asarray(rough_interface_generator_scale, dtype=float)
+        AbstractRoughInterfaceCreator.check_rough_interface_generator_scale(rough_interface_generator_scale)
+        if not self.generate_surface and rough_interface_generator_scale[0]!=0:
+            raise ValueError(f"Models with no/hz surface must have first element on rough_interface_generator_scale as 0. Provided {rough_interface_generator_scale[0]}")
         
-        surface_interface_instance = SurfaceInterface2D(self.domain, self.remesh_interp_method, self.rng)
-        surface_interface_instance.set_interfaces_matrix(self.interfaces_matrix[:,0:1])
-        
-        soil_interface_instance = DiscretizedInterfaces2D(self.domain, self.n_interfaces-1, self.remesh_interp_method, self.rng)
-        if soil_interface_instance.n_interfaces!=0:
-            soil_interface_instance.set_interfaces_matrix(self.interfaces_matrix[:,1:])
-            
-        if self._locked:
-            soil_interface_instance.lock_interfaces()
-            surface_interface_instance.lock_interfaces()
-            
-        return soil_interface_instance, surface_interface_instance
+        if len(rough_interface_generator_scale) != self.n_soil_layers:
+            raise ValueError("The adjusted length of rough_interface_generator_scale must be equal to n_soil_layers. Try re setting the scale.")
     
-    def get_interfaces_matrix_with_surface(self, surface_interface2d_instance: AbstractInterfacesCreator2D = None, surface_interface_method="pile"):
+    def lock_interfaces(self):
+        if np.isnan(self.interfaces_matrix).any():
+            raise ValueError("Interfaces_matrix contains NaN values.")
+        if self.check_if_overlapping_interfaces():
+            raise ValueError("Overlapping interfaces exist. Please use processing at the end if needed.") 
+        if not self.check_if_surface_is_okay():
+            raise ValueError("Surface must have minimum value zero. Use ._adjust_for_top_surface_interface if needed.") 
+        
+        self._locked = True
+    
+    def check_if_surface_is_okay(self):
+        return not np.abs(np.min(self.interfaces_matrix)) <= -1e-2
+        
+    def print(self):
+        """Prints the dimensions of the boundary array and its content."""
+        print(f"N_x_coord (includes 2 extra points at the edges) = {self.interfaces_matrix.shape[0]}, N_interfaces = {self.interfaces_matrix.shape[1]}")
+        print("Interface Matrix (Transposed) \n", self.interfaces_matrix.T) #Transpose as formatted already in x,z. Numpy pretty prints for z,x
+
+    def replace_top_surface(self, surface_interface_instance:"DiscretizedInterfaces2D", method='pile') -> "DiscretizedInterfaces2D":
         """
         Get the interface matrix with surface included.
+        ## scaling factor also replaced.
         """
-        if self.check_if_overlapping_interfaces():
-            raise ValueError("Overlapping interfaces exist. Please use processing at main interface before merging with surface.") 
+        # if self.check_if_overlapping_interfaces():
+        #     raise ValueError("Overlapping interfaces exist. Please use processing at main interface before adding the top surface.") 
         
-        if surface_interface_method not in ['pile', 'erode']:
-            raise ValueError(f"Methods can only be either 'pile' or 'erode'. Provided: {surface_interface_method}")
+        if method not in ['pile', 'erode']:
+            raise ValueError(f"Methods can only be either 'pile' or 'erode'. Provided: {method}")
 
-        if surface_interface2d_instance is None:
-            surface_interface2d_instance = SurfaceInterface2D(self.domain, self.remesh_interp_method, self.rng)
-            surface_interface2d_instance.set_interfaces_matrix(np.zeros_like(self.interfaces_matrix[:,0:1]))
+        if not isinstance(surface_interface_instance, DiscretizedInterfaces2D):
+            raise TypeError("surface_interface_instance must be a DiscretizedInterfaces2D class or its subclass.")
+        
+        if not isinstance(surface_interface_instance, DiscretizedInterfaces2D):
+            raise TypeError("surface_interface_instance must be a DiscretizedInterfaces2D class or its subclass.")
          
-        if not isinstance(surface_interface2d_instance, AbstractInterfacesCreator2D):
-                raise TypeError("surface_interface2d_instance must be a subclass of AbstractInterfacesCreator2D instance, or None (if no interface).")
-              
-        if surface_interface2d_instance.n_interfaces != 1:
-            raise ValueError(f"SurfaceInterfaces2D must have 1 interface only. Provided {surface_interface2d_instance.n_interfaces}")
+        if surface_interface_instance.n_soil_layers != 1:
+            raise ValueError(f"surface_interface_instance must have 1 interface (soil layer) only. Provided {surface_interface_instance.n_soil_layers}")
         
-        if np.min(surface_interface2d_instance.interfaces_matrix)!=0:
-            raise ValueError(f"The surface_interface2d_instance must have the min value of its inteface matrix as 0. Use ._adjust_for_top_surface_interface first if needed.")
+        if np.min(surface_interface_instance.interfaces_matrix)!=0:
+            raise ValueError(f"The surface_interface_instance must have the min value of its inteface matrix as 0. Use ._adjust_for_top_surface_interface first if needed.")
         
-        if self.remesh_interp_method != surface_interface2d_instance.remesh_interp_method:
-            raise ValueError(f"Interpolation methods of this ('{self.remesh_interp_method}') and surfaceInterface2D instance ('{self.remesh_interp_method}') does not match.")
+        if self.remesh_interp_method != surface_interface_instance.remesh_interp_method:
+            raise ValueError(f"Interpolation methods of this ('{self.remesh_interp_method}') and surface_interface_instance ('{surface_interface_instance.remesh_interp_method}') does not match.")
         ## Make sure domains dhs are consistent
         if not (
-            len(self.domain.spans) == len(surface_interface2d_instance.domain.spans)
+            len(self.domain.spans) == len(surface_interface_instance.domain.spans)
             and all(f.is_close(a, b) for a, b in zip(self.domain.spans,
-                                                surface_interface2d_instance.domain.spans))
+                                                surface_interface_instance.domain.spans))
         ):
             raise ValueError(
                 "The domains' spans are not consistent. "
                 f"Lithological domain has spans {self.domain.spans}, "
-                f"while surface interface has {surface_interface2d_instance.domain.spans}"
+                f"while surface interface has {surface_interface_instance.domain.spans}"
             )
             
-        if surface_interface2d_instance.domain != self.domain:
-            surface_interface2d_instance = surface_interface2d_instance.remesh_interface(self.domain.dhs[0], self.domain.dhs[1])
+        if surface_interface_instance.domain != self.domain:
+            surface_interface_instance = surface_interface_instance.remesh_interface(self.domain.dhs[0], self.domain.dhs[1])
         
-        surf_interface_matrix = surface_interface2d_instance.interfaces_matrix
+        surf_interface_matrix = surface_interface_instance.interfaces_matrix
         self_interface_matrix = self.interfaces_matrix
-        n_interfaces = self.n_interfaces + 1
-        new_instance = DiscretizedInterfaces2D(self.domain, n_interfaces, self.remesh_interp_method, self.rng)
+        new_instance = self.clone()
+        
+        
+        ## Adjust the scaling factor and generate_surface
+        new_instance.generate_surface = surface_interface_instance.generate_surface
+        rough_interface_generator_scale = self.rough_interface_generator_scale
+        
+        new_scale = rough_interface_generator_scale.copy()
+        new_scale[0] = surface_interface_instance.rough_interface_generator_scale[0]
+        new_instance.set_rough_interface_generator_scale(new_scale)
         
         ## TODO: To discuss if worth it, or just do single creation and use erode. (Ie no surface distinction)
-        if surface_interface_method == 'erode':
+        if method == 'erode':
             # Preserve the reference_point_x value's 1D profile if not None
             if self._reference_point_x is not None:
-                lock_status = surface_interface2d_instance._locked
+                lock_status = surface_interface_instance._locked
                 # init_zero_val = surface_interface2d_instance.interfaces_matrix[0,0]
-                surface_interface2d_instance._locked = False #Temporary unlock
+                surface_interface_instance._locked = False #Temporary unlock
                 
                 # surface_interface2d_instance.update_interfaces_depth([0], self._reference_point_x)
                 # surf_interface_matrix = surface_interface2d_instance.interfaces_matrix
@@ -131,144 +170,345 @@ class DiscretizedInterfaces2D(AbstractInterfacesCreator2D):
                 #Retrace back
                 # surface_interface2d_instance.update_interfaces_depth([init_zero_val], init_zero_val)
                 # surf_interface_matrix = surface_interface2d_instance.interfaces_matrix
-                surface_interface2d_instance._locked = lock_status
+                surface_interface_instance._locked = lock_status
             
             # Perform eroding            
-            new_interface_matrix = np.concatenate((surf_interface_matrix, self_interface_matrix), axis=1) 
+            new_interface_matrix[:,0] = surf_interface_matrix[:,0]
             
         else: #'pile'
             # Preserve the reference_point_x value's 1D profile if not None
             # 1D profile at all points are preserved when piled. so need for processing for that.
             
             # Perform piling
-            new_interface_matrix = np.concatenate((np.zeros_like(surf_interface_matrix), self_interface_matrix), axis=1) 
-            surf_interface_matrix = np.ones_like(new_interface_matrix)*surf_interface_matrix
-            new_interface_matrix += surf_interface_matrix
+            surf_interface_matrix = np.ones_like(self_interface_matrix)*surf_interface_matrix
+            new_interface_matrix = self_interface_matrix + surf_interface_matrix
             
         # Making the top of the surface_interface the top of the model too.
+        new_instance._locked =False
         new_instance.set_interfaces_matrix(new_interface_matrix)
         new_instance._adjust_for_top_surface_interface()
-        new_instance.processing_interface(prioritize_lower_interface=True)
+        new_instance.processing_interface(simulate_erosion=True)
         new_instance.lock_interfaces()
-        new_instance._surface_included = True
         return new_instance
 
-def generate_interfaces_from_interfaces_settings_dict(domain: DiscretizedDomain2D, n_interfaces:int, interfaces_settings_dict:dict, rng, remesh_interp_method='linear'):
-    """
-    Generate soil and surface interfaces from a settings dictionary.
-    
-    This function creates instances of `DiscretizedInterfaces2D` for soil interfaces and, 
-    optionally, surface interfaces depending on the 'surface_factor'.
-
-    Parameters
-    ----------
-    domain : DiscretizedDomain2D
-        Discretized domain instance describing the model domain.
-    n_interfaces : int
-        Number of soil interfaces to generate.
-    interfaces_settings_dict : dict
-        Dictionary defining interface generation settings.
-        Example format:
-        {
-            'rough_interface_creator_instance':rough_interface_creator_instance: AbstractRoughInterfaceCreator
-            'surface_factor':0.5,                # factor applied to surface interface
-            'interfaces_depths_generation':'random', 
-            'interfaces_depth_reference_point_x':None, 
-            'filter_settings': {
-                'filter_window_length':3, 
-                'filter_polyorder':2,
-            },
-            'processing_settings': {
-                'prioritize_lower_interface': True,
-            }
-        }
-    rng : np.random.Generator
-        Random number generator instance.
-    remesh_interp_method : str, optional
-        Interpolation method for remeshing, by default 'linear'.
-
-    Returns
-    -------
-    soil_interface : DiscretizedInterfaces2D
-        Generated soil interface instance.
-    surface_interface : DiscretizedInterfaces2D or None
-        Generated surface interface instance if surface_factor != 0, else None.
-    
-    """
-    required_keys = ['rough_interface_creator_instance', 'interfaces_depths_generation', 'interfaces_depth_reference_point_x']
-    optional_keys = ['filter_settings', 'processing_settings', 'surface_factor']
-    allowed_keys = set(required_keys + optional_keys)
-
-    # 1. Check for missing required keys
-    missing = set(required_keys) - interfaces_settings_dict.keys()
-    if missing:
-        raise KeyError(f"Missing required keys in interfaces_settings_dict: {missing}")
-
-    # 2. Check for unknown keys
-    unknown = interfaces_settings_dict.keys() - allowed_keys
-    if unknown:
-        raise KeyError(f"Unknown keys in interfaces_settings_dict: {unknown}")
-
-    surface_factor = interfaces_settings_dict.get('surface_factor', 0)
-    
-    # Generate soil interface
-    soil_interface = DiscretizedInterfaces2D(domain, n_interfaces, remesh_interp_method, rng)
-    soil_interface = _get_soil_interface3d_form_dict(soil_interface, interfaces_settings_dict, 1)
-    
-    # Generate surface interface if needed
-    surface_interface = None
-    if surface_factor != 0:
-        interfaces_settings_dict['interfaces_depths_generation'] = 'random' # Random even if anyother settings provided
-        surface_interface = DiscretizedInterfaces2D(domain, 1, remesh_interp_method, rng)
-        surface_interface = _get_soil_interface3d_form_dict(surface_interface, interfaces_settings_dict, surface_factor)
-    
-    return soil_interface, surface_interface
+    def get_surface_and_subsurface_interfaces(self, relative_to_surface=False) -> "DiscretizedInterfaces2D":
+        """
+        Seperate surface interface and return main and surface interface after seperating.
+        Surface interface is the top interface.
+        """
+        if self.n_soil_layers == 1:
+            raise ValueError("Surface interface cannot be seperated, provided the interface class has no soil-soil interfaces. Need at least one to seperate.")
         
-def _get_soil_interface3d_form_dict(raw_interface_instance: AbstractInterfacesCreator2D, interfaces_settings_dict:dict, surface_factor=1):
-    """
-    Configure a DiscretizedInterfaces2D instance from a settings dictionary.
-    
-    Performs the following steps:
-    1. Generate rough interfaces according to generator settings and surface factor.
-    2. Filter interfaces if filter settings are provided.
-    3. Update interface depths using reference points.
-    4. Apply post-processing if specified.
-    5. Lock the interface to prevent further modification.
-
-    Parameters
-    ----------
-    raw_interface_instance : AbstractInterfacesCreator2D
-        Interface instance to configure.
-    interfaces_settings_dict : dict
-        Dictionary containing generator, filter, and processing settings.
-    surface_factor : float, optional
-        Factor to scale the generator settings for surface interfaces, by default 1.
-
-    Returns
-    -------
-    AbstractInterfacesCreator2D
-        Configured and locked interface instance.
-    """
-    filter_settings_dict = interfaces_settings_dict.get('filter_settings', None)
-    processing_settings = interfaces_settings_dict.get('processing_settings', None)
-    
-    #Step 1: Generate Rough Interfaces
-    rough_interface_creator_instance = interfaces_settings_dict['rough_interface_creator_instance']
-    raw_interface_instance.generate_rough_interfaces(rough_interface_creator_instance, surface_scaling_factor=surface_factor)
-    
-    #Step 2: Filter
-    if filter_settings_dict is not None:
-        raw_interface_instance.filtering_interface(**filter_settings_dict)
+        surf_rough = self.rough_interface_generator_scale[0]
+        surface_interface_instance = DiscretizedInterfaces2D(self.domain, 1, generate_surface=True, rough_interface_generator_scale=[surf_rough], remesh_interp_method=self.remesh_interp_method, rng=self.rng)
+        surface_interface_instance.set_interfaces_matrix(self.interfaces_matrix[:,0:1])
         
-    #Step 3: Update Interface Depth
-    zs = raw_interface_instance.get_reference_points_zs(interface_z_references=interfaces_settings_dict['interfaces_depths_generation'])
-    raw_interface_instance.update_interfaces_depth(zs,interfaces_settings_dict['interfaces_depth_reference_point_x'])  # None means get one from
+        new_scale = self.rough_interface_generator_scale.copy()
+        new_scale[0] = 0
+        soil_interface_instance = DiscretizedInterfaces2D(self.domain, self.n_soil_layers, generate_surface=False, rough_interface_generator_scale=new_scale, remesh_interp_method=self.remesh_interp_method, rng=self.rng)
+        new_interface = np.zeros_like(self.interfaces_matrix)
+        
+        if self.n_soil_layers > 1:
+            if relative_to_surface:
+                new_interface[:, 1:] = self.interfaces_matrix[:, 1:] - self.interfaces_matrix[:, :1]
+            else:
+                new_interface[:, 1:] = self.interfaces_matrix[:, 1:]
+
+        soil_interface_instance.set_interfaces_matrix(new_interface)
+
+        if self._locked:
+            soil_interface_instance.lock_interfaces()
+            surface_interface_instance.lock_interfaces()
+            
+        return soil_interface_instance, surface_interface_instance
     
-    # Step 4: Processing
-    if processing_settings is not None:
-        raw_interface_instance.processing_interface(**processing_settings)
+    def set_interfaces_matrix(self, interfaces_matrix: np.ndarray):
+        """
+        Set the interfaces_matrix with a new matrix.
+        
+        Parameters:
+        interfaces_matrix : numpy array: 
+            A NumPy array of the same shape as the existing interfaces_matrix
+        """
+        if self._locked:
+            raise SystemError("This instance is fixed; no modifications allowed.")
+
+        if isinstance(interfaces_matrix, list):
+            interfaces_matrix = np.array(interfaces_matrix, dtype=float)
+
+        if interfaces_matrix.shape != (len(self.domain.get_interface_x_centers), self.n_soil_layers):
+            raise ValueError(f"Matrix shape mismatch. Note: x_centers_interfaces includes all x_centers in domain + 2 edges of x (i.e., 0 and x_span). Expected: {(len(self.domain.get_interface_x_centers), self.n_soil_layers)}. Got {interfaces_matrix.shape}")
+        
+        if np.isnan(interfaces_matrix).any():
+            raise ValueError("Interfaces_matrix contains NaN values.")
+        
+        surface_is_zero = np.allclose(interfaces_matrix[:, 0], 0.0)
+        if not self.generate_surface and not surface_is_zero:
+            raise ValueError("When generate_surface=False, the surface interface must be zero everywhere.")
+
+        self.interfaces_matrix = interfaces_matrix
+
+    def generate_rough_interfaces(self, rough_interface_creator_instance: AbstractRoughInterfaceCreator):
+        """
+        Generates a interface matrix with randomized interface points.
+
+        Parameters:
+        random_generator_option: str
+            Method for random generation of interface. Options: 'uniform', 'normal', 'fbm'.
+
+        rough_interface_creator_instance: AbstractRoughInterfaceCreator
+            RoughInterfaceCreator instance with relevant generator parameters
+
+        surface_scaling_factor:
+            Factor by which magnitude is to be reduced (for surface generation; If intended to have smaller undulations.)
+        """
+        nx, _ = self.interfaces_matrix.shape
+        interfaces_matrix = np.zeros_like(self.interfaces_matrix)
+        dx = self.domain.dhs[0]
+        
+        self.check_rough_interface_generator_scale(self.rough_interface_generator_scale)
+        interfaces_matrix = rough_interface_creator_instance.generate_rough_interfaces(self.rough_interface_generator_scale, nx, dx=dx)
+        self.set_interfaces_matrix(interfaces_matrix)
     
-    # Step 5: Locking
-    raw_interface_instance.lock_interfaces()
+    def filtering_interface(self, filter_window_length=21, filter_polyorder=3):
+        """
+        Applies a Savitzky-Golay filter to smooth the interface.
+
+        Parameters:
+        filter_window_length: int
+            Window size for the filter. If the value is zero, then it means no filtering.
+        filter_polyorder: int
+            Polynomial order for the filter
+        """
+        # interfaces_matrix = np.empty_like(self.interfaces_matrix)
+        # if filter_window_length!=0:
+        #     for i in np.arange(self.n_soil_layers):
+        #         interfaces_matrix[:, i] = scipy.signal.savgol_filter(self.interfaces_matrix[:, i], window_length=filter_window_length, polyorder=filter_polyorder)#, window_length, polyorder
+        # self.set_interfaces_matrix(interfaces_matrix)
+        
+        if filter_window_length!=0:
+            interfaces_matrix = scipy.signal.savgol_filter(self.interfaces_matrix, window_length=filter_window_length, polyorder=filter_polyorder, axis=0)#, window_length, polyorder
+        self.set_interfaces_matrix(interfaces_matrix)
+
+    def get_reference_points_zs(self, method='random'):
+        """
+        Initializes interface points at reference coordinates. 
+        
+        Parameters:
+        method: str 
+            Mode of initialization ('equidistant', 'random')
+
+        """
+        span_z = self.domain.spans[1]
+
+        # Getting the z-values at the reference point.
+        if method == 'equidistant':
+            # Equal thickness at y = 0  eg. [1/4,2/4,3/4] for n_soil_layers = 4
+            reference_points_zs = np.arange(1, self.n_soil_layers) * span_z / self.n_soil_layers
+
+        elif method == 'random':
+            rndm_numbers = self.rng.random(self.n_soil_soil_interfaces)
+            rndm_numbers.sort() ## TODO discuss sort vs random x vs other?
+            reference_points_zs = rndm_numbers * span_z
+
+        else:
+            raise ValueError("method must either 'equidistant' or 'random'")
+
+        return np.concatenate(([0.0], reference_points_zs))
+
+    def update_interfaces_depth(self, reference_points_zs, reference_point_x=None):
+        """
+        Initializes interface points at reference coordinates. Shifting the boundaries' reference points so that they match the values in interface_init_points.
+
+        Parameters:
+        interface_z_references: str or list
+            Mode of initialization ('equidistant', 'random', or numPy array of floats)
+        reference_point_x: float 
+            Reference x-coordinate for initialization. Will save the reference point, in case merged with surface (later).
+            If None, first point in the x_centers.
+
+        """
+        interfaces_matrix = self.interfaces_matrix
+        x_centers = self.domain.get_interface_x_centers
+        reference_points_zs = np.asarray(reference_points_zs, dtype=float)
+        
+        if not np.issubdtype(reference_points_zs.dtype, np.number):
+            raise ValueError("reference_points_zs must contain float values")
+
+        if reference_points_zs.ndim != 1 or len(reference_points_zs)!=self.n_soil_layers:
+            raise ValueError ( f"The provided no of reference points for interfaces ({len(reference_points_zs)}) != provided no of soil layers ({self.n_soil_layers}). Note: Surface interface cannot be given any reference value, so have first element 0.")
+
+        if reference_points_zs[0] != 0:
+            raise ValueError("reference_points_zs must have first element 0. Surface-soil interface is auto adjusted. So, all other references are relative to surface.")
+            
+        if not np.all(np.diff(reference_points_zs) >= 0):
+            raise ValueError(f"reference_points_zs must be monotonically increasing. Provided {reference_points_zs}")
     
-    return raw_interface_instance       
+        # Locate reference point in grid
+        if reference_point_x is None: 
+            ref_idx = 0 ## TODO: Randomize here??
+            reference_point_x = x_centers[ref_idx]
+        elif not isinstance(reference_point_x, (int, float)):
+            raise ValueError("reference_point_x must be a number")
+        elif reference_point_x < x_centers[0] or reference_point_x > x_centers[-1]:   
+            edge = x_centers[0] if reference_point_x < x_centers[0] else x_centers[-1]
+            # warn if reference point is not on grid point
+            msg = f"Requested position ({reference_point_x:.3f}) out of domain bound. "
+            msg += f"Hence, setting to closest edge/bound ({edge:.3f})."
+            warnings.warn(msg)
+            reference_point_x = edge
+
+        zs = range(self.n_soil_layers)
+        
+        if self.interfaces_matrix.shape[1] != 0:
+            interp_ref_zs = f.remeshing_2D_matrix(x_old = x_centers, x_new = [reference_point_x],
+                                                z_old = zs, z_new = zs, matrix_2d = self.interfaces_matrix, interp_method = self.remesh_interp_method)
+
+
+            # computing the shift
+            reference_points_zs+=interp_ref_zs[0,0]
+            shift_z = reference_points_zs - interp_ref_zs[0,:]  
+            shift_matrix = np.ones_like(interfaces_matrix) * shift_z[np.newaxis]
+            interfaces_matrix += shift_matrix
+        self.set_interfaces_matrix(interfaces_matrix)
+        self._reference_point_x = reference_point_x
+
+    def processing_interface(self, simulate_erosion=True):#, trim_interfaces=False):
+        """
+        Processes boundaries to prevent overlapping and limit values.
+        
+        simulate_erosion: Boolean flag to determine priority in overlapping layers. If true, implies natural erosion (i.e. priortize lower interface).
+        
+        For surface interface, it will be priortized
+        """
+        #b_line_filtered_dict, zlim, top_priority=True):
+        # Process 1: Limiting the boundaries to 0 and zlim, if trim_interfaces
+        # Process 2: Interface crossing handling - Currently, priority given to lower interface (v3: option to reverse the priority)
+        b_array = self.interfaces_matrix[:, 1:]
+        
+        if not simulate_erosion:
+            for i in np.arange(b_array.shape[-1]-2, -1, -1):
+                b_array[:, i] = np.minimum(b_array[:, i], b_array[:, i+1])
+        
+        b_array = self.interfaces_matrix
+        for i in np.arange(1, b_array.shape[-1]):
+            b_array[:, i] = np.maximum(b_array[:, i], b_array[:, i-1])
+        # if trim_interfaces:
+        #     trim_z = self.domain.spans[1]
+        # else:
+        #     trim_z = max(self.interfaces_matrix)
+            
+        # b_array=np.clip(b_array, 0, trim_z) #clip between 0 and trim_z           
+        self.set_interfaces_matrix(b_array)
+    
+    def check_if_overlapping_interfaces(self):
+        return np.sum(np.diff(self.interfaces_matrix)<0) > 0
+    
+    def _adjust_for_top_surface_interface(self):
+        interfaces_matrix = self.interfaces_matrix
+        top_interface = interfaces_matrix[:,0]
+        top_depth = np.min(top_interface)
+        
+        # computing the shift
+        shift_matrix = np.full_like(interfaces_matrix, -top_depth) 
+        interfaces_matrix+=shift_matrix
+        if np.abs(np.min(interfaces_matrix)) <= -1e-2:
+            raise SyntaxError("The minimum should have been greater than 0.")
+        self.set_interfaces_matrix(interfaces_matrix) 
+     
+    def plot(self, ax=None, plot_extents=True, **kwargs):
+        if ax is None:
+            fig, ax = plt.subplots(figsize=[8,8])
+
+        n_soil_layers = self.n_soil_layers
+        x_ranges = self.domain.get_interface_x_centers
+        span_z = self.domain.spans[1]
+        span_x = self.domain.spans[0]
+        
+        remesh_tech = self.remesh_interp_method
+        if remesh_tech == 'nearest':
+            drawstyle = 'steps-mid'
+        elif remesh_tech == 'linear':
+            drawstyle = 'default'
+        else:
+            warnings.warn(f"Interfaces might not reflect the exact interpolation in the plots except for 'linear' and 'nearest'. Provided {remesh_tech}.")
+        
+        
+        for i in np.arange(n_soil_layers-1, -1, -1):
+            if i == 0:
+                linestyle = '--'
+            else:
+                linestyle = '-'
+            ax.plot(self.domain.get_interface_x_centers,
+                    self.interfaces_matrix[:, i],label=i,
+                    linestyle=linestyle,
+                    drawstyle=drawstyle,
+                    **kwargs,
+                   # color=color_code[i],
+                   )
+
+        if plot_extents:
+            ax.plot([0,span_x], [0,0], 'k--',[0,span_x], [span_z, span_z],'k--')
+        ax.set(ylim=[span_z, 0],
+               xlim=[self.domain.get_interface_x_centers[0],self.domain.get_interface_x_centers[-1]],
+               xlabel='Distance',
+               ylabel='Depth',
+               )
+        ax.axis('scaled')
+        return ax
+
+    def clone(self):
+        """
+        Create a shallow clone of this object, copying all attributes
+        except ones explicitly remeshed later.
+        """
+        new = object.__new__(self.__class__)
+        new.__dict__ = self.__dict__.copy()
+        return new
+
+    def remesh_interface(self, new_dx, new_dz=None):
+        """
+        Returns a **new instance** of this interface class with remeshed coordinates,
+        without modifying self.
+
+        Parameters:
+        new_dx, new_dz: float
+            Refined spacing
+        """
+        
+        if new_dz is None:
+            new_dz = self.domain.dhs[1]
+        
+        new = self.clone()
+        new_domain = self.domain.remesh(new_dx, new_dz)
+        new.domain = new_domain
+        
+        if self.n_soil_layers != 0:
+            zs = range(self.n_soil_layers)
+            new_interfaces = f.remeshing_2D_matrix(
+                x_old=self.domain.get_interface_x_centers,
+                x_new=new_domain.get_interface_x_centers,
+                z_old=zs,
+                z_new=zs,
+                matrix_2d=self.interfaces_matrix,
+                interp_method=self.remesh_interp_method
+            )
+            # new_instance.set_interfaces_matrix(new_interfaces)
+            new.interfaces_matrix = new_interfaces
+            
+            # Possible issue of crisscross after remeshing on some rare conditions.
+            if new._locked:
+                if new.check_if_overlapping_interfaces:
+                    new._locked = False
+                    new.processing_interface()
+                    new.lock_interfaces()
+                    warnings.warn("Overlapping interfaces found after remesh; Applied default erosion processing at the edges to correct them. This should not affect most models.")
+        else:
+            new.interfaces_matrix = self.interfaces_matrix.copy()
+            
+        # if self._locked:
+        #     new.lock_interfaces()
+        return new
+
+
+    
