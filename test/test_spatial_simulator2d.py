@@ -1,7 +1,8 @@
 from geomodgen2d.features_config import FeaturesConfig
 import numpy as np
 from testing_tools import unittest, TestCase
-from geomodgen2d.spatial_simulator2d import CovarianceDecompositionSimulator, ConstantSimulator, SpatialSimulator2D, validate_processed_property_dict, check_for_zero_sigma
+from geomodgen2d.spatial_simulator2d import CovarianceDecompositionSimulator, ConstantSimulator, SpatialSimulator2D, check_for_zero_sigma
+from geomodgen2d.general_functions import validate_processed_property_dict
 
 class TestSpatialSimulator2D(TestCase):
     
@@ -11,7 +12,7 @@ class TestSpatialSimulator2D(TestCase):
     
     def test_constant_simulator_output(self):
         cs = ConstantSimulator(self.rng)
-        expected = 5 + 2 * self.points[:, 0]
+        expected = 5 + 2 * self.points[:, 1]
         result = cs.simulate(self.points, mean=[5, 2])
         self.assertArrayEqual(result, expected)
 
@@ -28,7 +29,7 @@ class TestSpatialSimulator2D(TestCase):
     def test_covariance_decomposition_sigma_zero(self):
         cov_sim = CovarianceDecompositionSimulator(theta_x=1.0, theta_z=1.0, rng=self.rng)
         result = cov_sim.simulate(self.points, mean=[3, 2], sigma=0)
-        expected = 3 + 2 * self.points[:, 0]
+        expected = 3 + 2 * self.points[:, 1]
         self.assertArrayEqual(result, expected)
         
     def test_reproducibility_with_seed(self):

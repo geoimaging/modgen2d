@@ -110,7 +110,7 @@ class GeneratedModel2D:
 
     def plot_profile(self, main_property_name, ax=None, discrete_point_size=0, plot_gwt = True,
                vlog = False, vmin=None, vmax=None, cmap='gist_earth_r', 
-               title = 'auto', legend = True, legend_label = None):
+               title = 'auto', legend = True, legend_label = None, legendkwargs_dict={}):
         """
         Plots a 2D section of the layered matrix.
 
@@ -164,8 +164,15 @@ class GeneratedModel2D:
             ax.set_title(f"Main_property_name:{main_property_name}")
         
         # Colorbar
+        # if legendkwargs_dict is None:
+        #     legendkwargs_dict = {
+        #         'shrink':0.6,
+        #         'aspect':20,
+        #         'pad':0.1
+        #     }
+        
         if legend:
-            cbar = plt.colorbar(cax, ax=ax, shrink=0.6, aspect=20, pad=0.1)
+            cbar = plt.colorbar(cax, ax=ax, **legendkwargs_dict)
             cbar.set_label(legend_label)
         
         ax.axis('scaled')

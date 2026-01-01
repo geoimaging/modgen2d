@@ -214,7 +214,7 @@ class SpatialSimulator2D(ABC):
             if layer_id in ignore_lithological_ids:
                 
                 mask = (layer_mat == layer_id)
-                mean_matrix[mask]    = 1
+                mean_matrix[mask]    = simulated_val_for_ignored_lit_property
                 mean_bm_matrix[mask] = 0
                 stdev_matrix[mask]   = 0
 

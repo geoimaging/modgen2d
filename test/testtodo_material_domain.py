@@ -7,6 +7,7 @@ from geomodgen2d.lithological_domain2d import LithologicalDomain2D, Lithological
 from geomodgen2d.generated_model2d import GeneratedModel2D
 from unittest.mock import MagicMock, patch
 
+## Most near to model_collection
 class TestMaterialDomain2DReadOnly(unittest.TestCase):
 
     def setUp(self):

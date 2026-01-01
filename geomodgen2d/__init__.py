@@ -9,7 +9,7 @@ from .metadata import __version__
 
 # Core modules
 from . import discretized_domain2d
-from . import discretized_interfaces2d
+from . import discretized_interfaces2d_from_dict
 from . import features_config
 from . import generated_model2d_collection
 from . import lithological_domain2d
@@ -25,7 +25,7 @@ from . import units_config
 # Optional: control what gets imported when using 'from geomodgen2d import *'
 __all__ = [
     "discretized_domain2d",
-    "discretized_interfaces2d",
+    "discretized_interfaces2d_from_dict",
     "features_config",
     "generated_model2d_collection",
     "lithological_domain2d",
