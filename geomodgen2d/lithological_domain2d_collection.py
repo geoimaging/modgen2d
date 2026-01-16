@@ -1,6 +1,7 @@
 import numpy as np
 import geomodgen2d.general_functions as f
-from geomodgen2d.lithological_domain2d import GlobalSoilInterfaceConfig, LithologicalDomain2DReadOnly, LithologicalDomain2D, LithologicalDomain2DFromObstruction2D
+from geomodgen2d.lithological_domain2d import LithologicalDomain2DReadOnly, LithologicalDomain2D, LithologicalDomain2DFromObstruction2D
+from geomodgen2d.global_soil_interface_config import GlobalSoilInterfaceConfig
 from geomodgen2d.generated_model2d import GeneratedModel2D
 
 class LithologicalDomain2DCollection:
@@ -17,7 +18,7 @@ class LithologicalDomain2DCollection:
         self._gwt_depth = None
         
         self._lit_domain_set = {}
-        self._merged_lit_domain = {}
+        self._merged_lit_domain = None
         self._invalid_set_names = ['merged', '']
         
         self._all_lit_ids = {}
@@ -49,7 +50,7 @@ class LithologicalDomain2DCollection:
     def unlock(self, delete_all_sets=False):
         if self._read_only:
             raise ValueError("This class is ReadOnly. Hence, cannot be unlocked.")
-        self._merge = {}
+        self._merged_lit_domain = None
         
         if delete_all_sets:
             self._lit_domain_set = {}
@@ -314,4 +315,74 @@ class LithologicalDomain2DCollection:
         self._locked = True
         #self.check()
 
+    @property
+    def get_config(self):
+        self_config = {}
+        self_config['_all_lit_ids'] = self._all_lit_ids
+        self_config['_gwt_depth'] = self._gwt_depth
+        self_config['_invalid_set_names'] = self._invalid_set_names
+
+        self_config['_lit_domain_set'] = {}
+        for key, val in self._lit_domain_set.items():
+            self_config['_lit_domain_set'][key] = val.get_config
+            
+        self_config['_lit_id2material_dict'] = self._lit_id2material_dict
+        self_config['_locked'] = self._locked
+        self_config['_merged_lit_domain'] = self._merged_lit_domain.get_config
+        self_config['_unique_code'] = self._unique_code
+        self_config['interface_config_revision_id'] = self.interface_config_revision_id
+        self_config['interface_set_name'] = self.interface_set_name
+        self_config['valid_feature_ids'] = self.valid_feature_ids
+        return self_config
+
+    @classmethod
+    def from_config(cls, config_dict):
+        if not isinstance(config_dict, dict):
+            raise TypeError("Expected a dictionary.")
+        try:
+            obj = cls.__new__(cls) 
+            
+            obj._all_lit_ids = config_dict['_all_lit_ids']
+            obj._gwt_depth = config_dict['_gwt_depth']
+            obj._invalid_set_names = config_dict['_invalid_set_names']
+            
+            obj._lit_domain_set = {}
+            for key, val in config_dict['_lit_domain_set'].items():
+                lm_type = val['lm_type']
+                if lm_type.startswith("from_interface_config"):
+                    obj._lit_domain_set[key] = LithologicalDomain2D.from_config(val)
+                else:
+                    obj._lit_domain_set[key] = LithologicalDomain2DFromObstruction2D.from_config(val)
+                            
+            obj._lit_id2material_dict = config_dict['_lit_id2material_dict']
+            obj._locked = config_dict['_locked']
+            
+            if config_dict['_merged_lit_domain'] is None:
+                obj._merged_lit_domain = config_dict['_merged_lit_domain']
+            else:
+                obj._merged_lit_domain = LithologicalDomain2D.from_config(config_dict['_merged_lit_domain'])
+                
+            obj._unique_code = config_dict['_unique_code']
+
+            obj.interface_config_revision_id = config_dict['interface_config_revision_id']
+            obj.interface_set_name = config_dict['interface_set_name']
+            obj.valid_feature_ids = config_dict['valid_feature_ids']
+            return obj
+
+        except (KeyError, TypeError) as e:
+            raise ValueError(f"Invalid config dictionary: {e}")
+        
+    def __eq__(self, other):
+        if not isinstance(other, LithologicalDomain2DCollection):
+            return NotImplemented
+        
+        # units_check = self.units_config == other.units_config
+        # spans_check = np.allclose(self._spans_in_domain_len_units, other._spans_in_domain_len_units)
+        # dhs_check = np.allclose(self._dhs_in_domain_len_units, other._dhs_in_domain_len_units)
+        # return (
+        #     units_check
+        #     and spans_check
+        #     and dhs_check
+        # )
+        
 #GWT Handling in modelgenerator remaining

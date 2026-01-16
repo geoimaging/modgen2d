@@ -20,10 +20,11 @@ import warnings
 # from IPython.display import clear_output
 import numpy as np
 import geomodgen2d.general_functions as f
-from geomodgen2d.spatial_simulator2d import SpatialSimulator2D
+from geomodgen2d.spatial_simulator2d import CovarianceDecompositionSimulator, SpatialSimulator2D    
 from geomodgen2d.generated_model2d import GeneratedModel2D
 from geomodgen2d.lithological_domain2d_collection import LithologicalDomain2DCollection
 from geomodgen2d.main_properties import MainPropertiesConfig
+from geomodgen2d.global_soil_interface_config import GlobalSoilInterfaceConfig
 
 class GeneratedProfileCollection2DReadOnly:
     def __init__(self, main_properties_config_instance: MainPropertiesConfig, lithological_domain2d_collection: LithologicalDomain2DCollection, spatial_simulator2d_instance:SpatialSimulator2D):
@@ -69,6 +70,9 @@ class GeneratedProfileCollection2DReadOnly:
     def spatial_simulator2d_instance(self):
         return self._spatial_simulator2d_instance
 
+    def change_spatial_simulator_type(self, new_simulator_class):
+        self._spatial_simulator2d_instance.change_spatial_simulator_type(new_simulator_class)
+        
     @property
     def main_properties_unique_code(self):
         return self._main_properties_unique_code
@@ -105,61 +109,135 @@ class GeneratedProfileCollection2DReadOnly:
     #     if not self.material_domain2d_instance._locked:
     #         raise ValueError("material domain2d instance has been unlocked. Redefine this class with locked one.")
 
-    #TODO
-    def save_to_hdf5(self, file_name, save_boundary_creator=False, save_lithological_domain=True):
+    @property
+    def get_config(self):
+        self_config = {}
+        self_config['properties_metadata'] = {}
+        self_config['properties_metadata']['_lit_id2material_dict'] = self._lit_id2material_dict
+        self_config['properties_metadata']['_sampled_properties'] = self._sampled_properties
+        self_config['properties_metadata']['_main_properties_unique_code'] = self._main_properties_unique_code
+        self_config['properties_metadata']['_generated_properties_list'] = self._generated_properties_list
+        self_config['_spatial_simulator2d_instance'] = self._spatial_simulator2d_instance.get_config
+        
+        self_config['_generated_model2d_set'] = {}
+        for key, val in self._generated_model2d_set.items():
+            self_config['_generated_model2d_set'][key] = val.get_config
+        
+        self_config['_merged_generated_model2d']=None
+        if self._merged_generated_model2d is not None:
+            self_config['_merged_generated_model2d']=self._merged_generated_model2d.get_config
+        
+        return self_config
+    
+    @classmethod
+    def from_config(cls, config_dict):
+        if not isinstance(config_dict, dict):
+            raise TypeError("Expected a dictionary.")
+        # try:
+        obj = cls.__new__(cls) 
+        obj._generated_properties_list = config_dict['properties_metadata']['_generated_properties_list']
+        obj._lit_id2material_dict = config_dict['properties_metadata']['_lit_id2material_dict']
+        obj._main_properties_unique_code = config_dict['properties_metadata']['_main_properties_unique_code']
+        obj._sampled_properties = config_dict['properties_metadata']['_sampled_properties']
+        obj._spatial_simulator2d_instance = CovarianceDecompositionSimulator.from_config(config_dict['_spatial_simulator2d_instance'])
+
+        expected = CovarianceDecompositionSimulator.__name__
+        actual = config_dict['_spatial_simulator2d_instance']['simulator_type_name']
+        if expected != actual:
+            warnings.warn(f"Loaded GeneratedProfileCollection2D have mismatched spatial simulator. Use .change_spatial_simulator_type({expected})",
+            RuntimeWarning
+        )
+        
+        obj._generated_model2d_set = {}
+        for key, val in config_dict['_generated_model2d_set'].items():
+            obj._generated_model2d_set[key] = GeneratedModel2D.from_config(val)
+        
+        if config_dict['_merged_generated_model2d'] is None:
+            obj._merged_generated_model2d = config_dict['_merged_generated_model2d']
+        else:
+            obj._merged_generated_model2d = GeneratedModel2D.from_config(config_dict['_merged_generated_model2d'])
+        return obj
+
+    def save_to_hdf5(self, file_name, hdf5_compression_level=0):
         with h5py.File(file_name, 'w') as hf:
-            # Save boundary_creator
-            if save_boundary_creator:
-                boundary_class = self.material_domain_instance.lithological_domain3D_class.boundary_class
-                if boundary_class is None:
-                    print("Warning. Boundary class is None in internal boundary class location. Generatedprofiles2D>MaterialDomain>LithologicalDomain3d>BoundaryCreator. So skipping.")
-                else:
-                    boundary_creator_group = hf.create_group("boundary_creator")
-                    boundary_creator_group.create_dataset("x_ranges", data=boundary_class.x_ranges)
-                    boundary_creator_group.create_dataset("y_ranges", data=boundary_class.y_ranges)
-                    boundary_creator_group.create_dataset("z_ranges", data=boundary_class.z_ranges)
-                    boundary_creator_group.create_dataset("n_layers", data=boundary_class.n_layers)
-                    boundary_creator_group.create_dataset("b_array", data=boundary_class.boundary_array)
+            global_interface_group = hf.create_group("global_interface_config")
+            state_dict = GlobalSoilInterfaceConfig.get_config
+            save_dict_to_hdf5(state_dict, global_interface_group, compression_level=hdf5_compression_level)
             
-            # save_lithological_domain?
+            gmodel2d_coll_group = hf.create_group("gen_model_2d_collection")
+            state_dict = self.get_config
+            save_dict_to_hdf5(state_dict, gmodel2d_coll_group, compression_level=hdf5_compression_level)
+        print(f"Data saved to {file_name}")
+        
+    def save_to_hdf5_read_only(self, file_name, save_merged_only=True, save_interface=False, hdf5_compression_level=0):
+        with h5py.File(file_name, 'w') as hf:
+            if save_interface:
+                global_interface_group = hf.create_group("global_interface_config")
+                state_dict = GlobalSoilInterfaceConfig.get_config
+                save_dict_to_hdf5(state_dict, global_interface_group, compression_level=hdf5_compression_level)
+            
+            gmodel2d_coll_group = hf.create_group("gen_model_2d_collection")
+            state_dict = self.get_config.copy()
+            if save_merged_only:
+                state_dict.pop('_generated_model2d_set', None)
+            save_dict_to_hdf5(state_dict, gmodel2d_coll_group, compression_level=hdf5_compression_level)
+        print(f"Data saved to {file_name}")
+        
+    def save_to_hdf5_numpy(self, file_name, save_merged_only=True, save_interface=False, save_lithological_domain=False, save_properties_metadata=False, hdf5_compression_level=0):
+        with h5py.File(file_name, 'w') as hf:
+            if save_interface:
+                state_dict = GlobalSoilInterfaceConfig.get_config
+                to_save_dict = {
+                    'interfaces_matrix': state_dict['_discretized_interface2d_instance']['interfaces_matrix']
+                }
+                save_dict_to_hdf5(to_save_dict, hf, compression_level=hdf5_compression_level)
+            
+            gmodel2d_coll_group = hf.create_group("gen_model_2d_collection")
+            state_dict = self.get_config
+            if save_properties_metadata:
+                properties_metadata = {
+                    'properties_metadata':{'_lit_id2material_dict': state_dict['properties_metadata']['_lit_id2material_dict'],
+                                           '_sampled_properties': state_dict['properties_metadata']['_sampled_properties']
+                                           }
+                }
+                save_dict_to_hdf5(properties_metadata, gmodel2d_coll_group, compression_level=hdf5_compression_level)
+                
+            dict_group = gmodel2d_coll_group.create_group("_merged_generated_model2d")
+            
+            merged_generated_model2d_dict = {
+                'properties_metadata': state_dict['_merged_generated_model2d']['properties_metadata'],
+                'lit_domain': state_dict['_merged_generated_model2d']['lit_domain'],
+                'simulated_profiles': state_dict['_merged_generated_model2d']['simulated_profiles'],
+            }
+            
+            if not save_properties_metadata:
+                merged_generated_model2d_dict.pop('properties_metadata')
+            
             if save_lithological_domain:
-                lit_domain_class = self.material_domain_instance.lithological_domain3D_class
-                lithological_domain_group = hf.create_group("lithological_domain")
-                lithological_domain_group.create_dataset("x_ranges", data=lit_domain_class.x_ranges)
-                lithological_domain_group.create_dataset("y_ranges", data=lit_domain_class.y_ranges)
-                lithological_domain_group.create_dataset("z_ranges", data=lit_domain_class.z_ranges)
-                lithological_domain_group.create_dataset("name", data=lit_domain_class.name)
-                if lit_domain_class.gwt_depth is not None:
-                    lithological_domain_group.create_dataset("gwt_depth", data=lit_domain_class.gwt_depth)
-                s1 = convert_string_array_for_hdf5(self.lithological_domain3d_matrix)
-                lithological_domain_group.create_dataset("layered_matrix", data=s1,
-                                                        dtype=h5py.string_dtype(encoding='utf-8'))
-                lithological_domain_group.create_dataset("lm_type", data=lit_domain_class.lm_type)
-                lithological_domain_group.create_dataset("n_layers", data=lit_domain_class.n_layers)
-                lithological_domain_group.create_dataset("overlap", data=lit_domain_class.overlap)
-                lithological_domain_group.create_dataset("check", data=lit_domain_class.utils_description) 
-                # lithological_domain_group.create_dataset("desc", data=lit_domain_class.utils_description)  # Dont know why, but this is not being saved. rather no addn being saved. so for now using check for utils_desc.
-                lithological_domain_group.create_dataset("added_prefix", data=lit_domain_class.utils_description)
-                print(lit_domain_class.utils_description)
-                
-            # save_materialDomain and save_generated_profiles
-            self_group = hf.create_group("generated_profiles")
-            self_group.create_dataset("x_ranges", data=self.x_ranges)
-            self_group.create_dataset("y_ranges", data=self.y_ranges)
-            self_group.create_dataset("z_ranges", data=self.z_ranges)
-            lit_id2material_dict_group = self_group.create_group("lit_id2material_dict")
-            for key, vals in self.lit_id2material_dict.items():
-                lit_id2material_dict_group.create_dataset(key, data=convert_string_array_for_hdf5(vals))
+                merged_generated_model2d_dict.pop('lit_domain')
 
-            sampled_properties_group = self_group.create_group("sampled_properties")
-            save_dict_to_hdf5(self.sampled_properties, sampled_properties_group)
-            self_group.create_dataset('lithological_domain3d_matrix', data = convert_string_array_for_hdf5(self.lithological_domain3d_matrix), dtype=h5py.string_dtype(encoding='utf-8'))
-            if self.gwt_depth is not None:
-                self_group.create_dataset('gwt_depth', data=self.gwt_depth)
-
-            all_generated_profiles_group = self_group.create_group("all_generated_profiles")
-            save_dict_to_hdf5(self.all_generated_profiles, all_generated_profiles_group)
+            save_dict_to_hdf5(merged_generated_model2d_dict, dict_group, compression_level=hdf5_compression_level)
                 
+            if not save_merged_only:
+                dict3_group = gmodel2d_coll_group.create_group("_generated_model2d_set")
+                state_dict = state_dict['_generated_model2d_set']
+                
+                for keys, values in state_dict.items():
+                    dict_group = dict3_group.create_group(keys)
+                    
+                    merged_generated_model2d_dict = {
+                        'properties_metadata': state_dict[keys]['properties_metadata'],
+                        'lit_domain': state_dict[keys]['lit_domain'],
+                        'simulated_profiles': state_dict[keys]['simulated_profiles'],
+                    }
+                    
+                    if not save_properties_metadata:
+                        merged_generated_model2d_dict.pop('properties_metadata')
+                    
+                    if save_lithological_domain:
+                        merged_generated_model2d_dict.pop('lit_domain')
+                    
+                    save_dict_to_hdf5(merged_generated_model2d_dict, dict_group, compression_level=hdf5_compression_level)
         print(f"Data saved to {file_name}")
         
 class GeneratedProfileCollection2D(GeneratedProfileCollection2DReadOnly):
@@ -376,16 +454,62 @@ class GeneratedProfileCollection2D(GeneratedProfileCollection2DReadOnly):
         self._all_generated_profiles[main_property_name] = simulated_profile
     # save_generated_profiles
         
-def save_dict_to_hdf5(d, parent_group):
+def save_dict_to_hdf5(d, parent_group, compression_level=0):
+    """
+    Recursively saves a dictionary to an HDF5 group, with optional compression.
+
+    Args:
+        d (dict): Dictionary to save.
+        parent_group (h5py.Group): HDF5 group to save into.
+        compression_level (int): GZIP compression level (0–9). 0 disables compression.
+    """
     for key, value in d.items():
         if isinstance(value, dict):
             # Create a subgroup for nested dictionaries
             group = parent_group.create_group(key)
-            save_dict_to_hdf5(value, group)
+            save_dict_to_hdf5(value, group, compression_level)
         else:
+            if value is None:
+                value = '__None__'
             # Save the value as a dataset
-            parent_group.create_dataset(key, data=value)
+            # if key == 'lithological_matrix':
+            #     value = convert_string_array_for_hdf5(value)
+            #     dtype=h5py.string_dtype(encoding='utf-8')
+            elif key in ("state", "inc") and not isinstance(value, dict):
+                value=str(value)
+                dtype=h5py.string_dtype("utf-8")
+            else:
+                dtype = None
+            
+            # Detect if value is array-like
+            is_array = isinstance(value, (np.ndarray, list, tuple))
+                                
+            try:
+                if is_array:
+                    # Convert lists/tuples to np.ndarray
+                    value_arr = np.array(value) if not isinstance(value, np.ndarray) else value
+                    
+                    if value_arr.dtype.kind in {"U", "S", "O"}:
+                        dtype = h5py.string_dtype("utf-8")
+                        value_arr = value_arr.astype(str)
+                        
+                    if value_arr.dtype.kind == "U":
+                        value_arr = convert_string_array_for_hdf5(value_arr)
+                        dtype = None  # bytes dtype inferred automatically
+
+                        
+                    if compression_level == 0:
+                        parent_group.create_dataset(key, data=value_arr, dtype=dtype)
+                    else:
+                        parent_group.create_dataset(key, data=value_arr, dtype=dtype,
+                                                    compression='gzip',
+                                                    compression_opts=compression_level)
+                else:
+                    # Scalar values: no compression
+                    parent_group.create_dataset(key, data=value)
+            except TypeError as e:
+                print(f"Warning: Could not save key '{key}' with value type {type(value)}. Error: {e}")
 
 def convert_string_array_for_hdf5(string_array):
-    return np.array([s.encode('utf-8') for s in np.array(string_array).flatten()])#, np.array(string_array.shape)
-
+    shape = np.array(string_array).shape
+    return np.array([s.encode('utf-8') for s in np.array(string_array).flatten()]).reshape(shape)#, np.array(string_array.shape)

@@ -1,8 +1,10 @@
+__all__ = ['DiscretizedDomain2D']
+
 import numpy as np
-from geomodgen2d.units_config import Units
+from .units_config import Units
 
 class DiscretizedDomain2D():
-    def __init__(self, span_x: float, span_z: float, dx: float, dz: float, units_config:Units = None):
+    def __init__(self, span_x: float, span_z: float, dx: float, dz: float, units_config = None):
         """
         Two-dimensional (2D) domain that has been discretized into rectangular elements.
         
@@ -175,7 +177,6 @@ class DiscretizedDomain2D():
         try:
             spans = config_dict['spans_xz']
             dhs = config_dict['dhs_xz']
-            print(config_dict['units_config'])
             units_config = Units.from_config(config_dict['units_config'])
             return cls(*spans, *dhs, units_config)
         except (KeyError, TypeError) as e:

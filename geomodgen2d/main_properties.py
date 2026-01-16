@@ -145,7 +145,7 @@ class MainPropertiesConfig:
                 if id_ == '0':
                     mat_type = 'layer0'
                     
-                id2material_dict[id_] = [feature_id, mat_type]
+                id2material_dict[id_] = np.array([feature_id, mat_type])
                 
         self._lit_id2material_dict = id2material_dict
         # for set_name in self.generated_model_set.keys():

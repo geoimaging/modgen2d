@@ -52,6 +52,26 @@ class SpatialSimulator2D(ABC):
         """
         pass
     
+    def change_spatial_simulator_type(self, new_simulator_class):
+        if not issubclass(new_simulator_class, SpatialSimulator2D):
+            raise TypeError(
+                f"{new_simulator_class.__name__} is not a SpatialSimulator2D"
+            )
+
+        # clone RNG deterministically
+        rng = np.random.default_rng()
+        rng.bit_generator.state = self.rng.bit_generator.state
+
+        # bypass __init__
+        obj = new_simulator_class.__new__(new_simulator_class)
+
+        # copy common state
+        obj.theta_x = self.theta_x
+        obj.theta_z = self.theta_z
+        obj.rng = rng
+
+        return obj
+    
     def simulate_zvals_lit_profile_from_lithological_domain(self, lithologicalDomain_class:LithologicalDomain2D, gwt_depth=None, 
                                                         generate_non_spatial_profile=False, 
                                                         ignore_lithological_ids=['X'], simulated_val_for_ignored_lit_property=-99999):
@@ -376,6 +396,43 @@ class SpatialSimulator2D(ABC):
             raise TypeError("points array must contain only numeric values (int or float).")
 
         return pts
+    
+    @property
+    def get_config(self):
+        return {
+            'theta_x': self.theta_x,
+            'theta_z':self.theta_z,
+            'rng_state':self.rng.bit_generator.state,
+            'simulator_type_name':self.__class__.__name__
+        }
+        
+    @classmethod
+    def from_config(cls, config_dict):
+        if not isinstance(config_dict, dict):
+            raise TypeError("Expected a dictionary.")
+        try:
+            theta_x, theta_z = config_dict['theta_x'], config_dict['theta_z']
+            rng = np.random.default_rng()
+            rng.bit_generator.state = config_dict['rng_state']
+            obj = cls.__new__(cls) #Note cannot be used with ABC but works with any subclasses.
+            obj.theta_x = theta_x
+            obj.theta_z = theta_z
+            obj.rng = rng
+            
+            expected = cls.__name__
+            actual = config_dict.get('simulator_type_name')
+            if obj.__class__.__name__ != config_dict['simulator_type_name']:
+                warnings.warn(f"Loading simulator as '{expected}' but config was saved from '{actual}'. Use  .change_spatial_simulator_type({actual})",
+                RuntimeWarning
+            )
+            
+            return obj
+        
+        except (KeyError, TypeError) as e:
+            raise ValueError(f"Invalid config dictionary: {e}")   
+        
+        # fOR EQUAL CHECK.. CHECK THE TYPE TOO.
+        # FOR LATER SAVE; CHANGE TYPE IF NEEDED.
         
 class ConstantSimulator(SpatialSimulator2D):
     def __init__(self, rng):
@@ -392,6 +449,7 @@ class ConstantSimulator(SpatialSimulator2D):
 class CovarianceDecompositionSimulator(SpatialSimulator2D):
     def __init__(self, theta_x, theta_z, rng):
         super().__init__(theta_x, theta_z, rng)
+        self.default_simulator_type=True  #To use in loading gen_model_collection from config, so dont use True for any other case.
     
     def compute_correlation_matrix(self, points):
         """

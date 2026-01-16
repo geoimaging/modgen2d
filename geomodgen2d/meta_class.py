@@ -47,3 +47,7 @@ def _internal_classmethod(method):
             cls._allow_internal_write = prev_write
             cls._allow_internal_access = prev_access
     return classmethod(wrapper)
+        
+class classproperty(property):
+    def __get__(self, obj, cls):
+        return self.fget(cls)
