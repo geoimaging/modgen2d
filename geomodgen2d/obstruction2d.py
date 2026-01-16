@@ -194,6 +194,37 @@ class _Obstruction2DFunctions:
             
         return np.array(ref_xz_in_unit_length)
     
+    @property
+    def get_config(self):
+        self_config = {}
+        self_config['center_in_unit_length'] = self.center_in_unit_length
+        self_config['dl'] = self.dl
+        self_config['grid2d'] = self.grid2d
+        self_config['ref_xz_override'] = self.ref_xz_override
+        self_config['ref_xz_symbolic'] = self.ref_xz_symbolic
+        self_config['description'] = self.description
+        self_config['shape'] = self.shape
+        self_config['snap_to_dl'] = self.snap_to_dl
+        return self_config
+
+    @classmethod
+    def from_config(cls, config_dict):
+        if not isinstance(config_dict, dict):
+            raise TypeError("Expected a dictionary.")
+        try:
+            obj = cls.__new__(cls) 
+            obj.center_in_unit_length = config_dict['center_in_unit_length']
+            obj.dl = config_dict['dl']
+            obj.grid2d = config_dict['grid2d']
+            obj.ref_xz_override = config_dict['ref_xz_override']
+            obj.ref_xz_symbolic = config_dict['ref_xz_symbolic']
+            obj.description = config_dict['description']
+            obj.shape = config_dict['shape']
+            obj.snap_to_dl = config_dict['snap_to_dl']
+            return obj
+
+        except (KeyError, TypeError) as e:
+            raise ValueError(f"Invalid config dictionary: {e}")    
     
 class _Obstruction2DShapeFunctions(_Obstruction2DFunctions):   
     def __init__(self, obs_grid_dl:float, ref_xz_symbolic = ['c', 'c'], snap_to_dl:bool=True):

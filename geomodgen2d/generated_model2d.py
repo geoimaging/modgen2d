@@ -4,7 +4,7 @@ import matplotlib.cm as cm
 # from IPython.display import clear_output
 import numpy as np
 import geomodgen2d.general_functions as f
-from geomodgen2d.lithological_domain2d import LithologicalDomain2D
+from geomodgen2d.lithological_domain2d import LithologicalDomain2D, LithologicalDomain2DFromObstruction2D
 import warnings
 
 class GeneratedModel2D:
@@ -27,7 +27,7 @@ class GeneratedModel2D:
             raise ValueError(f"The following lithological IDs are missing in lit_id2material_dict: {missing_keys}")
         
         # Filter out any extra keys in lit_id2material_dict
-        filtered_dict = {k: v for k, v in lit_id2material_dict.items() if k in unique_ids}
+        filtered_dict = {k: np.array(v) for k, v in lit_id2material_dict.items() if k in unique_ids}
         self.lit_id2material_dict = filtered_dict
     
     def check(self):
@@ -184,4 +184,58 @@ class GeneratedModel2D:
         )
 
         return ax, vmin, vmax
+    
+    @property
+    def get_config(self):
+        self_config = {}
+        self_config['properties_metadata'] = {}
+        self_config['properties_metadata']['gwt_depth'] = self.gwt_depth
+        if self.lit_domain is None:
+            self_config['lit_domain'] = self.lit_domain
+        else:
+            self_config['lit_domain'] = self.lit_domain.get_config
+        self_config['properties_metadata']['lit_id2material_dict'] = self.lit_id2material_dict
+        self_config['properties_metadata']['lit_order'] = self.lit_order
+        self_config['simulated_profiles'] = self.simulated_profiles
+        self_config['_locked'] = self._locked
+        return self_config
+
+    @classmethod
+    def from_config(cls, config_dict):
+        if not isinstance(config_dict, dict):
+            raise TypeError("Expected a dictionary.")
+        try:
+            obj = cls.__new__(cls) 
+            obj.gwt_depth = config_dict['properties_metadata']['gwt_depth']
+            if config_dict['lit_domain'] is None:
+                obj.lit_domain = None
+            else:
+                lm_type = config_dict['lit_domain']['lm_type']
+                if lm_type.startswith("from_interface_config"):
+                    obj.lit_domain = LithologicalDomain2D.from_config(config_dict['lit_domain'])
+                else:
+                    obj.lit_domain = LithologicalDomain2DFromObstruction2D.from_config(config_dict['lit_domain'])
+                    
+            obj.lit_id2material_dict = config_dict['properties_metadata']['lit_id2material_dict']
+            obj.lit_order = config_dict['properties_metadata']['lit_order']
+            obj.simulated_profiles = config_dict['simulated_profiles']
+            obj._locked = config_dict['_locked']
+            return obj
+
+        except (KeyError, TypeError) as e:
+            raise ValueError(f"Invalid config dictionary: {e}")
+        
+    def __eq__(self, other):
+        if not isinstance(other, GeneratedModel2D):
+            return NotImplemented
+        
+        # units_check = self.units_config == other.units_config
+        # spans_check = np.allclose(self._spans_in_domain_len_units, other._spans_in_domain_len_units)
+        # dhs_check = np.allclose(self._dhs_in_domain_len_units, other._dhs_in_domain_len_units)
+        # return (
+        #     units_check
+        #     and spans_check
+        #     and dhs_check
+        # )
+      
         

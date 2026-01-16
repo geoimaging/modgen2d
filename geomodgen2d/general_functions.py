@@ -32,6 +32,23 @@ def is_integer_value(value):
         
 def is_close(a, b, tol=1e-8):
     return abs(a - b) < tol
+
+def safe_equal(a, b, tol=1e-10):
+    # both None
+    if a is None and b is None:
+        return True
+    # one None
+    if (a is None) ^ (b is None):
+        return False
+
+    # numpy arrays
+    if isinstance(a, np.ndarray) and isinstance(b, np.ndarray):
+        if a.shape != b.shape:
+            return False
+        return np.allclose(a, b, atol=tol, rtol=tol)
+
+    # scalars
+    return a == b
     
 def get_span_del_from_ranges(ranges):
     return (ranges[0] + ranges[-1]), (ranges[1] - ranges[0])

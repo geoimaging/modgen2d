@@ -1,3 +1,5 @@
+__all__ = ['DiscretizedInterfaces2D']
+
 import warnings
 
 import numpy as np
@@ -509,6 +511,74 @@ class DiscretizedInterfaces2D:
         # if self._locked:
         #     new.lock_interfaces()
         return new
+    
+    @property
+    def get_config(self):
+        domain_config = self.domain.get_config
+        return {
+            'domain': domain_config,
+            'generate_surface': self.generate_surface,
+            'n_soil_layers':self.n_soil_layers,
+            'interfaces_matrix': self.interfaces_matrix,
+            'remesh_interp_method':self.remesh_interp_method,
+            'rough_interface_generator_scale':self.rough_interface_generator_scale,
+            'rng_state':self.rng.bit_generator.state,
+            'locked':self._locked,
+            'reference_point_x': self._reference_point_x,
+        }
+        
+    @classmethod
+    def from_config(cls, config_dict):
+        if not isinstance(config_dict, dict):
+            raise TypeError("Expected a dictionary.")
+        try:
+            discretizedDomain2D = DiscretizedDomain2D.from_config(config_dict['domain'])
+            interfaces_matrix = np.array(config_dict['interfaces_matrix'])
+            n_soil_layers, generate_surface = config_dict['n_soil_layers'], config_dict['generate_surface']
+            rough_interface_generator_scale, remesh_interp_method = config_dict['rough_interface_generator_scale'], config_dict['remesh_interp_method']
+
+            rng = np.random.default_rng()
+            rng.bit_generator.state = config_dict['rng_state']
+
+            obj = cls(discretizedDomain2D, n_soil_layers, generate_surface, rough_interface_generator_scale,
+                       remesh_interp_method, rng)
+            obj.set_interfaces_matrix(interfaces_matrix)
+            obj._reference_point_x = config_dict['reference_point_x']
+            
+            if config_dict['locked']:
+                obj.lock_interfaces()
+            return obj
+        
+        except (KeyError, TypeError) as e:
+            raise ValueError(f"Invalid config dictionary: {e}")
+        
+    # def __eq__(self, other, gen_params_check=False):
+    #     if not isinstance(other, DiscretizedInterfaces2D):
+    #         return NotImplemented
+        
+    #     domain_check  = self.domain == other.domain
+    #     interfaces_check = f.safe_equal(self.interfaces_matrix, other.interfaces_matrix)
+    #     n_soils_check    = f.safe_equal(self.n_soil_layers, other.n_soil_layers)
+    #     n_soil_if_check  = f.safe_equal(self.n_soil_soil_interfaces, other.n_soil_soil_interfaces)
+    #     remesh_check     = f.safe_equal(self.remesh_interp_method, other.remesh_interp_method)
+    #     rough_check      = f.safe_equal(self.rough_interface_generator_scale, other.rough_interface_generator_scale)
+    #     ref_check        = f.safe_equal(self._reference_point_x, other._reference_point_x)
+    #     lock_check       = f.safe_equal(self._locked, other._locked)
+    #     rng_check = self.rng.bit_generator.state == other.rng.bit_generator.state
+
+    #     params_check = (rough_check and ref_check and lock_check and rng_check)
+    #     if not gen_params_check:
+    #         params_check = True
+        
+    #     return (
+    #         domain_check
+    #         and interfaces_check
+    #         and n_soils_check
+    #         and n_soil_if_check
+    #         and remesh_check
+    #         and params_check
+    #     )
+
 
 
     
