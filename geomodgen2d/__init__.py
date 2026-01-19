@@ -11,9 +11,8 @@ from .metadata import __version__
 from . import discretized_domain2d
 from . import discretized_interfaces2d_from_dict
 from . import features_config
-from . import generated_model2d_collection
+from . import generated_model2d
 from . import lithological_domain2d
-from . import lithological_domain2d_collection
 from . import main_properties
 from . import main_property_each
 from . import obstruction2d
@@ -21,15 +20,15 @@ from . import random_generators
 from . import rough_interface_creator2d
 from . import spatial_simulator2d
 from . import units_config
+from . import load_generated_model2d_from_hdf5
 
 # Optional: control what gets imported when using 'from geomodgen2d import *'
 __all__ = [
     "discretized_domain2d",
     "discretized_interfaces2d_from_dict",
     "features_config",
-    "generated_model2d_collection",
+    "generated_model2d",
     "lithological_domain2d",
-    "lithological_domain2d_collection",
     "main_properties",
     "main_property_each",
     "obstruction2d",
@@ -38,4 +37,5 @@ __all__ = [
     "rough_interface_creator2d",
     "spatial_simulator2d",
     "units_config",
+    "load_generated_model2d_from_hdf5",
 ]

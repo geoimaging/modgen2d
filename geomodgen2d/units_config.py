@@ -1,3 +1,5 @@
+__all__ = ['Units']
+
 from math import log10, isclose
 
 class Units:
@@ -70,6 +72,7 @@ class Units:
                 raise ValueError(f"{name} ('{val}') must have ≤ 4 characters.")
 
         # --- Validate conversion factor ---
+        conversion_factor = float(conversion_factor)
         if not isinstance(conversion_factor, (int, float)):
             raise TypeError("conversion_factor must be numeric.")
         if conversion_factor <= 0:

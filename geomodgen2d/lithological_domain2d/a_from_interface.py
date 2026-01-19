@@ -12,8 +12,8 @@ from geomodgen2d.discretized_domain2d import DiscretizedDomain2D
 from geomodgen2d.discretized_interfaces2d import DiscretizedInterfaces2D
 from geomodgen2d.global_soil_interface_config import GlobalSoilInterfaceConfig
 
-from .base import LithologicalDomain2DReadOnly
-from .from_obs2d import LithologicalDomain2DFromObstruction2D
+from .a_base import LithologicalDomain2DReadOnly
+from .a_from_obs2d import LithologicalDomain2DFromObstruction2D
 from .common_functions import _warn_if_changed, _merge_lithological_domains
 
 class LithologicalDomain2D(LithologicalDomain2DReadOnly):
@@ -48,10 +48,19 @@ class LithologicalDomain2D(LithologicalDomain2DReadOnly):
         self.lithological_matrix = _layer_id_faster(discretizedInterfaces2D_instance)
         self.lithological_matrix = self.lithological_matrix.astype(int)
         self.lithological_matrix = np.vectorize(lambda x: f"{x}")(self.lithological_matrix)
-        
         self.obstruction_overlap = False #Overlap with merged layers (useful for utils)
         
         self.interface_config_revision_id = GlobalSoilInterfaceConfig.get_revision_id()
+        
+    @LithologicalDomain2DReadOnly.lithological_matrix.setter
+    def lithological_matrix(self, value):
+        if value is not None:
+            if self.check_for_Xs(value):
+                raise ValueError(
+                    "LithologicalDomain2D cannot contain 'X' values."
+                )
+
+        super(LithologicalDomain2D, type(self)).lithological_matrix.fset(self, value)
         
     def refresh(self):
         """
@@ -128,7 +137,6 @@ class LithologicalDomain2D(LithologicalDomain2DReadOnly):
             )
         
         merged_lit_domain.merged_lit = True
-
         return merged_lit_domain
     
     @classmethod

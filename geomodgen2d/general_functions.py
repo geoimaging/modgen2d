@@ -6,7 +6,7 @@
 ## Note: Added by Sanish (Feb 24, 2025)
 
 import numpy as np
-import scipy, re
+import scipy, re, warnings
 
 def is_divisible(a, b, tol=1e-9):
     if a<b: raise ValueError("ERROR: a cannot be less than b")
@@ -302,11 +302,11 @@ def validate_processed_property_dict(processed_property_dict):
     Validates if the given dictionary follows the required format:
     
     {
-        'layer_ID': {'wet': {'mean': float, 'mean_bm': float (optional), 'stdev/cov': float, 'stdev_type':string}, 
-                     'dry': {'mean': float, 'mean_bm': float (optional), 'stdev/cov': float, 'stdev_type':string}},
-        'layer_ID2': {'wet': {'mean': float, 'mean_bm': float (optional), 'stdev/cov': float, 'stdev_type':string}, 
-                     'dry': {'mean': float, 'mean_bm': float (optional), 'stdev/cov': float, 'stdev_type':string}},
-        'layer_ID3': {'both': {'mean': float, 'mean_bm': float (optional), 'stdev/cov': float, 'stdev_type':string}},                      
+        'layer_ID': {'wet': {'mean': float, 'mean_bm': float (optional), 'stdev_or_cov': float, 'stdev_type':string}, 
+                     'dry': {'mean': float, 'mean_bm': float (optional), 'stdev_or_cov': float, 'stdev_type':string}},
+        'layer_ID2': {'wet': {'mean': float, 'mean_bm': float (optional), 'stdev_or_cov': float, 'stdev_type':string}, 
+                     'dry': {'mean': float, 'mean_bm': float (optional), 'stdev_or_cov': float, 'stdev_type':string}},
+        'layer_ID3': {'both': {'mean': float, 'mean_bm': float (optional), 'stdev_or_cov': float, 'stdev_type':string}},                      
         ...
     }
 
@@ -334,10 +334,10 @@ def validate_processed_property_dict(processed_property_dict):
                     
                     # Validate mean and stdev for each layer type
                     assert 'mean' in subvalue, f"'{subkey}' layer for key '{key}' must contain 'mean'."
-                    assert 'stdev/cov' in subvalue, f"'{subkey}' layer for key '{key}' must contain 'stdev/cov'."
+                    assert 'stdev_or_cov' in subvalue, f"'{subkey}' layer for key '{key}' must contain 'stdev_or_cov'."
                     assert 'stdev_type' in subvalue, f"'{subkey}' layer for key '{key}' must contain 'stdev_type'."
                     assert isinstance(subvalue['mean'], (int, float)), f"'mean' for '{subkey}' in layer '{key}' must be a number."
-                    assert isinstance(subvalue['stdev/cov'], (int, float)), f"'stdev/cov' for '{subkey}' in layer '{key}' must be a number."
+                    assert isinstance(subvalue['stdev_or_cov'], (int, float)), f"'stdev_or_cov' for '{subkey}' in layer '{key}' must be a number."
                     assert subvalue['stdev_type'] in ['stdev', 'cov'], "stdev_type must be either 'stdev', or 'cov'."
                     
                     # 'mean_bm' is optional, but if present, must be a number
@@ -347,3 +347,74 @@ def validate_processed_property_dict(processed_property_dict):
                         processed_property_dict[key][subkey]['mean_bm'] = 0.0
 
     return processed_property_dict
+
+def deep_object_equivalent(a, b, rtol=1e-9, atol=1e-12, type_check=False):
+    if a is b:
+        return True
+    if a is None or b is None:
+        return a is b
+    if type_check:
+        if type(a) is not type(b):
+            warnings.warn(f"Mismatch in Types:{type(a)} != {type(b)}")
+            return False
+
+    # Scalars
+    if isinstance(a, (int, float, bool, str, np.number)):
+        check = abs(a - b) <= (atol + rtol * abs(b)) if isinstance(a, float) else a == b
+        if not check:
+            warnings.warn(f"Mismatch in scalar number values: {a} != {b}")
+        return check
+
+    # numpy arrays
+    if isinstance(a, np.ndarray):
+        if a.shape != b.shape:
+            warnings.warn(f"Mismatch in array shape:{a.shape} != {b.shape}")
+            return False
+        
+        # --- Numeric arrays → allclose ---
+        if np.issubdtype(a.dtype, np.number) and np.issubdtype(b.dtype, np.number):
+            check = np.allclose(a, b, rtol=rtol, atol=atol)
+            if not check:
+                warnings.warn("Numeric array values do not match")
+            return check
+
+        # --- Non-numeric arrays (strings, objects) → exact match ---
+        check = np.array_equal(a, b)
+        if not check:
+            warnings.warn("Non-numeric array values do not match")
+        return check
+
+    # lists / tuples
+    if isinstance(a, (list, tuple)):
+        if len(a) != len(b):
+            warnings.warn(f"Mismatch in list/tuple length:{len(a)} != {len(b)}")
+            return False
+        check = all(deep_object_equivalent(x, y, rtol, atol) for x, y in zip(a, b))
+        if not check:
+            warnings.warn(f"List/Tuples values does not match")
+        return check
+
+    # dict
+    if isinstance(a, dict):
+        if a.keys() != b.keys():
+            warnings.warn(f"Mismatch in dictionary keys:{a.keys()} != {b.keys()}")
+            return False
+        check = all(deep_object_equivalent(a[k], b[k], rtol, atol) for k in a)
+        if not check:
+            warnings.warn(f"Dictionaries does not match")
+        return check
+
+    # objects: inspect real stored fields
+    fields = set()
+    if hasattr(a, "__dict__"):
+        fields |= set(a.__dict__.keys())
+    if hasattr(a, "__slots__"):
+        fields |= set(a.__slots__)
+
+    for f in fields:
+        if not deep_object_equivalent(getattr(a, f, None), getattr(b, f, None), rtol, atol):
+            warnings.warn(f"Mismatch in : {f}: {getattr(a, f, None)} != {getattr(b, f, None)}")
+            return False
+
+    return True
+
