@@ -22,9 +22,10 @@ import numpy as np
 import geomodgen2d.general_functions as f
 from geomodgen2d.spatial_simulator2d import CovarianceDecompositionSimulator, SpatialSimulator2D    
 from geomodgen2d.generated_model2d import GeneratedModel2D
-from geomodgen2d.lithological_domain2d_collection import LithologicalDomain2DCollection
+from geomodgen2d.lithological_domain2d import LithologicalDomain2DCollection, LithologicalDomain2DReadOnly
 from geomodgen2d.main_properties import MainPropertiesConfig
 from geomodgen2d.global_soil_interface_config import GlobalSoilInterfaceConfig
+from geomodgen2d.metadata import __version__
 
 class GeneratedProfileCollection2DReadOnly:
     def __init__(self, main_properties_config_instance: MainPropertiesConfig, lithological_domain2d_collection: LithologicalDomain2DCollection, spatial_simulator2d_instance:SpatialSimulator2D):
@@ -47,6 +48,7 @@ class GeneratedProfileCollection2DReadOnly:
         self._generated_model2d_set = {}
         self._merged_generated_model2d = None
         self._generated_properties_list = []
+        self._read_only = False # Initially read_only flag is False.
         
         gwt = lithological_domain2d_collection.gwt_depth
         for set_name, lit_domain in lithological_domain2d_collection.lit_domain_set.items():
@@ -108,10 +110,15 @@ class GeneratedProfileCollection2DReadOnly:
         
     #     if not self.material_domain2d_instance._locked:
     #         raise ValueError("material domain2d instance has been unlocked. Redefine this class with locked one.")
+    
+    # Check if all the simulated values ignoer is same in spatial simulator and here. also gwt??
+    
+    # To do: get merged and check if asme with the one generateed. If jot woo woo!!!
 
     @property
     def get_config(self):
         self_config = {}
+        self_config['_read_only'] = self._read_only
         self_config['properties_metadata'] = {}
         self_config['properties_metadata']['_lit_id2material_dict'] = self._lit_id2material_dict
         self_config['properties_metadata']['_sampled_properties'] = self._sampled_properties
@@ -130,11 +137,20 @@ class GeneratedProfileCollection2DReadOnly:
         return self_config
     
     @classmethod
-    def from_config(cls, config_dict):
+    def from_config(cls, config_dict, read_only=False, check_merged=False):
         if not isinstance(config_dict, dict):
             raise TypeError("Expected a dictionary.")
         # try:
+        
+        if config_dict['_read_only'] is True and read_only is False:
+            raise ValueError("Given config_dict is intended for read_only = True, but attempted to read in read_only = False mode.")
+        
+        val = config_dict.get('_generated_model2d_set')
+        if val is None and read_only is True:
+            raise ValueError("Provided generated_model2d as None. Non-read_only (i.e., read_only = False) cannot be used for such cases.")
+        
         obj = cls.__new__(cls) 
+        obj._read_only = read_only
         obj._generated_properties_list = config_dict['properties_metadata']['_generated_properties_list']
         obj._lit_id2material_dict = config_dict['properties_metadata']['_lit_id2material_dict']
         obj._main_properties_unique_code = config_dict['properties_metadata']['_main_properties_unique_code']
@@ -148,9 +164,10 @@ class GeneratedProfileCollection2DReadOnly:
             RuntimeWarning
         )
         
-        obj._generated_model2d_set = {}
-        for key, val in config_dict['_generated_model2d_set'].items():
-            obj._generated_model2d_set[key] = GeneratedModel2D.from_config(val)
+        obj._generated_model2d_set = {}  
+        if val is not None:
+            for key, val in val.items():
+                obj._generated_model2d_set[key] = GeneratedModel2D.from_config(val)
         
         if config_dict['_merged_generated_model2d'] is None:
             obj._merged_generated_model2d = config_dict['_merged_generated_model2d']
@@ -159,32 +176,45 @@ class GeneratedProfileCollection2DReadOnly:
         return obj
 
     def save_to_hdf5(self, file_name, hdf5_compression_level=0):
+        to_save_dict = {
+            'geomodgen2d_version': __version__,
+            'save_read_only': False,
+            'global_interface_config': GlobalSoilInterfaceConfig.get_config,
+            'gen_model_2d_collection': self.get_config
+        }
+        
         with h5py.File(file_name, 'w') as hf:
-            global_interface_group = hf.create_group("global_interface_config")
-            state_dict = GlobalSoilInterfaceConfig.get_config
-            save_dict_to_hdf5(state_dict, global_interface_group, compression_level=hdf5_compression_level)
+            save_dict_to_hdf5(to_save_dict, hf, compression_level=hdf5_compression_level)
             
-            gmodel2d_coll_group = hf.create_group("gen_model_2d_collection")
-            state_dict = self.get_config
-            save_dict_to_hdf5(state_dict, gmodel2d_coll_group, compression_level=hdf5_compression_level)
         print(f"Data saved to {file_name}")
         
     def save_to_hdf5_read_only(self, file_name, save_merged_only=True, save_interface=False, hdf5_compression_level=0):
-        with h5py.File(file_name, 'w') as hf:
-            if save_interface:
-                global_interface_group = hf.create_group("global_interface_config")
-                state_dict = GlobalSoilInterfaceConfig.get_config
-                save_dict_to_hdf5(state_dict, global_interface_group, compression_level=hdf5_compression_level)
+        state_dict = self.get_config.copy()
+        if save_merged_only:
+            state_dict.pop('_generated_model2d_set', None)
+                
+        to_save_dict = {
+            'geomodgen2d_version': __version__,
+            'save_read_only': True,
+            'global_interface_config': GlobalSoilInterfaceConfig.get_config,
+            'gen_model_2d_collection': state_dict
+        }
+        
+        if not save_interface:
+            to_save_dict.pop('global_interface_config')
             
-            gmodel2d_coll_group = hf.create_group("gen_model_2d_collection")
-            state_dict = self.get_config.copy()
-            if save_merged_only:
-                state_dict.pop('_generated_model2d_set', None)
-            save_dict_to_hdf5(state_dict, gmodel2d_coll_group, compression_level=hdf5_compression_level)
+        with h5py.File(file_name, 'w') as hf:
+            save_dict_to_hdf5(to_save_dict, hf, compression_level=hdf5_compression_level)
+        
         print(f"Data saved to {file_name}")
         
     def save_to_hdf5_numpy(self, file_name, save_merged_only=True, save_interface=False, save_lithological_domain=False, save_properties_metadata=False, hdf5_compression_level=0):
         with h5py.File(file_name, 'w') as hf:
+            to_save_dict = {
+                'geomodgen2d_version': __version__,
+            }
+            save_dict_to_hdf5(to_save_dict, hf, compression_level=hdf5_compression_level)
+            
             if save_interface:
                 state_dict = GlobalSoilInterfaceConfig.get_config
                 to_save_dict = {
@@ -258,9 +288,30 @@ class GeneratedProfileCollection2D(GeneratedProfileCollection2DReadOnly):
             self._generated_model2d_set[set_name].simulated_profiles.pop(property_name, None)
         self._merged_generated_model2d.simulated_profiles.pop(property_name, None)
     
+    @staticmethod
+    def get_merged_simulated_profile(current_merged_lit_domain:LithologicalDomain2DReadOnly, current_merged_simulated_profile:np.ndarray,
+                                     to_merge_lit_domain:LithologicalDomain2DReadOnly, to_merge_simulated_profile:np.ndarray, simulated_val_for_ignored_lit_property):
+        to_merge_simulated_profile_remeshed = f.remeshing_2D_matrix(
+            x_old=to_merge_lit_domain.domain.x_centers,
+            x_new=current_merged_lit_domain.domain.x_centers,
+            z_old=to_merge_lit_domain.domain.z_centers,
+            z_new=current_merged_lit_domain.domain.z_centers,
+            matrix_2d=to_merge_simulated_profile,
+            interp_method='nearest'
+        )
+        
+        if current_merged_simulated_profile is None:
+            current_merged_simulated_profile = to_merge_simulated_profile_remeshed
+        else:
+            # Masks to identify non-'none' values
+            mask_other_non_none = ~np.isin(to_merge_simulated_profile_remeshed, simulated_val_for_ignored_lit_property)
+            simulated_profile_merged = np.where(mask_other_non_none, to_merge_simulated_profile_remeshed, current_merged_simulated_profile)  # (replace it with that of other class even if merged already have values, i.e prioritize other class)
+        
+        return simulated_profile_merged
+   
     def simulate_zvals_property_profile(self, zvals_property_name,  
                                             generate_non_spatial_profile=False, 
-                                            ignore_lithological_ids=['X'], simulated_val_for_ignored_lit_property=-99999):
+                                            ignore_lithological_ids=['X']):
         
         sampled_properties = self.sampled_properties
         if zvals_property_name in sampled_properties.keys():
@@ -282,32 +333,33 @@ class GeneratedProfileCollection2D(GeneratedProfileCollection2DReadOnly):
             gwt_depth = generated_model_instance.gwt_depth
             #TODO make sure??
             
+            if (generated_model_instance.simulated_val_for_ignored_lit_property != self.spatial_simulator2d_instance.simulated_val_for_ignored_lit_property):
+                raise ValueError(
+                    f"Inconsistent simulated_val_for_ignored_lit_property: "
+                    f"{generated_model_instance.simulated_val_for_ignored_lit_property} "
+                    f"!= {self.spatial_simulator2d_instance.simulated_val_for_ignored_lit_property}"
+                )
+            
             simulated_profile = self.spatial_simulator2d_instance.simulate_zvals_lit_profile_from_lithological_domain(
-                lit_domain, gwt_depth, generate_non_spatial_profile, ignore_lithological_ids, simulated_val_for_ignored_lit_property
+                lit_domain, gwt_depth, generate_non_spatial_profile, ignore_lithological_ids
             )
             self._generated_model2d_set[set_name].simulated_profiles[zvals_property_name] = simulated_profile
             
-            merged_domain = self.merged_generated_model2d.lit_domain
-            simulated_profile_remeshed = f.remeshing_2D_matrix(
-                x_old=lit_domain.domain.x_centers,
-                x_new=merged_domain.domain.x_centers,
-                z_old=lit_domain.domain.z_centers,
-                z_new=merged_domain.domain.z_centers,
-                matrix_2d=simulated_profile,
-                interp_method='nearest'
-            )
+            merged_lit_domain = self.merged_generated_model2d.lit_domain
             if order_id==0:
-                simulated_profile_merged = simulated_profile_remeshed
-            else:
-                # Masks to identify non-'none' values
-                mask_other_non_none = ~np.isin(simulated_profile_remeshed, simulated_val_for_ignored_lit_property)
-                simulated_profile_merged = np.where(mask_other_non_none, simulated_profile_remeshed, simulated_profile_merged)  # (replace it with that of other class even if merged already have values, i.e prioritize other class)
+                simulated_profile_merged = None
+                
+            simulated_profile_merged = self.get_merged_simulated_profile(
+                order_id, current_merged_lit_domain=merged_lit_domain, current_merged_simulated_profile=simulated_profile_merged,
+                to_merge_lit_domain = lit_domain, to_merge_simulated_profile=simulated_profile, 
+                simulated_val_for_ignored_lit_property=generated_model_instance.simulated_val_for_ignored_lit_property
+                )
             
         # self.check_simulated_profile(simulated_profile_merged)
         self._merged_generated_model2d.simulated_profiles[zvals_property_name] = simulated_profile_merged
     
     def simulate_profile_from_zvals_property_profile(self, main_property_name, zvals_property_name, 
-                                            ignore_lithological_ids=['X'], simulated_val_for_ignored_lit_property=-99999,
+                                            ignore_lithological_ids=['X'], 
                                             min_val = None, max_val = None, warn_cliping = False):
         
         sampled_properties = self.sampled_properties
@@ -335,35 +387,34 @@ class GeneratedProfileCollection2D(GeneratedProfileCollection2DReadOnly):
             simulated_zvals_lit_profile = self._generated_model2d_set[set_name].simulated_profiles[zvals_property_name]
             processed_property_dict = self.sampled_properties[main_property_name]
             
+            if (generated_model_instance.simulated_val_for_ignored_lit_property != self.spatial_simulator2d_instance.simulated_val_for_ignored_lit_property):
+                raise ValueError(
+                    f"Inconsistent simulated_val_for_ignored_lit_property: "
+                    f"{generated_model_instance.simulated_val_for_ignored_lit_property} "
+                    f"!= {self.spatial_simulator2d_instance.simulated_val_for_ignored_lit_property}"
+                )
+                
             simulated_profile = self.spatial_simulator2d_instance.simulate_profile_from_zvals_lit_profile(
                 simulated_zvals_lit_profile, lit_domain,
                 processed_property_dict, gwt_depth, warn_inconsistent_stdev = True,
                 ignore_lithological_ids=ignore_lithological_ids,
-                simulated_val_for_ignored_lit_property=simulated_val_for_ignored_lit_property)
+                )
             
-            simulated_profile = self.clip_simulated_profile(simulated_profile, min_val, max_val, simulated_val_for_ignored_lit_property, warn_cliping)      
+            simulated_profile = self.clip_simulated_profile(simulated_profile, min_val, max_val, generated_model_instance.simulated_val_for_ignored_lit_property, warn_cliping)      
             self._generated_model2d_set[set_name].simulated_profiles[main_property_name] = simulated_profile
             
-            merged_domain = self.merged_generated_model2d.lit_domain
-            simulated_profile_remeshed = f.remeshing_2D_matrix(
-                x_old=lit_domain.domain.x_centers,
-                x_new=merged_domain.domain.x_centers,
-                z_old=lit_domain.domain.z_centers,
-                z_new=merged_domain.domain.z_centers,
-                matrix_2d=simulated_profile,
-                interp_method='nearest'
-            )
-            
+            merged_lit_domain = self.merged_generated_model2d.lit_domain
             if order_id==0:
-                simulated_profile_merged = simulated_profile_remeshed
-            else:
-                # Masks to identify non-'none' values
-                mask_other_non_none = ~np.isin(simulated_profile_remeshed, simulated_val_for_ignored_lit_property)
-                simulated_profile_merged = np.where(mask_other_non_none, simulated_profile_remeshed, simulated_profile_merged)  # (replace it with that of other class even if merged already have values, i.e prioritize other class)
+                simulated_profile_merged = None
+                
+            simulated_profile_merged = self.get_merged_simulated_profile(
+                order_id, current_merged_lit_domain=merged_lit_domain, current_merged_simulated_profile=simulated_profile_merged,
+                to_merge_lit_domain = lit_domain, to_merge_simulated_profile=simulated_profile, 
+                simulated_val_for_ignored_lit_property=generated_model_instance.simulated_val_for_ignored_lit_property)
             
         # self.check_simulated_profile(simulated_profile_merged)
         simulated_profile_merged = self.clip_simulated_profile(simulated_profile_merged, 
-                                                               min_val, max_val, simulated_val_for_ignored_lit_property, raise_error=True)      
+                                                               min_val, max_val, generated_model_instance.simulated_val_for_ignored_lit_property, raise_error=True)      
         
         self._merged_generated_model2d.simulated_profiles[main_property_name] = simulated_profile_merged
 
@@ -406,7 +457,7 @@ class GeneratedProfileCollection2D(GeneratedProfileCollection2DReadOnly):
         
     def simulate_property_profile(
         self, main_property_name, 
-        ignore_lithological_ids=['X'], simulated_val_for_ignored_lit_property=-99999,
+        ignore_lithological_ids=['X'], 
         min_val = None, max_val = None, warn_cliping = False):
         """
         Generates a spatial profile by merging boundary and utility layer matrices.
@@ -425,13 +476,11 @@ class GeneratedProfileCollection2D(GeneratedProfileCollection2DReadOnly):
        
         self.simulate_zvals_property_profile(
             zvals_property_name, generate_non_spatial_profile=False, 
-            ignore_lithological_ids=ignore_lithological_ids, 
-            simulated_val_for_ignored_lit_property=simulated_val_for_ignored_lit_property)
+            ignore_lithological_ids=ignore_lithological_ids)
         
         self.simulate_profile_from_zvals_property_profile(
             main_property_name, zvals_property_name, 
             ignore_lithological_ids=ignore_lithological_ids, 
-            simulated_val_for_ignored_lit_property=simulated_val_for_ignored_lit_property,
             min_val = min_val, max_val = max_val, warn_cliping = warn_cliping)
         
         self.delete_simulated_property_profile(zvals_property_name)
@@ -453,6 +502,10 @@ class GeneratedProfileCollection2D(GeneratedProfileCollection2DReadOnly):
         # self.check_simulated_profile(simulated_profile)
         self._all_generated_profiles[main_property_name] = simulated_profile
     # save_generated_profiles
+    
+    @classmethod
+    def from_config(cls, config_dict):
+        return super().from_config(config_dict, read_only=False, check_merged=True)
         
 def save_dict_to_hdf5(d, parent_group, compression_level=0):
     """

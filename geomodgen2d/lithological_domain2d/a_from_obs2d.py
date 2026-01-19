@@ -12,7 +12,7 @@ import copy
 from geomodgen2d.discretized_domain2d import DiscretizedDomain2D
 from geomodgen2d.obstruction2d import Obstruction2D
 from geomodgen2d.global_soil_interface_config import GlobalSoilInterfaceConfig
-from .base import LithologicalDomain2DReadOnly
+from .a_base import LithologicalDomain2DReadOnly
 from .common_functions import _warn_if_changed, _merge_lithological_domains
   
 class LithologicalDomain2DFromObstruction2D(LithologicalDomain2DReadOnly):

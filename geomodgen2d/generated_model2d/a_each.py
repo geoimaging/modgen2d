@@ -4,18 +4,18 @@ import matplotlib.cm as cm
 # from IPython.display import clear_output
 import numpy as np
 import geomodgen2d.general_functions as f
-from geomodgen2d.lithological_domain2d import LithologicalDomain2D, LithologicalDomain2DFromObstruction2D
+from geomodgen2d.lithological_domain2d import LithologicalDomain2D, LithologicalDomain2DFromObstruction2D, LithologicalDomain2DReadOnly
 import warnings
 
 class GeneratedModel2D:
-    def __init__(self, lithological_domain_instance:LithologicalDomain2D, gwt_depth, lit_id2material_dict):
+    def __init__(self, lithological_domain_instance:LithologicalDomain2D, gwt_depth, lit_id2material_dict, simulated_val_for_ignored_lit_property=-99999):
         self.lit_domain = lithological_domain_instance
         self.lit_order = lithological_domain_instance.lit_order
         self.gwt_depth = gwt_depth
         self.lit_id2material_dict = {}
         self.simulated_profiles = {}
         self._locked = False
-        
+        self._simulated_val_for_ignored_lit_property = simulated_val_for_ignored_lit_property #Make sure consistent with all generated profiles and spatial_simulator
         lithological_domain_instance.check_shape()
         
         unique_ids = np.unique(self.lit_domain.lithological_matrix.astype(str))
@@ -30,6 +30,24 @@ class GeneratedModel2D:
         filtered_dict = {k: np.array(v) for k, v in lit_id2material_dict.items() if k in unique_ids}
         self.lit_id2material_dict = filtered_dict
     
+        @property
+        def simulated_val_for_ignored_lit_property(self):
+            return self._simulated_val_for_ignored_lit_property
+
+        @simulated_val_for_ignored_lit_property.setter
+        def simulated_val_for_ignored_lit_property(self, value):
+            if self.simulated_profiles is not None:
+                raise AttributeError(
+                    "Profiles has already been generated and hence, cannot be changed."
+                )
+                
+            if not isinstance(value, int):
+                raise TypeError(
+                    f"simulated_value_for_ignored_lit must be an integer, got {type(value)}"
+                )
+                
+            self._simulated_val_for_ignored_lit_property = value
+            
     def check(self):
         """
         Checks that the simulated profiles has the correct shape and contains no NaN values.
@@ -201,7 +219,7 @@ class GeneratedModel2D:
         return self_config
 
     @classmethod
-    def from_config(cls, config_dict):
+    def from_config(cls, config_dict, read_only=False):
         if not isinstance(config_dict, dict):
             raise TypeError("Expected a dictionary.")
         try:
@@ -210,11 +228,14 @@ class GeneratedModel2D:
             if config_dict['lit_domain'] is None:
                 obj.lit_domain = None
             else:
-                lm_type = config_dict['lit_domain']['lm_type']
-                if lm_type.startswith("from_interface_config"):
-                    obj.lit_domain = LithologicalDomain2D.from_config(config_dict['lit_domain'])
-                else:
-                    obj.lit_domain = LithologicalDomain2DFromObstruction2D.from_config(config_dict['lit_domain'])
+                if read_only:
+                    obj.lit_domain = LithologicalDomain2DReadOnly.from_config(config_dict['lit_domain'])
+                else:                    
+                    lm_type = config_dict['lit_domain']['lm_type']
+                    if lm_type.startswith("from_interface_config"):
+                        obj.lit_domain = LithologicalDomain2D.from_config(config_dict['lit_domain'])
+                    else:
+                        obj.lit_domain = LithologicalDomain2DFromObstruction2D.from_config(config_dict['lit_domain'])
                     
             obj.lit_id2material_dict = config_dict['properties_metadata']['lit_id2material_dict']
             obj.lit_order = config_dict['properties_metadata']['lit_order']
@@ -229,6 +250,7 @@ class GeneratedModel2D:
         if not isinstance(other, GeneratedModel2D):
             return NotImplemented
         
+        return f.deep_object_equivalent(self, other, type_check=True)
         # units_check = self.units_config == other.units_config
         # spans_check = np.allclose(self._spans_in_domain_len_units, other._spans_in_domain_len_units)
         # dhs_check = np.allclose(self._dhs_in_domain_len_units, other._dhs_in_domain_len_units)

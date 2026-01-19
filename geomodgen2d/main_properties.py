@@ -5,7 +5,7 @@
 
 from geomodgen2d.features_config import FeaturesConfig
 from geomodgen2d.main_property_each import MainProperty
-from geomodgen2d.lithological_domain2d_collection import LithologicalDomain2DCollection
+from geomodgen2d.lithological_domain2d import LithologicalDomain2DCollection
 import geomodgen2d.general_functions as f
 import numpy as np
 

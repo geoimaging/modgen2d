@@ -8,7 +8,7 @@ import warnings
 import pandas as pd
 
 class SpatialSimulator2D(ABC):
-    def __init__(self, theta_x, theta_z, rng=np.random.default_rng()):
+    def __init__(self, theta_x, theta_z, simulated_val_for_ignored_lit_property=-99999, rng=np.random.default_rng()):
         """
         
         # theta_x, theta_z = settings for spatial random field generation: relates the correlation in x and z direction
@@ -23,6 +23,7 @@ class SpatialSimulator2D(ABC):
 
         self.theta_x = theta_x
         self.theta_z = theta_z
+        self.simulated_val_for_ignored_lit_property = int(simulated_val_for_ignored_lit_property) #integer check in generated profiles 
         self.rng = rng
 
     @abstractmethod
@@ -68,13 +69,14 @@ class SpatialSimulator2D(ABC):
         # copy common state
         obj.theta_x = self.theta_x
         obj.theta_z = self.theta_z
+        obj.simulated_val_for_ignored_lit_property = self.simulated_val_for_ignored_lit_property
         obj.rng = rng
 
         return obj
     
     def simulate_zvals_lit_profile_from_lithological_domain(self, lithologicalDomain_class:LithologicalDomain2D, gwt_depth=None, 
                                                         generate_non_spatial_profile=False, 
-                                                        ignore_lithological_ids=['X'], simulated_val_for_ignored_lit_property=-99999):
+                                                        ignore_lithological_ids=['X']):
         """
         Generates a 2D spatially correlated random field based on a layered matrix representation.
 
@@ -98,7 +100,7 @@ class SpatialSimulator2D(ABC):
         layer_mat = lithologicalDomain_class.lithological_matrix
         xcoord = lithologicalDomain_class.domain.x_centers
         zcoord = lithologicalDomain_class.domain.z_centers
-        
+        simulated_val_for_ignored_lit_property = self.simulated_val_for_ignored_lit_property
         _ , gwt_z = np.meshgrid(xcoord, zcoord, indexing='ij')
         
         if gwt_depth is None:
@@ -156,7 +158,7 @@ class SpatialSimulator2D(ABC):
    
     def simulate_profile_from_zvals_lit_profile(self, simulated_zvals_lit_profile:np.ndarray, lithologicalDomain_class:LithologicalDomain2D,
                                                   processed_property_dict:dict, gwt_depth=None, warn_inconsistent_stdev = True,
-                                                  ignore_lithological_ids=['X'], simulated_val_for_ignored_lit_property=-99999):
+                                                  ignore_lithological_ids=['X']):
         """
         Generates a 2D spatially correlated random field based on a layered matrix representation.
 
@@ -180,6 +182,7 @@ class SpatialSimulator2D(ABC):
         layer_mat = lithologicalDomain_class.lithological_matrix
         xcoord = lithologicalDomain_class.domain.x_centers
         zcoord = lithologicalDomain_class.domain.z_centers
+        simulated_val_for_ignored_lit_property=self.simulated_val_for_ignored_lit_property
         
         _, z_coord_mat = np.meshgrid(xcoord, zcoord, indexing='ij')
         
@@ -257,7 +260,7 @@ class SpatialSimulator2D(ABC):
                     both = processed_property_dict[layer_id]['both']
                     a_m = both['mean']  
                     b_m = both['mean_bm']
-                    sigma = both['stdev/cov']
+                    sigma = both['stdev_or_cov']
                     if both['stdev_type'] == 'cov':
                         sigma*=a_m
                     
@@ -284,8 +287,8 @@ class SpatialSimulator2D(ABC):
                     a_wet,  b_wet  = wet['mean'],  wet['mean_bm']
                     a_dry,  b_dry  = dry['mean'],  dry['mean_bm']
 
-                    s_wet  = wet['stdev/cov'] *  (a_wet if  wet['stdev_type'] == 'cov' else 1)
-                    s_dry  = dry['stdev/cov'] *  (a_dry if  dry['stdev_type'] == 'cov' else 1)
+                    s_wet  = wet['stdev_or_cov'] *  (a_wet if  wet['stdev_type'] == 'cov' else 1)
+                    s_dry  = dry['stdev_or_cov'] *  (a_dry if  dry['stdev_type'] == 'cov' else 1)
 
                     mask = (layer_mat == layer_id)
 
@@ -335,7 +338,7 @@ class SpatialSimulator2D(ABC):
 
     def simulate_profile_from_lithological_domain(self, lithologicalDomain_class:LithologicalDomain2D,  
                                                   processed_property_dict=None, gwt_depth=None,
-                                                  ignore_lithological_ids=['X'], simulated_val_for_ignored_lit_property=-99999):
+                                                  ignore_lithological_ids=['X']):
         """
         Generates a 2D spatially correlated random field based on a layered matrix representation.
 
@@ -355,14 +358,12 @@ class SpatialSimulator2D(ABC):
         """
         simulated_zvals_lit_profile = self.simulate_zvals_lit_profile_from_lithological_domain(
             lithologicalDomain_class=lithologicalDomain_class, gwt_depth=gwt_depth,
-            generate_non_spatial_profile=False, ignore_lithological_ids=ignore_lithological_ids,
-            simulated_val_for_ignored_lit_property=simulated_val_for_ignored_lit_property)
+            generate_non_spatial_profile=False, ignore_lithological_ids=ignore_lithological_ids)
         
         simulated_profile = self.simulate_profile_from_zvals_lit_profile(
             simulated_zvals_lit_profile, lithologicalDomain_class=lithologicalDomain_class,
             processed_property_dict=processed_property_dict, gwt_depth=gwt_depth,
-            warn_inconsistent_stdev = True, ignore_lithological_ids = ignore_lithological_ids, 
-            simulated_val_for_ignored_lit_property=simulated_val_for_ignored_lit_property)
+            warn_inconsistent_stdev = True, ignore_lithological_ids = ignore_lithological_ids)
         
         return simulated_profile
     
@@ -401,8 +402,9 @@ class SpatialSimulator2D(ABC):
     def get_config(self):
         return {
             'theta_x': self.theta_x,
-            'theta_z':self.theta_z,
-            'rng_state':self.rng.bit_generator.state,
+            'theta_z': self.theta_z,
+            'simulated_val_for_ignored_lit_property': self.simulated_val_for_ignored_lit_property,
+            'rng_state': self.rng.bit_generator.state,
             'simulator_type_name':self.__class__.__name__
         }
         
@@ -412,11 +414,13 @@ class SpatialSimulator2D(ABC):
             raise TypeError("Expected a dictionary.")
         try:
             theta_x, theta_z = config_dict['theta_x'], config_dict['theta_z']
+            simulated_val_for_ignored_lit_property = config_dict['simulated_val_for_ignored_lit_property']
             rng = np.random.default_rng()
             rng.bit_generator.state = config_dict['rng_state']
             obj = cls.__new__(cls) #Note cannot be used with ABC but works with any subclasses.
             obj.theta_x = theta_x
             obj.theta_z = theta_z
+            obj.simulated_val_for_ignored_lit_property = simulated_val_for_ignored_lit_property
             obj.rng = rng
             
             expected = cls.__name__
@@ -510,18 +514,18 @@ class CovarianceDecompositionSimulator(SpatialSimulator2D):
     
 def check_for_zero_sigma(processed_property_dict_layer_id):
     """
-    Check if the layer_id has zero stdev/cov value in all its possible case.
-        {'wet': {'mean': float, 'mean_bm': float (optional), 'stdev/cov': float, 'stdev_type':string}, 
-         'dry': {'mean': float, 'mean_bm': float (optional), 'stdev/cov': float, 'stdev_type':string}},
+    Check if the layer_id has zero stdev_or_cov value in all its possible case.
+        {'wet': {'mean': float, 'mean_bm': float (optional), 'stdev_or_cov': float, 'stdev_type':string}, 
+         'dry': {'mean': float, 'mean_bm': float (optional), 'stdev_or_cov': float, 'stdev_type':string}},
     Or,
-        {'both': {'mean': float, 'mean_bm': float (optional), 'stdev/cov': float, 'stdev_type':string}},                      
+        {'both': {'mean': float, 'mean_bm': float (optional), 'stdev_or_cov': float, 'stdev_type':string}},                      
 
     Parameters:
     processed_property_dict : dict
         Dictionary wet/dry/both and their corresponding mean and standard deviation values as nested dictionaries.
     
     Returns:
-    True if zero stdev/cov in all cases, else False
+    True if zero stdev_or_cov in all cases, else False
     """
     
     # Validate the dictionary through validate_processed_property_dict
@@ -533,7 +537,7 @@ def check_for_zero_sigma(processed_property_dict_layer_id):
     assert keys in valid_sets, f"Invalid key combination: {keys}"   ## Though already in more detail validated using validate_processed_property_dict
      
     for k in keys:
-        stdev_val = processed_property_dict_layer_id[k]['stdev/cov']
+        stdev_val = processed_property_dict_layer_id[k]['stdev_or_cov']
         if stdev_val!=0:
             return False
     return True

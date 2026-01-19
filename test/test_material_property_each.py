@@ -126,16 +126,16 @@ class TestPropertyDistribution(TestCase):
         self.assertIn("mean", out["both"])
         self.assertNotIn("wet", out)
         self.assertNotIn("dry", out)
-        self.assertIn("stdev/cov", out["both"])
+        self.assertIn("stdev_or_cov", out["both"])
         
         out = mp.generate_sample_dict("utils", "metal")
         self.assertNotIn("both", out)
         self.assertIn("wet", out)
         self.assertIn("mean", out["wet"])
-        self.assertIn("stdev/cov", out["wet"])
+        self.assertIn("stdev_or_cov", out["wet"])
         self.assertIn("dry", out)
         self.assertEqual(out["dry"]["mean"], 20)
-        self.assertEqual(out["dry"]["stdev/cov"], 0)
+        self.assertEqual(out["dry"]["stdev_or_cov"], 0)
         self.assertEqual(out["dry"]["stdev_type"], "cov")
 
         

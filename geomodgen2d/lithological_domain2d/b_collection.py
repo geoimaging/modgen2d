@@ -1,8 +1,10 @@
 import numpy as np
+import copy
 import geomodgen2d.general_functions as f
-from geomodgen2d.lithological_domain2d import LithologicalDomain2DReadOnly, LithologicalDomain2D, LithologicalDomain2DFromObstruction2D
+from .a_base import LithologicalDomain2DReadOnly
+from .a_from_interface import LithologicalDomain2D
+from .a_from_obs2d import LithologicalDomain2DFromObstruction2D
 from geomodgen2d.global_soil_interface_config import GlobalSoilInterfaceConfig
-from geomodgen2d.generated_model2d import GeneratedModel2D
 
 class LithologicalDomain2DCollection:
     """
@@ -249,10 +251,17 @@ class LithologicalDomain2DCollection:
         # Step 1: Merge the lithological domain and create a PropertyProfileEach for merged.
         #          Also get all_lit_ids
         ordered = self.__reorder_lit_order()
-        self._all_lit_ids = {}
+        merged_lit_domain, merged_all_lit_ids, gwt = self.get_merged_lit_domain(ordered, self.lit_domain_set, self.valid_feature_ids)
+        self._gwt_depth = gwt
+        self._merged_lit_domain=merged_lit_domain
+        self._all_lit_ids = merged_all_lit_ids
+        
+    @staticmethod
+    def get_merged_lit_domain(ordered, lit_domain_set, valid_feature_ids):
+        merged_all_lit_ids = {}
         for i, set_name in enumerate(ordered.keys()):
             # Merging
-            lithological_domain_instance = self.lit_domain_set[set_name]
+            lithological_domain_instance = copy.deepcopy(lit_domain_set[set_name])
         
             if not isinstance(lithological_domain_instance, LithologicalDomain2DReadOnly):
                 raise TypeError(f"The values of all generated_profiles_set must be LithologicalDomain2DReadOnly. Not the case for {set_name}")
@@ -263,8 +272,13 @@ class LithologicalDomain2DCollection:
             lithological_domain_instance.check_shape()
             
             if i == 0:
+                if lithological_domain_instance.check_for_Xs(lithological_domain_instance.lithological_matrix):
+                    raise TypeError(f"The first lit_domain set in generated_profiles_set must be LithologicalDomain2D with no 'X's. Not the case the one in first set : {set_name}")
+                
                 if not isinstance(lithological_domain_instance, LithologicalDomain2D):
-                    raise TypeError(f"The first value in generated_profiles_set must be LithologicalDomain2D. Not the case the one in first set : {set_name}")
+                    config = lithological_domain_instance.get_config
+                    lithological_domain_instance = LithologicalDomain2D.from_config(config)
+                
                 merged_lit_domain = lithological_domain_instance
                 gwt = lithological_domain_instance.gwt_depth
             else:
@@ -275,32 +289,26 @@ class LithologicalDomain2DCollection:
             lit_dict = lithological_domain_instance.get_feature_id_and_lit_val_from_lithological_matrix()
             
             feature_ids = lit_dict.keys()
-
-            invalid = [fid for fid in feature_ids if fid not in self.valid_feature_ids]
+            invalid = [fid for fid in feature_ids if fid not in valid_feature_ids]
 
             if invalid:
                 raise ValueError(
                     f"The following feature_ids are invalid (not in MainPropertiesConfig): {invalid}"
                 )
-            self._all_lit_ids = self.__merge_lit_dicts([self.all_lit_ids, lit_dict])
-        
-        self._gwt_depth = gwt
+            merged_all_lit_ids = LithologicalDomain2DCollection.__merge_lit_dicts([merged_all_lit_ids, lit_dict])
         merged_lit_domain.lit_order=-1
-        self._merged_lit_domain=merged_lit_domain
+        merged_lit_domain.check_shape()
         
-        lithological_domain_instance = self._merged_lit_domain
-        merged_lit_dict = lithological_domain_instance.get_feature_id_and_lit_val_from_lithological_matrix()
-        self._merged_lit_domain.check_shape()
+        merged_lit_dict = merged_lit_domain.get_feature_id_and_lit_val_from_lithological_matrix()
           
         #Check : all_lit_ids makes sense
         for prefix, vals in merged_lit_dict.items():
-            if prefix not in self._all_lit_ids:
+            if prefix not in merged_all_lit_ids:
                 raise ValueError(
                     f"Prefix '{prefix}' found in merged profile but not in all_lit_ids."
                 )
-
             merged_set = set(vals)
-            all_set     = set(self._all_lit_ids[prefix])
+            all_set     = set(merged_all_lit_ids[prefix])
 
             if not merged_set.issubset(all_set):
                 missing = merged_set - all_set
@@ -308,7 +316,8 @@ class LithologicalDomain2DCollection:
                     f"Merged profile contains lit values {missing} for prefix '{prefix}', "
                     f"which are not found in all_lit_ids."
                 )
-        
+        return merged_lit_domain, merged_all_lit_ids, gwt
+
     def lock(self):
         self.__get_merged_set()
         self._unique_code = np.random.randint(1, 10**18, dtype=np.int64)
@@ -336,7 +345,7 @@ class LithologicalDomain2DCollection:
         return self_config
 
     @classmethod
-    def from_config(cls, config_dict):
+    def from_config(cls, config_dict, read_only=False):
         if not isinstance(config_dict, dict):
             raise TypeError("Expected a dictionary.")
         try:
@@ -348,11 +357,14 @@ class LithologicalDomain2DCollection:
             
             obj._lit_domain_set = {}
             for key, val in config_dict['_lit_domain_set'].items():
-                lm_type = val['lm_type']
-                if lm_type.startswith("from_interface_config"):
-                    obj._lit_domain_set[key] = LithologicalDomain2D.from_config(val)
+                if read_only:
+                    obj._lit_domain_set[key] = LithologicalDomain2DReadOnly.from_config(val)
                 else:
-                    obj._lit_domain_set[key] = LithologicalDomain2DFromObstruction2D.from_config(val)
+                    lm_type = val['lm_type']
+                    if lm_type.startswith("from_interface_config"):
+                        obj._lit_domain_set[key] = LithologicalDomain2D.from_config(val)
+                    else:
+                        obj._lit_domain_set[key] = LithologicalDomain2DFromObstruction2D.from_config(val)
                             
             obj._lit_id2material_dict = config_dict['_lit_id2material_dict']
             obj._locked = config_dict['_locked']
@@ -360,7 +372,10 @@ class LithologicalDomain2DCollection:
             if config_dict['_merged_lit_domain'] is None:
                 obj._merged_lit_domain = config_dict['_merged_lit_domain']
             else:
-                obj._merged_lit_domain = LithologicalDomain2D.from_config(config_dict['_merged_lit_domain'])
+                if read_only:
+                    obj._merged_lit_domain = LithologicalDomain2DReadOnly.from_config(config_dict['_merged_lit_domain'])
+                else:
+                    obj._merged_lit_domain = LithologicalDomain2D.from_config(config_dict['_merged_lit_domain'])
                 
             obj._unique_code = config_dict['_unique_code']
 

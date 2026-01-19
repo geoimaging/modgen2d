@@ -348,6 +348,6 @@ def get_random_generated_sample(material_property_dict:dict):
             stdev = 0
         stdev_type = material_property_dict[key].stdev_type
         
-        sample_dict_prop_id[key] = {'mean': mean, 'mean_bm': 0, 'stdev/cov': stdev, 'stdev_type':stdev_type}
+        sample_dict_prop_id[key] = {'mean': mean, 'mean_bm': 0, 'stdev_or_cov': stdev, 'stdev_type':stdev_type}
         
     return sample_dict_prop_id

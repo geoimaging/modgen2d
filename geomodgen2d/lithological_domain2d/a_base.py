@@ -6,6 +6,7 @@
 """Define a two-dimensional domain that defines lithology."""
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        
 import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
 import geomodgen2d.general_functions as f
 import copy,warnings
@@ -32,7 +33,7 @@ class LithologicalDomain2DReadOnly():
         self.domain = domain
         self.name = name
         self.lm_type = 'NA'
-        self.lithological_matrix = None
+        self._lithological_matrix = None
         self.interface_config_revision_id = GlobalSoilInterfaceConfig.get_revision_id()
         
         #For lithologicalDomain from Interface
@@ -46,6 +47,57 @@ class LithologicalDomain2DReadOnly():
         self.init_domain = None #None means domain has never been changed.
         self.lit_order = None
         
+    @property
+    def lithological_matrix(self):
+        return self._lithological_matrix
+
+    @lithological_matrix.setter
+    def lithological_matrix(self, value):
+        self._lithological_matrix = value
+        self.validate_lithological_matrix()
+        self.check_shape()
+    
+    def validate_lithological_matrix(self):
+        lithological_matrix = self.lithological_matrix
+
+        if lithological_matrix is None:
+            return True
+
+        if not isinstance(lithological_matrix, np.ndarray):
+            raise TypeError("lithological_matrix must be a numpy array or None.")
+
+        # Explicit NaN / None check
+        if np.any(pd.isna(lithological_matrix)):
+            raise ValueError("lithological_matrix contains NaN or None values.")
+
+        # Work only on unique string values (small loop)
+        unique_vals = np.unique(lithological_matrix.astype(str))
+
+        for s in unique_vals:
+            # Allowed placeholder
+            if s == "X":
+                continue
+
+            # Pure integer label
+            if s.isdigit():
+                continue
+
+            # feature_id_<int>
+            parts = s.split("_", 1)
+            if len(parts) != 2:
+                raise ValueError(f"Invalid lithological entry: '{s}'")
+
+            prefix, suffix = parts
+            if not prefix or not suffix.isdigit():
+                raise ValueError(f"Invalid lithological entry: '{s}'")
+            
+        print("Ran auto test: Check")
+        return True
+    
+    @staticmethod
+    def check_for_Xs(lit_matrix_vavaluelue):
+        return "X" in np.unique(np.asarray(lit_matrix_vavaluelue, dtype=str))
+
     def print(self):
         print(f"N_x_coord = {self.lithological_matrix.shape[0]}, N_z_coord = {self.lithological_matrix.shape[1]}")
         print("Layered Matrix : \n", self.lithological_matrix.T) 
@@ -268,6 +320,8 @@ class LithologicalDomain2DReadOnly():
             
             self_copy.domain = new_domain
             self_copy.lithological_matrix = unique_values[remeshed_int_mapp.astype(int)]
+            # self_copy.validate_lithological_matrix() #Should be done automatically with setter
+            
             self_copy.lm_type = f'{self_copy.lm_type}_remeshed'
             if self_copy.init_domain is None:
                 self_copy.init_domain = self.domain
@@ -277,7 +331,7 @@ class LithologicalDomain2DReadOnly():
             self.__dict__.update(self_copy.__dict__)
         else:
             return self_copy
-    
+            
     @property
     def get_config(self):
         self_config = {}

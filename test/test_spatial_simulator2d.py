@@ -87,8 +87,8 @@ class TestSpatialSimulator2D(TestCase):
     def test_validate_valid(self):
         prop = {
             "L1": {
-                "wet": {"mean": 10, "stdev/cov": 0.2, "stdev_type": "cov"},
-                "dry": {"mean": 8, "stdev/cov": 1.5, "stdev_type": "stdev"},
+                "wet": {"mean": 10, "stdev_or_cov": 0.2, "stdev_type": "cov"},
+                "dry": {"mean": 8, "stdev_or_cov": 1.5, "stdev_type": "stdev"},
             }
         }
 
@@ -99,7 +99,7 @@ class TestSpatialSimulator2D(TestCase):
 
         prop = {
             "L2": {
-                "both": {"mean": 5, "mean_bm": 1.2, "stdev/cov": 0.1, "stdev_type": "cov"}
+                "both": {"mean": 5, "mean_bm": 1.2, "stdev_or_cov": 0.1, "stdev_type": "cov"}
             }
         }
 
@@ -109,7 +109,7 @@ class TestSpatialSimulator2D(TestCase):
     def test_validate_missing(self):
         prop = {
             "L1": {
-                "both": {"stdev/cov": 1.0, "stdev_type": "stdev"}
+                "both": {"stdev_or_cov": 1.0, "stdev_type": "stdev"}
             }
         }
 
@@ -118,7 +118,7 @@ class TestSpatialSimulator2D(TestCase):
 
         prop = {
             "L1": {
-                "both": {"mean": 5, "stdev/cov": 1.0, "stdev_type": "variance"}
+                "both": {"mean": 5, "stdev_or_cov": 1.0, "stdev_type": "variance"}
             }
         }
 
@@ -127,7 +127,7 @@ class TestSpatialSimulator2D(TestCase):
 
         prop = {
             "L1": {
-                "wet": {"mean": 5, "stdev/cov": 1.0, "stdev_type": "stdev"}
+                "wet": {"mean": 5, "stdev_or_cov": 1.0, "stdev_type": "stdev"}
                 # missing dry
             }
         }
