@@ -39,6 +39,9 @@ class GeneratedProfileCollection2DReadOnly:
         if not main_properties_config_instance._locked:
             raise TypeError("main_properties_config_instance is not locked yet. Use .lock_and_generate_sample_properties first.")
         
+        if not lithological_domain2d_collection._locked:
+            raise TypeError("lithological_domain2d_collection is not locked yet. Use .lock first.")
+        
         self._lit_id2material_dict = main_properties_config_instance.lit_id2material_dict
         self._sampled_properties = main_properties_config_instance.sampled_properties
         self._main_properties_unique_code = main_properties_config_instance.unique_code
@@ -104,16 +107,78 @@ class GeneratedProfileCollection2DReadOnly:
 
         return self.generated_model2d_set[first_key].simulated_profiles.keys()
     
-    # def check(self):
-    #     if self.material_domain_unique_code!=self.material_domain2d_instance.unique_code:
-    #         raise ValueError("Material domain has been changed since definition of this GeneratedProfileCollection2D instance.")
+    def check(self):
+        simulated_val_for_ignored_lit_property = self.spatial_simulator2d_instance.simulated_val_for_ignored_lit_property
+        simulated_properties = self.get_simulated_properties
         
-    #     if not self.material_domain2d_instance._locked:
-    #         raise ValueError("material domain2d instance has been unlocked. Redefine this class with locked one.")
+        # Check order_no
+        ordered_set_names_dict, _ = self.get_ordered_set_names_dict()
+        lit_orders = list(ordered_set_names_dict.keys())
+
+        n = len(lit_orders)
+        expected = set(range(n))
+        if set(lit_orders) != expected:
+            raise ValueError(
+                f"Invalid lit_orders: expected {sorted(expected)}, "
+                f"got {sorted(lit_orders)}"
+            )
+        
+        first = True
+        for set_name, gen_model2d in self._generated_model2d_set.items():
+            if first:
+                gwt_depth = gen_model2d.gwt_depth
+            else:
+                if gwt_depth != gen_model2d.gwt_depth:
+                    raise ValueError(
+                        f"Inconsistent gwt_depth across generated models: "
+                        f"{gwt_depth} != {gen_model2d.gwt_depth}"
+                    )
+            
+            if simulated_val_for_ignored_lit_property != gen_model2d.simulated_val_for_ignored_lit_property:
+                raise ValueError(
+                        f"simulated_val_for_ignored_lit_property mismatch for set '{set_name}'. "
+                        f"Expected: From spatial simulator: {simulated_val_for_ignored_lit_property}, "
+                        f"found {gen_model2d.simulated_val_for_ignored_lit_property}."
+                    )
+                
+            simulated_properties_each = set(self.generated_model2d_set[set_name].simulated_profiles.keys())
+            if simulated_properties_each != simulated_properties:
+                raise ValueError(
+                    f"Simulated properties mismatch for set '{set_name}'. "
+                    f"Expected {sorted(simulated_properties)}, "
+                    f"found {sorted(simulated_properties_each)}."
+                )
+                
+            gen_model2d.check(ignore_lithological_ids=['X'], allow_ignored_lit_property=gen_model2d.lit_order!=0)
+            
+        self._merged_generated_model2d.check(ignore_lithological_ids=['X'], allow_ignored_lit_property=False)
+        
+    def get_ordered_set_names_dict(self):
+        # Get ordered and lit_domain_set
+        ordered_set_names_dict = {}
+        lit_domain_set = {}
+        
+        for set_name, gen_model2d in self._generated_model2d_set.items():
+            lit_domain = gen_model2d.lit_domain
+            lit_order = gen_model2d.lit_order
+            
+            # Enforce uniqueness
+            if lit_order in ordered_set_names_dict:
+                raise ValueError(f"Duplicate lit_order detected: {lit_order}")
+            if set_name in ordered_set_names_dict.values():
+                raise ValueError(f"Duplicate set_name detected: {set_name}")
+            
+            ordered_set_names_dict[lit_order] = set_name
+            lit_domain_set[set_name] = lit_domain
+                
+        # Sort by lit_order and convert back to dict
+        ordered_set_names_dict = dict(
+            sorted(ordered_set_names_dict.items(), key=lambda x: x[0])
+        )
+        
+        return ordered_set_names_dict, lit_domain_set
     
-    # Check if all the simulated values ignoer is same in spatial simulator and here. also gwt??
-    
-    # To do: get merged and check if asme with the one generateed. If jot woo woo!!!
+    # To do: get merged and check if asme with the one generateed. If not woo woo!!! (MAYBE LATER)
 
     @property
     def get_config(self):
@@ -176,6 +241,7 @@ class GeneratedProfileCollection2DReadOnly:
         return obj
 
     def save_to_hdf5(self, file_name, hdf5_compression_level=0):
+        self.check()
         to_save_dict = {
             'geomodgen2d_version': __version__,
             'save_read_only': False,
@@ -189,6 +255,7 @@ class GeneratedProfileCollection2DReadOnly:
         print(f"Data saved to {file_name}")
         
     def save_to_hdf5_read_only(self, file_name, save_merged_only=True, save_interface=False, hdf5_compression_level=0):
+        self.check()
         state_dict = self.get_config.copy()
         if save_merged_only:
             state_dict.pop('_generated_model2d_set', None)
@@ -209,6 +276,7 @@ class GeneratedProfileCollection2DReadOnly:
         print(f"Data saved to {file_name}")
         
     def save_to_hdf5_numpy(self, file_name, save_merged_only=True, save_interface=False, save_lithological_domain=False, save_properties_metadata=False, hdf5_compression_level=0):
+        self.check()
         with h5py.File(file_name, 'w') as hf:
             to_save_dict = {
                 'geomodgen2d_version': __version__,
@@ -302,6 +370,7 @@ class GeneratedProfileCollection2D(GeneratedProfileCollection2DReadOnly):
         
         if current_merged_simulated_profile is None:
             current_merged_simulated_profile = to_merge_simulated_profile_remeshed
+            simulated_profile_merged = current_merged_simulated_profile
         else:
             # Masks to identify non-'none' values
             mask_other_non_none = ~np.isin(to_merge_simulated_profile_remeshed, simulated_val_for_ignored_lit_property)
@@ -350,7 +419,7 @@ class GeneratedProfileCollection2D(GeneratedProfileCollection2DReadOnly):
                 simulated_profile_merged = None
                 
             simulated_profile_merged = self.get_merged_simulated_profile(
-                order_id, current_merged_lit_domain=merged_lit_domain, current_merged_simulated_profile=simulated_profile_merged,
+                current_merged_lit_domain=merged_lit_domain, current_merged_simulated_profile=simulated_profile_merged,
                 to_merge_lit_domain = lit_domain, to_merge_simulated_profile=simulated_profile, 
                 simulated_val_for_ignored_lit_property=generated_model_instance.simulated_val_for_ignored_lit_property
                 )
@@ -408,7 +477,7 @@ class GeneratedProfileCollection2D(GeneratedProfileCollection2DReadOnly):
                 simulated_profile_merged = None
                 
             simulated_profile_merged = self.get_merged_simulated_profile(
-                order_id, current_merged_lit_domain=merged_lit_domain, current_merged_simulated_profile=simulated_profile_merged,
+                current_merged_lit_domain=merged_lit_domain, current_merged_simulated_profile=simulated_profile_merged,
                 to_merge_lit_domain = lit_domain, to_merge_simulated_profile=simulated_profile, 
                 simulated_val_for_ignored_lit_property=generated_model_instance.simulated_val_for_ignored_lit_property)
             

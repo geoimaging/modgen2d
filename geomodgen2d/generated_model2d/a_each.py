@@ -30,25 +30,25 @@ class GeneratedModel2D:
         filtered_dict = {k: np.array(v) for k, v in lit_id2material_dict.items() if k in unique_ids}
         self.lit_id2material_dict = filtered_dict
     
-        @property
-        def simulated_val_for_ignored_lit_property(self):
-            return self._simulated_val_for_ignored_lit_property
+    @property
+    def simulated_val_for_ignored_lit_property(self):
+        return self._simulated_val_for_ignored_lit_property
 
-        @simulated_val_for_ignored_lit_property.setter
-        def simulated_val_for_ignored_lit_property(self, value):
-            if self.simulated_profiles is not None:
-                raise AttributeError(
-                    "Profiles has already been generated and hence, cannot be changed."
-                )
-                
-            if not isinstance(value, int):
-                raise TypeError(
-                    f"simulated_value_for_ignored_lit must be an integer, got {type(value)}"
-                )
-                
-            self._simulated_val_for_ignored_lit_property = value
+    @simulated_val_for_ignored_lit_property.setter
+    def simulated_val_for_ignored_lit_property(self, value):
+        if self.simulated_profiles is not None:
+            raise AttributeError(
+                "Profiles has already been generated and hence, cannot be changed."
+            )
             
-    def check(self):
+        if not isinstance(value, int):
+            raise TypeError(
+                f"simulated_value_for_ignored_lit must be an integer, got {type(value)}"
+            )
+            
+        self._simulated_val_for_ignored_lit_property = value
+            
+    def check(self, ignore_lithological_ids=['X'], allow_ignored_lit_property=True):
         """
         Checks that the simulated profiles has the correct shape and contains no NaN values.
 
@@ -60,25 +60,43 @@ class GeneratedModel2D:
         if domain_shape != lit_shape:
             raise ValueError(f"Matrix shape mismatch. Domain shape {domain_shape} != lit_shape {lit_shape}.")
         
+        unique_ids = np.unique(self.lit_domain.lithological_matrix.astype(str))
+        
+        # Check that all unique IDs are keys in lit_id2material
+        missing_keys = (
+            set(unique_ids)
+            - set(self.lit_id2material_dict)
+            - set(ignore_lithological_ids)
+        )
+
+        if missing_keys:
+            raise ValueError(
+                f"The following lithological IDs are missing in lit_id2material_dict and ignore_lithological_ids: {sorted(missing_keys)}"
+            )
+
+        #Make sure positions in numpy array of self.lit_domain.lithological_matrix wher (ignore_lithological_ids) and that of self.simualted_val_for_ignored_lit_property in self.simulated_profile is same...
+        ignored_lith_mask = np.isin(self.lit_domain.lithological_matrix, ignore_lithological_ids)
+        
         for key,val in self.simulated_profiles.items():
             if domain_shape != val.shape:
                 raise ValueError(f"Matrix shape mismatch. Domain shape {domain_shape} != lit_shape {val.shape} for property: {key}.")
-    
-        unique_ids = np.unique(self.lit_domain.lithological_matrix.astype(str))
-        # Check that all unique IDs are keys in lit_id2material
-        missing_keys = [uid for uid in unique_ids if uid not in self.lit_id2material_dict]
-        if missing_keys:
-            raise ValueError(f"The following lithological IDs are missing in lit_id2material_dict: {missing_keys}")
-
-        for key,val in self.simulated_profiles.items():
+            
             contains_nan = np.isnan(val).any()
             if contains_nan!=0:
                 raise ValueError(f"The simulated profile for property {key} cannot have nan-values")
-        
-            # Check if the profile contains any values of -99999
-            contains_negative_value = (val == -99999).any()
-            if contains_negative_value:
-                print("Warning: Few numbers in simulated profile for property {key} is -99999, denoting ignored layers.")
+
+            # Position of ignored values consistency check
+            ignored_sim_mask = val == self.simulated_val_for_ignored_lit_property
+            
+            if not np.array_equal(ignored_lith_mask, ignored_sim_mask):
+                raise ValueError(
+                    f"Mismatch between ignored lithological ids in lit_matrix and simulated ignored-value positions in simulated profile for key {key}."
+                )
+                
+            # Check if the profile contains any values of simulated_val_for_ignored_lit_property
+            contains_negative_value = (val == self.simulated_val_for_ignored_lit_property).any()
+            if contains_negative_value and not allow_ignored_lit_property:
+                raise ValueError(f"Few numbers in simulated profile for property {key} is {self.simulated_val_for_ignored_lit_property}, despite not allowed with flag allow_ignored_lit_property False in the .check.")
     
     def remesh(self, new_dx, new_dz):
         self.lit_domain.check_shape()

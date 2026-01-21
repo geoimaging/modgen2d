@@ -439,8 +439,8 @@ class SpatialSimulator2D(ABC):
         # FOR LATER SAVE; CHANGE TYPE IF NEEDED.
         
 class ConstantSimulator(SpatialSimulator2D):
-    def __init__(self, rng):
-        super().__init__(None, None, rng)
+    def __init__(self, simulated_val_for_ignored_lit_property=-99999, rng=np.random.default_rng()):
+        super().__init__(None, None, simulated_val_for_ignored_lit_property, rng)
     
     def simulate(self, points, mean=0, sigma=None):
         a_m, b_m = self.get_means_am_bm(mean)    
@@ -451,8 +451,8 @@ class ConstantSimulator(SpatialSimulator2D):
 
 ## All in One (Detailed demo in Random_Field_simulation_v1 and v2::)
 class CovarianceDecompositionSimulator(SpatialSimulator2D):
-    def __init__(self, theta_x, theta_z, rng):
-        super().__init__(theta_x, theta_z, rng)
+    def __init__(self, theta_x, theta_z, simulated_val_for_ignored_lit_property=-99999, rng=np.random.default_rng()):
+        super().__init__(theta_x, theta_z, simulated_val_for_ignored_lit_property, rng)
         self.default_simulator_type=True  #To use in loading gen_model_collection from config, so dont use True for any other case.
     
     def compute_correlation_matrix(self, points):
