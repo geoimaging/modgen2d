@@ -3,7 +3,26 @@
 #
 # LICENSE
 
-"""Import modules into the geomodgen2d namespace."""
+"""
+This module exposes the public API for working with 2D lithological domains
+in the geomodgen2d package. Users typically interact with these classes
+to define, read, or manipulate lithological structures and collections
+for subsurface modeling.
+
+Public API
+----------
+- LithologicalDomain2D: Base class for 2D lithological domains.
+- LithologicalDomain2DReadOnly: Read-only variant of a lithological domain.
+- LithologicalDomain2DFromObstruction2D: Specialized class to generate
+  domains based on 2D obstructions.
+- LithologicalDomain2DCollection: Collection class managing multiple
+  lithological domains with merging, ordering, and sampling support.
+
+Notes
+-----
+This file is intended for user-facing imports only. Internal modules
+(a_*, b_*) should not be imported directly by users.
+"""
 
 # PUBLIC API — this is the only file users ever see
 

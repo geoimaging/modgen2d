@@ -17,19 +17,25 @@ from .a_from_obs2d import LithologicalDomain2DFromObstruction2D
 from .common_functions import _warn_if_changed, _merge_lithological_domains
 
 class LithologicalDomain2D(LithologicalDomain2DReadOnly):
+    """
+    Represents a 2D lithological domain generated from the global soil interface configuration.
+
+    Provides methods to refresh the domain, merge with obstruction-based domains,
+    and validate consistency with the global interface configuration.
+    """
     def __init__(self, domain:DiscretizedDomain2D=None, gwt_depth=None, name:str = ''): 
         """
-        Generates a LithogolicalDomain3D instance from the provided GlobalSoilInterfaceConfig.
+        Initialize a 'LithologicalDomain2D' instance from the 'GlobalSoilInterfaceConfig'.
 
-        Parameters:
+        Parameters
         ----------
-        domain:
-            Discretized Domain of the lithological domain
-            If None, uses same domain as GlobalSoilInterfaceConfig's merged interface.
-        gwt_depth:
-            GWT Depth in unit length. If None, assumed at the bottom/inf.
-        name: str
-            The name of lithologicaldomain
+        domain : DiscretizedDomain2D, optional
+            Discretized domain to use for the lithology. If None, the domain from
+            GlobalSoilInterfaceConfig's merged interface is used.
+        gwt_depth : float, optional
+            Groundwater table depth. If None, assumed at the bottom of the domain.
+        name : str, optional
+            Name of the lithological domain.
         """
         self.name = name
         discretizedInterfaces2D_instance = GlobalSoilInterfaceConfig.get_interface_instance()
@@ -54,6 +60,9 @@ class LithologicalDomain2D(LithologicalDomain2DReadOnly):
         
     @LithologicalDomain2DReadOnly.lithological_matrix.setter
     def lithological_matrix(self, value):
+        """
+        Setter that prevents 'X' values in LithologicalDomain2D matrices.
+        """
         if value is not None:
             if self.check_for_Xs(value):
                 raise ValueError(
@@ -141,6 +150,19 @@ class LithologicalDomain2D(LithologicalDomain2DReadOnly):
     
     @classmethod
     def from_config(cls, config_dict):
+        """
+        Load a LithologicalDomain2D from a configuration dictionary.
+
+        Parameters
+        ----------
+        config_dict : dict
+            Dictionary containing saved lithological domain configuration.
+
+        Returns
+        -------
+        LithologicalDomain2D
+            Instance reconstructed from the configuration.
+        """
         if not isinstance(config_dict, dict):
             raise TypeError("Expected a dictionary.")
         

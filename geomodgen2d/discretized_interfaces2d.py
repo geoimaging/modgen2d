@@ -1,4 +1,10 @@
-__all__ = ['DiscretizedInterfaces2D']
+"""
+Discretized 2D geological interfaces.
+
+Defines utilities for generating, processing, remeshing,
+and visualizing soil and surface interfaces over a
+discretized 2D domain.
+"""
 
 import warnings
 
@@ -11,21 +17,32 @@ import geomodgen2d.general_functions as f
 import matplotlib.pyplot as plt
 
 class DiscretizedInterfaces2D:
+    """
+    Discretized 2D soil and surface interfaces.
+
+    Interfaces are defined on a discretized 2D domain and may represent soil–soil or surface–soil boundaries.
+
+    Once locked, the instance becomes immutable.
+    """
+    
     def __init__(self, domain: DiscretizedDomain2D, n_soil_layers: int, generate_surface:bool, rough_interface_generator_scale:list=None, remesh_interp_method = 'linear', rng=np.random.default_rng()):
         """
-        Initializes the InterfaceCreator instance with given discretized domain2d instance, and number of interfaces.
+        Initializes the 'InterfaceCreator' class instance. 
         
-        Parameters:
-        domain2D : DiscretizedDomain2D
+        Parameters
+        ----------
+        domain : DiscretizedDomain2D
             The DiscretizedDomain2D instance describing the spans and dhs of the domain.
-        n_soil_layers: float, 
-            Number of soil interfaces in the model
-        generate_surface:bool,
-            has surface inteface or not in the model.
-        remesh_interp_method: str
-            Interpolation method when remeshing (default: 'linear')
-        rnd_no: 
-            Optional random number generator instance
+        n_soil_layers: int
+            Number of soil layers.
+        generate_surface:bool
+            Whether a surface interface is present.
+        rough_interface_generator_scale : list, optional
+            Roughness scaling factors per interface.
+        remesh_interp_method : str, optional
+            Interpolation method used during remeshing. (default: 'linear')
+        rng : numpy.random.Generator, optional
+            Random number generator.
         """
         n_soil_layers = int(n_soil_layers)
         blank_interfaces = np.ones((domain.interface_shape[0], 
@@ -88,6 +105,15 @@ class DiscretizedInterfaces2D:
             raise ValueError("The adjusted length of rough_interface_generator_scale must be equal to n_soil_layers. Try re setting the scale.")
     
     def lock_interfaces(self):
+        """
+        Lock the interfaces to prevent further modification.
+
+        Raises
+        ------
+        ValueError
+            If interfaces contain NaNs, overlap, or violate
+            surface constraints.
+        """
         if np.isnan(self.interfaces_matrix).any():
             raise ValueError("Interfaces_matrix contains NaN values.")
         if self.check_if_overlapping_interfaces():
@@ -226,11 +252,20 @@ class DiscretizedInterfaces2D:
     
     def set_interfaces_matrix(self, interfaces_matrix: np.ndarray):
         """
-        Set the interfaces_matrix with a new matrix.
-        
-        Parameters:
-        interfaces_matrix : numpy array: 
-            A NumPy array of the same shape as the existing interfaces_matrix
+        Set the interface depth matrix.
+
+        Parameters
+        ----------
+        interfaces_matrix : numpy.ndarray
+            Interface depth matrix of shape
+            ``(n_x_interface, n_soil_layers)``.
+
+        Raises
+        ------
+        SystemError
+            If the instance is locked.
+        ValueError
+            If shape, NaNs, or surface constraints are violated.
         """
         if self._locked:
             raise SystemError("This instance is fixed; no modifications allowed.")
@@ -252,17 +287,12 @@ class DiscretizedInterfaces2D:
 
     def generate_rough_interfaces(self, rough_interface_creator_instance: AbstractRoughInterfaceCreator):
         """
-        Generates a interface matrix with randomized interface points.
+        Generate rough interfaces using a generator instance.
 
-        Parameters:
-        random_generator_option: str
-            Method for random generation of interface. Options: 'uniform', 'normal', 'fbm'.
-
-        rough_interface_creator_instance: AbstractRoughInterfaceCreator
-            RoughInterfaceCreator instance with relevant generator parameters
-
-        surface_scaling_factor:
-            Factor by which magnitude is to be reduced (for surface generation; If intended to have smaller undulations.)
+        Parameters
+        ----------
+        rough_interface_creator_instance : AbstractRoughInterfaceCreator
+            Generator defining interface roughness.
         """
         nx, _ = self.interfaces_matrix.shape
         interfaces_matrix = np.zeros_like(self.interfaces_matrix)
@@ -276,7 +306,8 @@ class DiscretizedInterfaces2D:
         """
         Applies a Savitzky-Golay filter to smooth the interface.
 
-        Parameters:
+        Parameters
+        ----------
         filter_window_length: int
             Window size for the filter. If the value is zero, then it means no filtering.
         filter_polyorder: int
@@ -296,10 +327,10 @@ class DiscretizedInterfaces2D:
         """
         Initializes interface points at reference coordinates. 
         
-        Parameters:
+        Parameters
+        ----------
         method: str 
             Mode of initialization ('equidistant', 'random')
-
         """
         span_z = self.domain.spans[1]
 
@@ -322,10 +353,11 @@ class DiscretizedInterfaces2D:
         """
         Initializes interface points at reference coordinates. Shifting the boundaries' reference points so that they match the values in interface_init_points.
 
-        Parameters:
-        interface_z_references: str or list
-            Mode of initialization ('equidistant', 'random', or numPy array of floats)
-        reference_point_x: float 
+        Parameters
+        ----------
+        reference_points_zs : array_like
+            Reference depths for each interface.
+        reference_point_x: float, optional
             Reference x-coordinate for initialization. Will save the reference point, in case merged with surface (later).
             If None, first point in the x_centers.
 
@@ -366,7 +398,6 @@ class DiscretizedInterfaces2D:
             interp_ref_zs = f.remeshing_2D_matrix(x_old = x_centers, x_new = [reference_point_x],
                                                 z_old = zs, z_new = zs, matrix_2d = self.interfaces_matrix, interp_method = self.remesh_interp_method)
 
-
             # computing the shift
             reference_points_zs+=interp_ref_zs[0,0]
             shift_z = reference_points_zs - interp_ref_zs[0,:]  
@@ -377,11 +408,12 @@ class DiscretizedInterfaces2D:
 
     def processing_interface(self, simulate_erosion=True):#, trim_interfaces=False):
         """
-        Processes boundaries to prevent overlapping and limit values.
-        
-        simulate_erosion: Boolean flag to determine priority in overlapping layers. If true, implies natural erosion (i.e. priortize lower interface).
-        
-        For surface interface, it will be priortized
+        Post-process interfaces to remove overlaps.
+
+        Parameters
+        ----------
+        simulate_erosion : bool, optional
+            If True, lower interfaces take priority.
         """
         #b_line_filtered_dict, zlim, top_priority=True):
         # Process 1: Limiting the boundaries to 0 and zlim, if trim_interfaces
@@ -470,14 +502,20 @@ class DiscretizedInterfaces2D:
 
     def remesh_interface(self, new_dx, new_dz=None):
         """
-        Returns a **new instance** of this interface class with remeshed coordinates,
-        without modifying self.
+        Return a remeshed copy of the interfaces.
 
-        Parameters:
-        new_dx, new_dz: float
-            Refined spacing
+        Parameters
+        ----------
+        new_dx : float
+            New discretization in x-direction.
+        new_dz : float, optional
+            New discretization in z-direction.
+
+        Returns
+        -------
+        DiscretizedInterfaces2D
+            Remeshed interface instance.
         """
-        
         if new_dz is None:
             new_dz = self.domain.dhs[1]
         
@@ -514,6 +552,7 @@ class DiscretizedInterfaces2D:
     
     @property
     def get_config(self):
+        """Return class configuration."""
         domain_config = self.domain.get_config
         return {
             'domain': domain_config,
@@ -529,6 +568,7 @@ class DiscretizedInterfaces2D:
         
     @classmethod
     def from_config(cls, config_dict):
+        """Create 'DiscretizedInterfaces2D' class instance from a configuration dictionary."""
         if not isinstance(config_dict, dict):
             raise TypeError("Expected a dictionary.")
         try:

@@ -15,6 +15,20 @@ from IPython.display import display, clear_output
 from geomodgen2d.metadata import __version__
 
 def load_dict_from_hdf5(group):
+    """
+    Recursively loads the contents of an HDF5 group into a Python dictionary.
+
+    Parameters
+    ----------
+    group : h5py.Group
+        HDF5 group object to load.
+
+    Returns
+    -------
+    dict
+        Nested dictionary containing the data from the HDF5 group. 
+        Supports integers, floats, strings, arrays, and nested groups.
+    """
     loaded_dict = {}
     for key in group:
         item = group[key]
@@ -49,6 +63,30 @@ def load_dict_from_hdf5(group):
     return loaded_dict
 
 def read_hdf5_file(to_file, read_only=False, check_merged = False):
+    """
+    Reads a saved HDF5 file containing a geomodgen2D model collection and reconstructs
+    the corresponding Python objects.
+
+    Parameters
+    ----------
+    to_file : str
+        Path to the HDF5 file to read.
+    read_only : bool, default False
+        Whether to load the model collection in read-only mode. Raises an error if the file
+        was saved with read-only but read_only=False is requested.
+    check_merged : bool, default False
+        Reserved for future use. Currently not used in this function.
+
+    Returns
+    -------
+    GeneratedProfileCollection2D or GeneratedProfileCollection2DReadOnly
+        Loaded model collection instance corresponding to the saved HDF5 data.
+
+    Raises
+    ------
+    ValueError
+        If a read-only file is attempted to be opened with read_only=False.
+    """
     with h5py.File(to_file, 'r') as hf:
         full_config = load_dict_from_hdf5(hf)
     

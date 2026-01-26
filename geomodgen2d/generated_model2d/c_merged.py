@@ -1,10 +1,33 @@
+"""
+Module for Merged GeneratedModel2D
+"""
 from geomodgen2d.lithological_domain2d import LithologicalDomain2DCollection
 from .a_each import GeneratedModel2D
 from .b_collection import GeneratedProfileCollection2D
 import warnings
 
 class GeneratedModel2DMerged(GeneratedModel2D):
+    """
+    Represents a merged 2D generated model created from multiple profile sets
+    in a `GeneratedProfileCollection2D`.
+    """
     def __init__(self, generated_model_collection:GeneratedProfileCollection2D):
+        """
+        Initialize a merged 2D model from a profile collection.
+
+        Parameters
+        ----------
+        generated_model_collection : GeneratedProfileCollection2D
+            A collection of generated 2D profiles to merge.
+
+        Notes
+        -----
+        This constructor computes:
+        - The merged lithological domain
+        - Merged simulated property profiles
+        - Merged lithological ID → material mapping
+        - Merged groundwater table depth
+        """
         self.lit_domain, self.simulated_profiles, self.lit_id2material_dict, self.gwt_depth = self.__compute_merged_generated_profiles_fields(generated_model_collection)
         self.lit_order = -1
         self._locked = False #Same

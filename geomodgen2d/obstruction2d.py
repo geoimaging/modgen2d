@@ -5,6 +5,7 @@
 
 ## Note: Added by Sanish (Feb 24, 2025)
 
+"""2D obstruction geometry utilities. """
 import numpy as np
 import geomodgen2d.general_functions as f
 import copy
@@ -14,21 +15,23 @@ import matplotlib.pyplot as plt
 from scipy.interpolate import RegularGridInterpolator
 
 class _Obstruction2DFunctions:
+    """
+    Base utilities for 2D obstruction grids.
+    """
     def __init__(self, dl:float, ref_xz_symbolic = ['c', 'c'], snap_to_dl:bool=True):
         """
-        Initializes the utility shape class.
-        
-        Parameters:
-        dl (float): grid dl for obs 
-            Grid step size for the obstruction.
-            
-        ref_xz_symbolic(list): Reference positions for x and z axes. Default: ['c', 'c']
+        Functions only.
+
+        Parameters
+        ----------
+        dl : float
+            Grid spacing for the obstruction.
+        ref_xz_symbolic : list of length 2, optional
             Acceptable values: ['o', 'c'] or ['O', 'C'] or ['0', 'c'], etc. [0, '0', 'O', 'o'] and [1, 'c', 'C']
             Example: ['o','c'] means x is at 0 and z is at center. Note: 'C' means center of grid, which might not be center of obstacles (depends on snap.)
-        
-        snap_to_dl (bool): 
-            If True, generated obstruction dimensions and coordinates are snapped to be multiples of obs_grid_dl. 
-            If False, obs_grid_dl is ignored for rounding.
+        snap_to_dl : bool, optional
+            If True, geometry dimensions are snapped to multiples
+            of the grid spacing.
         """
         if dl<=0:
             raise ValueError("Obstacles grid step size must be greater than zero")
@@ -52,13 +55,28 @@ class _Obstruction2DFunctions:
              show_padding = False,
              color_map_items = plt.get_cmap('Set3', 10)):
         """
-        Plots the grid and reference coordinates.
-    
-        Args:
-            ax (matplotlib.axes.Axes, optional): The axis to plot on. If None, a new axis will be created.
-            color_map_items (matplotlib.colors.ListedColormap, optional): A colormap to use for plotting. Defaults to 'Set3' if None.
-        """
+        Plot the obstruction grid and reference point.
 
+        Parameters
+        ----------
+        ax : matplotlib.axes.Axes, optional
+            Axis to plot on. If None, a new figure is created.
+        discrete_point_size : int, optional
+            Marker size for plotting discrete grid points.
+        legend : bool, optional
+            If True, show a legend for obstruction IDs.
+        title : str, optional
+            Plot title.
+        show_padding : bool, optional
+            If True, show one layer of zero padding around the grid.
+        color_map_items : matplotlib.colors.Colormap, optional
+            Colormap used for obstruction IDs.
+
+        Returns
+        -------
+        matplotlib.axes.Axes
+            Axis containing the plot.
+        """
         if self.grid2d is None:
             raise ValueError("Grid has not been defined.")
         grid2d = self.grid2d
@@ -121,6 +139,16 @@ class _Obstruction2DFunctions:
         return ax
     
     def set_manual_ref_xz(self, ref_xz_override, symbolic=False):
+        """
+        Set reference coordinates manually.
+
+        Parameters
+        ----------
+        ref_xz_override : list or tuple of length 2
+            Reference coordinates or symbolic definition.
+        symbolic : bool, optional
+            If True, `ref_xz_override` is interpreted symbolically.
+        """
         if symbolic:
             ref_xz_override = self.validate_ref_xz_symbolic_format(ref_xz_override)
             self.ref_xz_override = None
@@ -132,6 +160,24 @@ class _Obstruction2DFunctions:
         
     @staticmethod
     def validate_ref_xz_symbolic_format(ref_xz_symbolic):
+        """
+        Validate symbolic reference specification.
+
+        Parameters
+        ----------
+        ref_xz_symbolic : list or tuple of length 2
+            Symbolic reference definition.
+
+        Returns
+        -------
+        list
+            Processed reference specification (0 = origin, 1 = center).
+
+        Raises
+        ------
+        ValueError
+            If the format or symbols are invalid.
+        """
         # --- Validate ref_xz_symbolic format ---
         if not isinstance(ref_xz_symbolic, (list, tuple)) or len(ref_xz_symbolic) != 2:
             raise ValueError("ref_xz_symbolic must be a list or tuple of two elements (e.g., ['o', 'c']).")
@@ -153,13 +199,20 @@ class _Obstruction2DFunctions:
                 
     @staticmethod
     def validate_ref_xz_override(ref_xz_override):
+        """
+        Get reference coordinates in physical units.
+
+        Returns
+        -------
+        numpy.ndarray, shape (2,)
+            Reference coordinates in unit length.
+        """
         if not isinstance(ref_xz_override, (list, tuple)) or len(ref_xz_override) != 2:
                 raise ValueError("center_coord_in_unit_length must be a list or tuple of two numeric elements (e.g., [z_center, x_center]).")
 
         if not all(isinstance(val, (int, float)) for val in ref_xz_override):
             raise ValueError("All elements of center_coord_in_unit_length must be numeric (int or float).")
         
-            
     def get_ref_xz_in_unit_length(self):
         ref_val_flag = False
         if self.ref_xz_symbolic is not None:
@@ -196,6 +249,14 @@ class _Obstruction2DFunctions:
     
     @property
     def get_config(self):
+        """
+        Return a serializable configuration of the obstruction.
+
+        Returns
+        -------
+        dict
+            Dictionary containing obstruction configuration.
+        """  
         self_config = {}
         self_config['center_in_unit_length'] = self.center_in_unit_length
         self_config['dl'] = self.dl
@@ -209,6 +270,19 @@ class _Obstruction2DFunctions:
 
     @classmethod
     def from_config(cls, config_dict):
+        """
+        Reconstruct an obstruction object from configuration data.
+
+        Parameters
+        ----------
+        config_dict : dict
+            Configuration dictionary produced by `get_config`.
+
+        Raises
+        ------
+        ValueError
+            If the configuration dictionary is invalid.
+        """
         if not isinstance(config_dict, dict):
             raise TypeError("Expected a dictionary.")
         try:
@@ -227,20 +301,27 @@ class _Obstruction2DFunctions:
             raise ValueError(f"Invalid config dictionary: {e}")    
     
 class _Obstruction2DShapeFunctions(_Obstruction2DFunctions):   
+    """
+    Shape manipulation utilities for 2D obstructions.
+
+    Extends base obstruction utilities with geometric transformations
+    and spatial queries.
+    """
     def __init__(self, obs_grid_dl:float, ref_xz_symbolic = ['c', 'c'], snap_to_dl:bool=True):
         super().__init__(obs_grid_dl, ref_xz_symbolic, snap_to_dl)
                 
     def shift_grid_one_axis(self, shift_axis='x', shift_val_in_unit_length=0, allow_negative_shift = False):
         """
-        Shift reference points by specified grid units.
-        
-        Parameters:
-        shift_axis: Either x_axis or z_axis
-        shift_val_in_unit_length (float): Shift distance in shift_axis.
-        allow_negative_shift (bool): If negative shift is allowed or not. (Negative shift means truncation)
-        
-        Raises:
-        ValueError: If shift_val_in_unit_length are negative (if allow_negative_shift is False).
+        Shift the obstruction grid along one axis.
+
+        Parameters
+        ----------
+        shift_axis : {'x', 'z'}, optional
+            Axis along which to shift.
+        shift_val_in_unit_length : float, optional
+            Shift distance in physical units.
+        allow_negative_shift : bool, optional
+            If False, negative shifts raise an error.
         """
         assert self.shape is True, "Obstacles class is not defined properly"
         assert shift_axis in ['x', 'z'], f"shift axis can only be either 'x' or 'z'. Not {shift_axis}"
@@ -286,10 +367,12 @@ class _Obstruction2DShapeFunctions(_Obstruction2DFunctions):
 
     def scale_shapes(self, scale_factor):
         """
-        Scales the shape by a given factor.
-        
-        Parameters:
-        scale_factor (float): Factor to scale the shape. Must be positive.
+        Scale the obstruction geometry.
+
+        Parameters
+        ----------
+        scale_factor : float
+            Positive scaling factor.
         """
         assert self.shape is True, "Obstacles class is not defined properly"
         
@@ -315,14 +398,14 @@ class _Obstruction2DShapeFunctions(_Obstruction2DFunctions):
     
     def expand_grid(self, new_grid_xlen, new_grid_zlen):
         """
-        Expands (zero_pad or truncate) the grid size to new dimensions.
-        
-        Parameters:
-        new_grid_xlen (int): New length in the x-direction.
-        new_grid_zlen (int): New length in the z-direction.
-        
-        Raises:
-        ValueError: If new dimensions are smaller than the current grid.
+        Expand or truncate the grid to new dimensions.
+
+        Parameters
+        ----------
+        new_grid_xlen : int
+            New grid size in x-direction.
+        new_grid_zlen : int
+            New grid size in z-direction.
         """
         assert self.shape is True
         if new_grid_xlen is None:
@@ -343,13 +426,12 @@ class _Obstruction2DShapeFunctions(_Obstruction2DFunctions):
         
     def merge_shapes(self, obstruction2d_instance_other:"_Obstruction2DShapeFunctions"):
         """
-        Merges two utils_shape into one and updates the reference coordinates.
-    
-        Args:
-            obstruction2d_instance_other: Another obstruction object to merge with.
-    
-        Raises:
-            ValueError: If the reference type is invalid or if grid spacing is not compatible.
+        Merge another obstruction into this one.
+
+        Parameters
+        ----------
+        obstruction2d_instance_other : _Obstruction2DShapeFunctions
+            Obstruction instance to merge.
         """
             
         obstruction2d_instance_other = copy.deepcopy(obstruction2d_instance_other)
@@ -399,15 +481,16 @@ class _Obstruction2DShapeFunctions(_Obstruction2DFunctions):
         
         Parameters
         ----------
-        point_coord : np.ndarray, shape (N, 3)
-            Each row is (x, z).
-        shift_ref2d_to_act: list of shape (3,)
-            
-        
+        actual_point_coord : numpy.ndarray, shape (N, 2)
+            Point coordinates in physical units.
+        shift_ref2d_to_act : array-like of length 2, optional
+            Shift from reference coordinates to actual coordinates.
+
         Returns
         -------
-        vals : np.ndarray of int, shape (N,)
-            Values sampled from the grid (0 = outside, 1 = inside).
+        numpy.ndarray, shape (N,)
+            Integer values indicating obstruction membership
+            (0 = outside, non-zero = inside).
         """
         assert self.shape is True, "Obstruction2D class is not defined properly"
         grid_2d = self.grid2d
@@ -475,26 +558,27 @@ class _Obstruction2DShapeFunctions(_Obstruction2DFunctions):
         vals[keep] = interp(np.column_stack((x[keep], z[keep]))).astype(int)
         return vals
 
-    
 class Obstruction2D(_Obstruction2DShapeFunctions):    
-    #Changed from grid-based (as in 3D) to pixel-based obstruction
-    
+    """
+    Concrete 2D obstruction geometry class.
+
+    Supports basic geometric shapes such as circles and rectangles.
+    """
     def __init__(self, dl:float, ref_xz_symbolic = ['c', 'c'], snap_to_dl:bool=True):
         super().__init__(dl, ref_xz_symbolic, snap_to_dl)
                 
     def circle_2d(self, d, obstruction_id = 1, warn_adjustments=False):
         """
-        Generates a 2D grid representing a circle of radius r.
-        The grid is filled with 1s inside the circle and 0s outside.
-        Reference position is always at x=r, z=0.
+        Create a circular 2D obstruction.
 
-        Parameters:
-        d (float): 
+        Parameters
+        ----------
+        d : float
             Diameter of the circle.
-        obstruction_id (int, optional): 
-            Identifier value for the circle (default is 1).
-        warn_adjustments (bool, optional):
-            Print warnings for adjustments of radius and reference points done for better discretization. 
+        obstruction_id : int, optional
+            Integer identifier assigned to the obstruction.
+        warn_adjustments : bool, optional
+            If True, warn when dimensions are adjusted for discretization.
         """
         assert self.shape is False, "ERROR: utils shape has already been defined"
         if d<0:
@@ -531,18 +615,18 @@ class Obstruction2D(_Obstruction2DShapeFunctions):
         
     def rectangle_2d(self, lx, lz, obstruction_id=1, warn_adjustments=False):
         """
-        Generates a 2D grid representing a rectangle of size lx x lz.
-        The grid is filled with 1s inside the rectangle and 0s outside.
+        Create a rectangular 2D obstruction.
 
-        Parameters:
-        lx (float): 
-            Length of the rectangle in the x-direction. (lx == 0, for 1D)
-        lz (float): 
-            Length of the rectangle in the z-direction.
-        obstruction_id (int, optional): 
-            Identifier value for the rectangle (default is 1).
-        warn_adjustments (bool, optional):
-            Print warnings for adjustments of radius and reference points done for better discretization. 
+        Parameters
+        ----------
+        lx : float
+            Length in the x-direction.
+        lz : float
+            Length in the z-direction.
+        obstruction_id : int, optional
+            Integer identifier assigned to the obstruction.
+        warn_adjustments : bool, optional
+            If True, warn when dimensions are adjusted for discretization.
         """
         assert self.shape is False, "ERROR: utils shape has already been defined"
         if lx < 0 or lz < 0:

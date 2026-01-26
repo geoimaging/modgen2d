@@ -3,7 +3,7 @@
 #
 # LICENSE
 
-"""Define a two-dimensional domain that defines lithology."""
+"""Define a 2D lithological domain derived from obstruction (utility) data."""
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        
 import numpy as np
 import geomodgen2d.general_functions as f
@@ -16,21 +16,20 @@ from .a_base import LithologicalDomain2DReadOnly
 from .common_functions import _warn_if_changed, _merge_lithological_domains
   
 class LithologicalDomain2DFromObstruction2D(LithologicalDomain2DReadOnly):
+    """
+    Represents a 2D lithological domain generated from obstruction data (utilities, pipes, etc.).
+    This class allows merging multiple 2D obstruction datasets into a lithological matrix.
+    """
     def __init__(self, domain:DiscretizedDomain2D, name: str=''):
         """
-        Generates a layered matrix from a 2D utilities class.
-        
-        Parameters:
-        domain: DiscretizedDomain2D
-            Domain for this lithological domain.
-        obstruction2D_instance: 
-            An Obstruction2D object that provides 2D obstruction data.
-        shift_2d_ref_to_xy: Format [x,y]
-            Reference point of Obstruction2D object is shifted to this shift_2d_ref_to_xy coord.
-        added_prefix: Optional
-            Optional prefix (Max: 8) to be added to the merged matrix (default is None). Cannot have "_", or numbers, also cannot be "".
-        name: str
-            The name of lithologicaldomain
+        Initialize a 'LithologicalDomain2DFromObstruction2D' instance.
+
+        Parameters
+        ----------
+        domain : DiscretizedDomain2D
+            Discretized spatial domain for the lithological matrix.
+        name : str, optional
+            Name of the lithological domain.
         """
         super().__init__(domain, name)
         self.domain = domain
@@ -41,6 +40,26 @@ class LithologicalDomain2DFromObstruction2D(LithologicalDomain2DReadOnly):
         self.obstruction_overlap = False
         
     def add_obstruction2D(self, obstruction2D_instance:Obstruction2D, shift_ref2d_to_xy, added_prefix=None):
+        """
+        Add a 2D obstruction dataset to the lithological domain.
+
+        Parameters
+        ----------
+        obstruction2D_instance : Obstruction2D
+            Obstruction dataset (e.g., utilities) to incorporate.
+        shift_ref2d_to_xy : array-like of shape (2,)
+            Coordinates [x, y] to shift the reference point of the obstruction data.
+        added_prefix : str, optional
+            Prefix for labeling this obstruction in the lithological matrix.
+            Must be <=8 characters, no underscores or numbers. Defaults to None.
+
+        Raises
+        ------
+        ValueError
+            If shift_ref2d_to_xy shape is invalid or added_prefix is not valid.
+        AssertionError
+            If obstruction2D_instance is improperly defined.
+        """
         ## Do all checks.
         if not GlobalSoilInterfaceConfig.get_config_status(self.interface_config_revision_id):
             self.refresh() #Compute for new surface
@@ -100,6 +119,9 @@ class LithologicalDomain2DFromObstruction2D(LithologicalDomain2DReadOnly):
         self.obstruction2d_dict_list.append(obstruction2D_dict)  
         
     def refresh(self):
+        """
+        Refresh the lithological domain and reapply all obstruction datasets.
+        """
         init_lithological_matrix = self.lithological_matrix
         
         obstruction2d_dict_list = self.obstruction2d_dict_list
@@ -141,6 +163,9 @@ class LithologicalDomain2DFromObstruction2D(LithologicalDomain2DReadOnly):
 
     @classmethod
     def from_config(cls, config_dict):
+        """
+        Create a 'LithologicalDomain2DFromObstruction2D' instance from a configuration dictionary.
+        """
         if not isinstance(config_dict, dict):
             raise TypeError("Expected a dictionary.")
         

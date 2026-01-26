@@ -18,3 +18,5 @@ test/.coverage
 test/htmlcov
 docs/html
 chishiki_ai_project
+docs/_build
+docs_auto

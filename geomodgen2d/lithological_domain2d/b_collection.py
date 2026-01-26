@@ -8,11 +8,20 @@ from geomodgen2d.global_soil_interface_config import GlobalSoilInterfaceConfig
 
 class LithologicalDomain2DCollection:
     """
-    A class for generating and managing geotechnical profiles, including non-spatial, spatial, and profiles derived from arrays.
+    A class for generating and managing geotechnical lithological profiles in 2D.
+    Supports interface-based and obstruction-based lithological domains, including
+    merging, ordering, validation, and serialization.
     """
     def __init__(self, valid_feature_ids, interface_set_name:str="def"):
         """
-        Initializes the LithologicalDomain2DCollection class.
+        Initializes the LithologicalDomain2DCollection.
+
+        Parameters
+        ----------
+        valid_feature_ids : list
+            List of valid feature IDs for validation against lithological domains.
+        interface_set_name : str, default "def"
+            Name for the interface-based lithology set.
         """
         self.interface_config_revision_id = GlobalSoilInterfaceConfig.get_revision_id()
         self.interface_set_name = interface_set_name
@@ -31,25 +40,38 @@ class LithologicalDomain2DCollection:
     
     @property
     def all_lit_ids(self):
+        """Returns a dictionary mapping lithology prefixes to all associated IDs."""
         return self._all_lit_ids
     
     @property
     def gwt_depth(self):
+        """Returns the groundwater table (GWT) depth associated with the merged domain."""
         return self._gwt_depth
     
     @property
     def lit_domain_set(self):
+        """Returns the set of all 'LithologicalDomain2D' instance in dictionary form with 'set name' as keys."""
         return self._lit_domain_set
     
     @property
     def merged_lit_domain(self):
+        """Returns the merged 'LithologicalDomain2D' instance after locking."""
         return self._merged_lit_domain
     
     @property
     def unique_code(self):
+        """Returns the unique code assigned to the locked collection."""
         return self._unique_code
     
     def unlock(self, delete_all_sets=False):
+        """
+        Unlocks the collection, optionally deleting all lithological domain sets.
+
+        Parameters
+        ----------
+        delete_all_sets : bool, default False
+            If True, removes all existing lithological domain sets.
+        """
         if self._read_only:
             raise ValueError("This class is ReadOnly. Hence, cannot be unlocked.")
         self._merged_lit_domain = None
@@ -61,6 +83,14 @@ class LithologicalDomain2DCollection:
         self._locked = False
         
     def add_lithological_domain_from_soil_interface_config(self, lithological_domain_from_soil_interface_instance:LithologicalDomain2D):
+        """
+        Adds a lithological domain derived from the soil interface configuration.
+
+        Parameters
+        ----------
+        lithological_domain_from_soil_interface_instance : LithologicalDomain2D
+            Unmerged interface-based lithological domain to add.
+        """
         if self._locked:
             raise SystemError("Operation cannot be performed because the object is locked.")
         
@@ -75,6 +105,18 @@ class LithologicalDomain2DCollection:
         self._gwt_depth = lithological_domain_from_soil_interface_instance.gwt_depth
             
     def add_lithological_domain_from_obstruction2d(self, set_name:str, lithological_domain_from_obstruction2d_instance, lit_order=None):
+        """
+        Adds a lithological domain derived from a 2D obstruction.
+
+        Parameters
+        ----------
+        set_name : str
+            Name of the obstruction-based lithology set.
+        lithological_domain_from_obstruction2d_instance : LithologicalDomain2DFromObstruction2D
+            Obstruction-based lithological domain to add.
+        lit_order : int or float, optional
+            Order for merging. Must be positive.
+        """
         if self._locked:
             raise SystemError("Operation cannot be performed because the object is locked.")
         
@@ -93,6 +135,14 @@ class LithologicalDomain2DCollection:
         self.__add_or_replace_lithological_domain(set_name, lithological_domain_from_obstruction2d_instance, lit_order, allow_merged_lit=True)
     
     def delete_lithological_domain_from_obstruction2d(self, set_name:str):
+        """
+        Deletes a previously added obstruction-based lithological domain.
+
+        Parameters
+        ----------
+        set_name : str
+            Name of the set to delete.
+        """
         if self._locked:
             raise SystemError("Operation cannot be performed because the object is locked.")
         
@@ -105,6 +155,19 @@ class LithologicalDomain2DCollection:
         self._lit_domain_set.pop(set_name)
     
     def get_lit_orders(self, return_new_order=False):
+        """
+        Returns lithological orders for all sets.
+
+        Parameters
+        ----------
+        return_new_order : bool, default False
+            If True, returns reassigned sequential orders starting from 0.
+
+        Returns
+        -------
+        dict
+            Mapping from set_name to lith_order.
+        """
         # Extract {set_name: lit_order}
         lit_orders = {
             set_name: val.lit_order
@@ -319,6 +382,10 @@ class LithologicalDomain2DCollection:
         return merged_lit_domain, merged_all_lit_ids, gwt
 
     def lock(self):
+        """
+        Locks the collection by merging all lithological domains and generating a unique code.
+        After locking, no modifications can be made to the collection.
+        """
         self.__get_merged_set()
         self._unique_code = np.random.randint(1, 10**18, dtype=np.int64)
         self._locked = True
@@ -326,6 +393,10 @@ class LithologicalDomain2DCollection:
 
     @property
     def get_config(self):
+        """
+        Returns a serializable dictionary representing the current configuration
+        of the LithologicalDomain2DCollection.
+        """
         self_config = {}
         self_config['_all_lit_ids'] = self._all_lit_ids
         self_config['_gwt_depth'] = self._gwt_depth
@@ -346,6 +417,21 @@ class LithologicalDomain2DCollection:
 
     @classmethod
     def from_config(cls, config_dict, read_only=False):
+        """
+        Creates a LithologicalDomain2DCollection instance from a configuration dictionary.
+
+        Parameters
+        ----------
+        config_dict : dict
+            Serialized configuration dictionary from get_config.
+        read_only : bool, default False
+            If True, returns read-only LithologicalDomain2DReadOnly instances.
+
+        Returns
+        -------
+        LithologicalDomain2DCollection
+            Restored collection object.
+        """
         if not isinstance(config_dict, dict):
             raise TypeError("Expected a dictionary.")
         try:
@@ -388,6 +474,19 @@ class LithologicalDomain2DCollection:
             raise ValueError(f"Invalid config dictionary: {e}")
         
     def __eq__(self, other):
+        """
+        Checks equality between two LithologicalDomain2DCollection objects.
+
+        Parameters
+        ----------
+        other : LithologicalDomain2DCollection
+            Another collection to compare with.
+
+        Returns
+        -------
+        bool
+            True if the collections are equivalent, False otherwise.
+        """
         if not isinstance(other, LithologicalDomain2DCollection):
             return NotImplemented
         

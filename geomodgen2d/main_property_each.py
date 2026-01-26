@@ -11,22 +11,30 @@ import pprint
 class PropertyDistribution:
     __slots__ = ['_property_name', '_mean_distribution', '_stdev_distribution', '_stdev_type', '_description', '_check']
     """
-        Manages material properties, ensuring validation and consistency.
+        Defines the probabilistic distribution of a material property.
+        A property is described by a mean distribution and an optional standard deviation (or coefficient of variation) distribution.
     """
     def __init__(self, property_name, mean_distribution, stdev_distribution=None, stdev_type = 'stdev', description = ''):
         """
-        Initializes the Properties object.
+        Initializes the 'PropertyDistribution' object.
 
-        Args:
-            property_name (str): Name of the property.
-            mean_distribution: RandomGenerator instance for mean. mean = a_m + b_m*z (but b_m is zero for current version)
-            stdev_distribution: RandomGenerator instance for stdev (None if zero_variance).
-            stdev_type (string, optional): Either 'stdev', or 'cov' if coefficient of variance. Note if cov is used, then stdev = a_m * cov
-
-            description (string, optional): Any description. Can be any information about conditions for mean/stdev like "Soil Type", "Vs" (default: '').
+        Parameters
+        ----------
+        property_name : str
+            Name of the property (must match the parent MainProperty name).
+        mean_distribution : RandomGeneratorAbstract
+            Random generator defining the mean value.
+        stdev_distribution : RandomGeneratorAbstract or None, optional
+            Random generator defining the standard deviation or coefficient
+            of variation. If None, zero variance is assumed.
+        stdev_type : {'stdev', 'cov'}, optional
+            Type of variability definition. If 'cov', standard deviation is
+            computed as mean × cov.
+        description : str, optional
+            Human-readable description of conditions or assumptions.
         """
         self._property_name = property_name
-        self.check_distribution(mean_distribution)
+        self._check_distribution(mean_distribution)
         self._mean_distribution = mean_distribution
         
         if stdev_type not in ['stdev', 'cov']:
@@ -36,20 +44,25 @@ class PropertyDistribution:
         if stdev_distribution is None:
             self._stdev_distribution = None 
         else:
-            self.check_distribution(stdev_distribution)
+            self._check_distribution(stdev_distribution)
             self._stdev_distribution = stdev_distribution 
 
         self._description = description # Condition details: Eg. If mean or variance is dependent to anything, if so will have a user-understandable conditions mentioned like "soil type", "Vs > "
         self._check = False # Validation check flag
 
-    def check_distribution(self, distribution_to_check):
+    def _check_distribution(self, distribution_to_check):
         """
         Validates if the given distribution is correctly formatted.
 
-        Args:
-            set_dist: RandomGenerator instance to be set.
-            curr_dist: Existing distribution (self.mean_distribution/self.stdev_distribution), if any (default: None). Generally used to make sure curr_dist is "NA" before setting its value to set_dist. 
+        Parameters
+        ----------
+        distribution_to_check : RandomGeneratorAbstract
+            Distribution to be validated.
 
+        Raises
+        ------
+        TypeError
+            If the distribution is not a RandomGeneratorAbstract instance.
         """
         
         if not isinstance(distribution_to_check, RandomGeneratorAbstract):
@@ -66,9 +79,9 @@ class PropertyDistribution:
         """
         self._check = False
         
-        self.check_distribution(self._mean_distribution)
+        self._check_distribution(self._mean_distribution)
         if self._stdev_distribution is not None:
-            self.check_distribution(self._stdev_distribution)
+            self._check_distribution(self._stdev_distribution)
         self._check = True
             
     @property
@@ -98,19 +111,30 @@ class PropertyDistribution:
 class MainProperty:
     __slots__ = ['_locked', '_main_property_name', '_features_config', '_layer0_flag', '_main_property_dist', '_description']
     """
-    Manages a main property, a property that is being generated.
+    Manages a primary material property across all features and materials.
+
+    This class organizes property distributions by feature ID, material type, and wet/dry state.
     """
     def __init__(self, main_property_name, features_config:FeaturesConfig, layer0_flag:bool=False, description=''):
         """
-        Initializes the MainProperty class. 
+        Initializes the 'MainProperty' class. 
         
         Note: Must have a layer0 (int/floats, optional): Default property values for air/water(layer0). (Default: None; i.e. Error generated when this value is ever to be used.)
 
-        Args:
-            name: 
-            description (string): Descriptions of main_property.
-            all_feature_ids_list (list, optional): List of all feature IDs.
+        Parameters
+        ----------
+        main_property_name : str
+            Name of the property being generated.
+        features_config : FeaturesConfig
+            Feature and material configuration.
+        layer0_flag : bool, optional
+            If True, allows definition of a default 'layer0' property
+            for air or water.
+        description : str, optional
+            Description of the main property.
         
+        Notes
+        -----
         Hierarchy:
         Main_Properties_Set >> MainProperty instances >> Feature_ID >> material >> wet/dry_properties (Property instance.)
         
@@ -181,18 +205,20 @@ class MainProperty:
     
     def add_material_property_of_feature(self, feature_id, material_name, property_distribution_instance:PropertyDistribution, property_distribution_instance_if_dry:PropertyDistribution=None):
         """
-        Initializes the Material Property class for a material for one of the mainproperties.
+        Assign a property distribution to a material within a feature.
 
-        Args:
-            feature_id (str): ID of the feature of which the property is being defined.
-            material_name (str): Name of the material
-            
-            property_distribution_instance (PropertyDistribution): Instance of the PropertyDistribution class to be added.
-            property_distribution_instance_if_dry (PropertyDistribution): Instance of the PropertyDistribution class to be added for its dry state (above GWT). If None, same property for both wet and dry.
+        Parameters
+        ----------
+        feature_id : str
+            Feature identifier.
+        material_name : str
+            Material name.
+        property_distribution_instance : PropertyDistribution
+            Property distribution for wet or both conditions.
+        property_distribution_instance_if_dry : PropertyDistribution or None, optional
+            Property distribution for dry conditions. If None, the same
+            distribution is used for both wet and dry.
 
-        Hierarchy:
-        AllMainProperties >> MainProperty instances >> Feature_ID >> MaterialPropertySet - materials >> wet/dry_properties (Property instance.)
-        
         """
         if self.locked:
             raise RuntimeError(f"The MainProperty instance is locked. If need to unlock, run mp_var.unlock() first. Issue in main property {self.main_property_name}.")
@@ -268,14 +294,9 @@ class MainProperty:
                 
     def lock_and_check(self):
         """
-        Performs validation checks on the PropertyDistributions of the main property.
-    
-        Parameters:
-        - detailed_check (bool): If True, performs a more in-depth check using `check_class()`.
-    
-        Raises:
-        - TypeError: If a property instance is not of type PropertyDistribution.
-        - AssertionError: If `check` is not performed on a PropertyDistribution instance.
+        Validate all property distributions and lock the instance.
+
+        After locking, no further modifications are allowed.
         """
         self.features_config.check()
         for id_ in self.main_property_dist.keys():
@@ -298,16 +319,26 @@ class MainProperty:
     #@property
     def generate_sample_dict(self, feature_id, feature_material_name):
         """
-        Generates a dictionary containing sampled property values using provided distributions in allproperty class.
+        Generate a sampled property dictionary for a material.
     
-        Ensures that all property instances have passed validation before generating the dictionary.
-    
-        Returns:
-        - dict: A read-only dictionary containing sampled property data.
-    
-        Raises:
-        - TypeError: If a property instance is not of type Properties.
-        - AssertionError: If 'layer0' is not a number or None.
+        Parameters
+        ----------
+        feature_id : str
+            Feature identifier.
+        feature_material_name : str
+            Material name.
+
+        Returns
+        -------
+        FixedKeyDict
+            Dictionary containing sampled mean and variability values.
+
+        Raises
+        ------
+        RuntimeError
+            If the instance is not locked.
+        ValueError
+            If the feature or material is invalid.
         """
         if not self.locked:
             raise RuntimeError("Cannot generate dictionary until the MainProperty instance is locked (checked). Need to run mp_var.lock_and_check()")
@@ -323,20 +354,24 @@ class MainProperty:
         if feature_material_name not in features_in_dict:
             raise ValueError(f"feature_id ({feature_material_name}) not in main_property_distribution's features. features available: {features_in_dict}")
         
-        sample_dict_prop_id = get_random_generated_sample(self.main_property_dist[feature_id][feature_material_name])
+        sample_dict_prop_id = _get_random_generated_sample(self.main_property_dist[feature_id][feature_material_name])
          
         return f.FixedKeyDict(sample_dict_prop_id)
     
-def get_random_generated_sample(material_property_dict:dict):
+def _get_random_generated_sample(material_property_dict:dict):
     """
-    Retrieves a random generated sample based on the given probability distribution.
+    Generate random samples from property distributions.
 
-    Parameters:
-        material_property_dict (dict): 
-            A dictionary mapping wet/dry, or both to PropertyDistribution instances. 
+    Parameters
+    ----------
+    material_property_dict : dict
+        Dictionary mapping 'wet'/'dry' or 'both' to PropertyDistribution
+        instances.
 
-    Returns:
-        Dictionary: A randomly generated samples (mean, and std.) based on the respective prob. distribution in dictionary format
+    Returns
+    -------
+    dict
+        Sampled mean and variability values.
     """
     assert list(material_property_dict.keys()) == ['wet', 'dry'] or list(material_property_dict.keys()) == ['both'], "Material Property Dict must have either wet and dry properties or both property."
     sample_dict_prop_id = {}

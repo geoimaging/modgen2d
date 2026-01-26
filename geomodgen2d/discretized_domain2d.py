@@ -1,25 +1,33 @@
-__all__ = ['DiscretizedDomain2D']
+"""Discretized 2D computational domain utilities."""
 
 import numpy as np
 from .units_config import Units
 
 class DiscretizedDomain2D():
+    """
+    Two-dimensional spatial domain discretized into uniform elements.
+
+    The domain is defined along x- and z-directions, with centers computed
+    for each element.
+    """
+    
     def __init__(self, span_x: float, span_z: float, dx: float, dz: float, units_config = None):
         """
-        Two-dimensional (2D) domain that has been discretized into rectangular elements.
+        Initialize a DiscretizedDomain2D class object.
         
-        TODO: For 1-D models, put span_x = None, and dx = any number
-        
-        Note: the spans and dels must be such that when converted to Units.domain_length_unit, they are integers.
-        
-        Parameters:
+         Parameters
+        ----------
         span_x, span_z : float
-            The size of the two-dimensional domain in x, and z.
+            Domain size in the x-direction and z-direction respectively (physical units).
         dx, dz : float
-            The discretization of the domain in x, and z, respectively.
-            This is the size of a single element.
-            
-        units_config:Units = None
+            Discretization step in x-direction ans z-direction (physical units).
+        units_config : Units, optional
+            Unit configuration for conversion. Defaults to ``Units()`` -> physical units is "m", and domain units is "cm".
+
+        Raises
+        ------
+        ValueError
+            If the discretization is invalid (spans not divisible by steps).
         """
         span_z = float(span_z)
         dz = float(dz)
@@ -56,12 +64,12 @@ class DiscretizedDomain2D():
         
     @staticmethod
     def is_valid_discretization(span, delta):
-        """Returns `True` if span is divisible by delta otherwise `False`."""
+        """ Check if a span is divisible by a discretization step."""
         return np.isclose(span % delta, 0)
         
     @staticmethod
     def is_valid_mesh(spans, dhs):
-        """Returns `True` if spans are divisible otherwise `False`."""
+        """Validate mesh spans and discretization steps."""
         try:
             for span, dh in zip(spans, dhs):
                 if span <= 0:
@@ -75,13 +83,29 @@ class DiscretizedDomain2D():
             return False
         
     def can_domain_be_remeshed(self, new_dx: float, new_dz: float):
-        new_dhs_in_domain_len_units = [self.units_config.to_domain_length_unit(new_dx),
-                                    self.units_config.to_domain_length_unit(new_dz)]
+        """Check if the domain can be remeshed."""
+        new_dhs_in_domain_len_units = [
+            self.units_config.to_domain_length_unit(new_dx), 
+            self.units_config.to_domain_length_unit(new_dz)
+            ]
         return self.is_valid_mesh(self._spans_in_domain_len_units, new_dhs_in_domain_len_units)
 
     def remesh(self, new_dx:float = None, new_dz:float = None):#, inplace=True):
-        "Create new DiscretizedDomain3D that has been remeshed."
-        
+        """
+        Return a new remeshed domain.
+
+        Parameters
+        ----------
+        new_dx : float, optional
+            New x discretization. Defaults to current dx.
+        new_dz : float, optional
+            New z discretization. Defaults to current dz.
+
+        Returns
+        -------
+        DiscretizedDomain2D
+            Remeshed domain.
+        """
         
         if new_dx is None:
             new_dx = self.dhs[0]
@@ -96,6 +120,7 @@ class DiscretizedDomain2D():
     
     @staticmethod
     def get_minimum_domain(domain2d_list:list):
+        """Return a domain with minimum discretization. """
         first = True
         for lit_domain in domain2d_list:
             if not isinstance(lit_domain, DiscretizedDomain2D):
@@ -119,6 +144,7 @@ class DiscretizedDomain2D():
                                    min_dh_x, min_dh_z, base_domain.units_config)
         
     def is_equivalent(self, other):
+        """Check span and unit equivalence."""
         if not isinstance(other, DiscretizedDomain2D):
             raise ValueError("Other is not discretized domain")
         
@@ -129,6 +155,7 @@ class DiscretizedDomain2D():
         return spans_check     
     
     def __eq__(self, other):
+        """Check full domain equality."""
         if not isinstance(other, DiscretizedDomain2D):
             return NotImplemented
         
@@ -164,6 +191,14 @@ class DiscretizedDomain2D():
         
     @property
     def get_config(self):
+        """
+        Return domain configuration.
+
+        Returns
+        -------
+        dict
+            Dictionary with spans, discretizations, and units configuration.
+        """
         return {
             'spans_xz': self.spans,
             'dhs_xz': self.dhs,
@@ -172,6 +207,19 @@ class DiscretizedDomain2D():
     
     @classmethod
     def from_config(cls, config_dict):
+        """
+        Create domain from configuration dictionary.
+
+        Parameters
+        ----------
+        config_dict : dict
+            Configuration dictionary.
+
+        Returns
+        -------
+        DiscretizedDomain2D
+            Initialized domain.
+        """
         if not isinstance(config_dict, dict):
             raise TypeError("Expected a dictionary.")
         try:

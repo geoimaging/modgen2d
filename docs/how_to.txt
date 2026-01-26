@@ -1,0 +1,2 @@
+cd F:\V_Tech Semesters\MS Thesis\Jupyter_MS\2D_Model_Generator\docs
+sphinx-build -b html . _build/html

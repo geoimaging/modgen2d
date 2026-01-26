@@ -1,19 +1,6 @@
 """
-v2 includes miu and density profile generation
-v3: a) distribution for Vp_mean and cov; Vp rather than miu for random_utility
-    b) Added option to plot boundries in the figure_setting 
-    c) boundaries settings now in spatial_sett, including "boundary_z_b...' from soil_sett
-v4: includes depth pdf for utility
-    includes options for interface generator
-    Changed plot_boundary to its thickness
-v5: includes random_init_options
-v6: def profile_generator includes n_set, save_hdf5 options
-    Plotting allowed for numpy profile_discrete
-v7: v5 of random_utilities added. Incr_y, incr_z changed to del_y_refined, del_z_refined
-v8: Corrected: Summarize concat, vp/vn min max
-v8: Faster layer_id technique used in spatial_sim_v4
-
-v9: code cleaning with a)pandas to numpy
+This module provides classes for managing and generating 2D spatial profiles
+of geotechnical properties over lithological domains.
 """
 import h5py
 import warnings
@@ -28,13 +15,26 @@ from geomodgen2d.global_soil_interface_config import GlobalSoilInterfaceConfig
 from geomodgen2d.metadata import __version__
 
 class GeneratedProfileCollection2DReadOnly:
+    """
+    Read-only collection of 2D generated property profiles over lithological domains.
+    """
     def __init__(self, main_properties_config_instance: MainPropertiesConfig, lithological_domain2d_collection: LithologicalDomain2DCollection, spatial_simulator2d_instance:SpatialSimulator2D):
         """
-        Initializes the Generatedprofiles2D class.
+        Initialize the 'GeneratedProfileCollection2DReadOnly' object.
 
-        Args:
-        - main_properties_config_instance (object): A MainPropertiesConfig instance.
-        - spatial_simulator2d_instance (object): A SpatialSimulator2D's subclass instance.
+        Parameters
+        ----------
+        main_properties_config_instance : MainPropertiesConfig
+            Locked instance containing sampled property definitions.
+        lithological_domain2d_collection : LithologicalDomain2DCollection
+            Locked collection of lithological domains.
+        spatial_simulator2d_instance : SpatialSimulator2D
+            Simulator instance used for generating spatially correlated profiles.
+
+        Raises
+        ------
+        TypeError
+            If main_properties_config_instance or lithological_domain2d_collection are not locked.
         """
         if not main_properties_config_instance._locked:
             raise TypeError("main_properties_config_instance is not locked yet. Use .lock_and_generate_sample_properties first.")
@@ -61,25 +61,38 @@ class GeneratedProfileCollection2DReadOnly:
         
     @property
     def generated_properties_list(self):
+        """List of generated property names."""
         return self._generated_properties_list
     
     @property
     def sampled_properties(self):
+        """List of generated property names."""
         return self._sampled_properties
     
     @property
     def lit_id2material_dict(self):
+        """Dictionary of sampled property definitions."""
         return self._lit_id2material_dict
     
     @property
     def spatial_simulator2d_instance(self):
+        """Get the 'SpatialSimulator2D' instance used for simulations."""
         return self._spatial_simulator2d_instance
 
     def change_spatial_simulator_type(self, new_simulator_class):
+        """
+        Change the type of the spatial simulator.
+
+        Parameters
+        ----------
+        new_simulator_class : type
+            New class to replace the current spatial simulator.
+        """
         self._spatial_simulator2d_instance.change_spatial_simulator_type(new_simulator_class)
         
     @property
     def main_properties_unique_code(self):
+        """Unique code of the main property configuration."""
         return self._main_properties_unique_code
     
     def get_generated_model2d(self, set_name):
@@ -87,18 +100,22 @@ class GeneratedProfileCollection2DReadOnly:
     
     @property
     def generated_model2d_set(self):
+        """Dictionary mapping set names to 'GeneratedModel2D' instances."""
         return self._generated_model2d_set
     
     @property
     def merged_generated_model2d(self):
+        """Merged 'GeneratedModel2D' object across all sets."""
         return self._merged_generated_model2d
     
     @property
     def get_simulated_profiles(self, set_name):
+        """Get simulated profiles dictionary for a given set name."""
         return self.generated_model2d_set[set_name].simulated_profiles
 
     @property
     def get_simulated_properties(self):
+        """Get keys of the simulated properties (from first set)."""
         keys = self.generated_model2d_set.keys()
         first_key = next(iter(keys), None)
 
@@ -108,6 +125,15 @@ class GeneratedProfileCollection2DReadOnly:
         return self.generated_model2d_set[first_key].simulated_profiles.keys()
     
     def check(self):
+        """
+        Validates the generated profiles.
+
+        Checks performed:
+        - GWT depth consistency across sets
+        - Simulated value consistency for ignored lithological IDs
+        - All simulated property keys match across generated sets
+        - Each `GeneratedModel2D` passes its internal check
+        """
         simulated_val_for_ignored_lit_property = self.spatial_simulator2d_instance.simulated_val_for_ignored_lit_property
         simulated_properties = self.get_simulated_properties
         
@@ -154,6 +180,17 @@ class GeneratedProfileCollection2DReadOnly:
         self._merged_generated_model2d.check(ignore_lithological_ids=['X'], allow_ignored_lit_property=False)
         
     def get_ordered_set_names_dict(self):
+        """
+        Returns an ordered mapping of lithological set orders to set names.
+
+        Returns
+        -------
+        tuple
+            ordered_set_names_dict : dict
+                Mapping of lithological order (int) → set name (str), sorted by order.
+            lit_domain_set : dict
+                Mapping of set names to their `LithologicalDomain2D` instances.
+        """
         # Get ordered and lit_domain_set
         ordered_set_names_dict = {}
         lit_domain_set = {}
@@ -203,6 +240,23 @@ class GeneratedProfileCollection2DReadOnly:
     
     @classmethod
     def from_config(cls, config_dict, read_only=False, check_merged=False):
+        """
+        Reconstructs a read-only collection from a configuration dictionary.
+
+        Parameters
+        ----------
+        config_dict : dict
+            Configuration dictionary obtained from `.get_config`.
+        read_only : bool, optional
+            Whether to enforce read-only mode. Default False.
+        check_merged : bool, optional
+            Whether to check merged profile consistency. Default False.
+
+        Returns
+        -------
+        GeneratedProfileCollection2DReadOnly
+            The reconstructed read-only profile collection.
+        """
         if not isinstance(config_dict, dict):
             raise TypeError("Expected a dictionary.")
         # try:
@@ -240,7 +294,17 @@ class GeneratedProfileCollection2DReadOnly:
             obj._merged_generated_model2d = GeneratedModel2D.from_config(config_dict['_merged_generated_model2d'])
         return obj
 
-    def save_to_hdf5(self, file_name, hdf5_compression_level=0):
+    def save_to_hdf5(self, file_name, hdf5_compression_level=6):
+        """
+        Save the full profile collection to an HDF5 file.
+
+        Parameters
+        ----------
+        file_name : str
+            File path to save the HDF5 file.
+        hdf5_compression_level : int, optional
+            GZIP compression level (0–9), default is 6 (0 means no compression).
+        """
         self.check()
         to_save_dict = {
             'geomodgen2d_version': __version__,
@@ -254,7 +318,21 @@ class GeneratedProfileCollection2DReadOnly:
             
         print(f"Data saved to {file_name}")
         
-    def save_to_hdf5_read_only(self, file_name, save_merged_only=True, save_interface=False, hdf5_compression_level=0):
+    def save_to_hdf5_read_only(self, file_name, save_merged_only=True, save_interface=False, hdf5_compression_level=6):
+        """
+        Save a read-only version of the profile collection to HDF5.
+
+        Parameters
+        ----------
+        file_name : str
+            Path of the HDF5 file to save.
+        save_merged_only : bool, optional
+            Save only the merged model, default True.
+        save_interface : bool, optional
+            Include global interface configuration, default False.
+        hdf5_compression_level : int, optional
+            GZIP compression level (0–9), default is 6 (0 means no compression).
+        """
         self.check()
         state_dict = self.get_config.copy()
         if save_merged_only:
@@ -276,6 +354,24 @@ class GeneratedProfileCollection2DReadOnly:
         print(f"Data saved to {file_name}")
         
     def save_to_hdf5_numpy(self, file_name, save_merged_only=True, save_interface=False, save_lithological_domain=False, save_properties_metadata=False, hdf5_compression_level=0):
+        """
+        Save the profile collection as NumPy arrays in HDF5 format.
+
+        Parameters
+        ----------
+        file_name : str
+            File path to save.
+        save_merged_only : bool, optional
+            Save only merged model, default True.
+        save_interface : bool, optional
+            Save interface matrix, default False.
+        save_lithological_domain : bool, optional
+            Include lithological domain data, default False.
+        save_properties_metadata : bool, optional
+            Include property metadata, default False.
+        hdf5_compression_level : int, optional
+            GZIP compression level (0–9), default is 6 (0 means no compression).
+        """
         self.check()
         with h5py.File(file_name, 'w') as hf:
             to_save_dict = {
@@ -339,13 +435,23 @@ class GeneratedProfileCollection2DReadOnly:
         print(f"Data saved to {file_name}")
         
 class GeneratedProfileCollection2D(GeneratedProfileCollection2DReadOnly):
+    """
+    Editable subclass of `GeneratedProfileCollection2DReadOnly` for generating
+    and managing 2D spatial property profiles.
+    """
     def __init__(self, main_properties_config_instance: MainPropertiesConfig, lithological_domain2d_collection: LithologicalDomain2DCollection, spatial_simulator2d_instance:SpatialSimulator2D):
         """
-        Initializes the Generatedprofiles2D class.
+        Delete a simulated property profile across all sets and merged model.
 
-        Args:
-        - main_properties_config_instance (object): A MainPropertiesConfig instance.
-        - spatial_simulator2d_instance (object): A SpatialSimulator2D's subclass instance.
+        Parameters
+        ----------
+        property_name : str
+            Name of the property to delete.
+
+        Raises
+        ------
+        ValueError
+            If the property does not exist.
         """
         super().__init__(main_properties_config_instance, lithological_domain2d_collection, spatial_simulator2d_instance)
     
@@ -359,6 +465,27 @@ class GeneratedProfileCollection2D(GeneratedProfileCollection2DReadOnly):
     @staticmethod
     def get_merged_simulated_profile(current_merged_lit_domain:LithologicalDomain2DReadOnly, current_merged_simulated_profile:np.ndarray,
                                      to_merge_lit_domain:LithologicalDomain2DReadOnly, to_merge_simulated_profile:np.ndarray, simulated_val_for_ignored_lit_property):
+        """
+        Merge simulated profiles from a new set into the current merged profile.
+
+        Parameters
+        ----------
+        current_merged_lit_domain : LithologicalDomain2DReadOnly
+            Current merged lithological domain.
+        current_merged_simulated_profile : np.ndarray or None
+            Current merged profile array.
+        to_merge_lit_domain : LithologicalDomain2DReadOnly
+            Lithological domain of the new set.
+        to_merge_simulated_profile : np.ndarray
+            Simulated profile of the new set.
+        simulated_val_for_ignored_lit_property : float
+            Value for ignored lithological IDs.
+
+        Returns
+        -------
+        np.ndarray
+            Updated merged simulated profile.
+        """
         to_merge_simulated_profile_remeshed = f.remeshing_2D_matrix(
             x_old=to_merge_lit_domain.domain.x_centers,
             x_new=current_merged_lit_domain.domain.x_centers,
@@ -381,7 +508,23 @@ class GeneratedProfileCollection2D(GeneratedProfileCollection2DReadOnly):
     def simulate_zvals_property_profile(self, zvals_property_name,  
                                             generate_non_spatial_profile=False, 
                                             ignore_lithological_ids=['X']):
-        
+        """
+        Generate a z-values property profile for all sets and merged model.
+
+        Parameters
+        ----------
+        zvals_property_name : str
+            Name of the z-values property to generate.
+        generate_non_spatial_profile : bool, optional
+            Whether to generate a non-spatial profile, default False.
+        ignore_lithological_ids : list of str, optional
+            Lithological IDs to ignore, default ['X'].
+
+        Raises
+        ------
+        ValueError
+            If property name conflicts with sampled or already simulated properties.
+        """
         sampled_properties = self.sampled_properties
         if zvals_property_name in sampled_properties.keys():
                 raise ValueError(f"zvals: {zvals_property_name} must NOT be in sampled_properties keys. Available {sampled_properties.keys()}. For z_vals generation. use generate_z_vals = True")
@@ -430,7 +573,29 @@ class GeneratedProfileCollection2D(GeneratedProfileCollection2DReadOnly):
     def simulate_profile_from_zvals_property_profile(self, main_property_name, zvals_property_name, 
                                             ignore_lithological_ids=['X'], 
                                             min_val = None, max_val = None, warn_cliping = False):
-        
+        """
+        Generate main property profile from pre-generated z-values profile.
+
+        Parameters
+        ----------
+        main_property_name : str
+            Property name to generate.
+        zvals_property_name : str
+            Name of the pre-generated z-values profile.
+        ignore_lithological_ids : list of str, optional
+            Lithological IDs to ignore, default ['X'].
+        min_val : float or int, optional
+            Minimum value for clipping.
+        max_val : float or int, optional
+            Maximum value for clipping.
+        warn_cliping : bool, optional
+            Warn on clipping, default False.
+
+        Raises
+        ------
+        ValueError
+            If property constraints are violated.
+        """
         sampled_properties = self.sampled_properties
         if zvals_property_name not in self.get_simulated_properties:
             raise ValueError(f"{zvals_property_name} must be generated first. Generated Keys: {self.get_simulated_properties}")
@@ -490,7 +655,29 @@ class GeneratedProfileCollection2D(GeneratedProfileCollection2DReadOnly):
     @staticmethod
     def clip_simulated_profile(simulated_profile, min_val=None, max_val=None, warn=False,
                             simulated_val_for_ignored_lit_property=-99999, raise_error=False):
-        
+        """
+        Clip profile values to a specified range, ignoring lithological placeholders.
+
+        Parameters
+        ----------
+        simulated_profile : np.ndarray
+            The simulated profile to clip.
+        min_val : float or int, optional
+            Minimum value. Computed from the profile if not provided.
+        max_val : float or int, optional
+            Maximum value. Computed from the profile if not provided.
+        warn : bool, optional
+            Whether to issue a warning for clipped values. Default False.
+        simulated_val_for_ignored_lit_property : float, optional
+            Value representing ignored lithological IDs. Default -99999.
+        raise_error : bool, optional
+            Raise ValueError if any values are clipped. Default False.
+
+        Returns
+        -------
+        np.ndarray
+            The clipped profile array.
+        """
         simulated_profile = np.array(simulated_profile)  # ensure NumPy array
 
         # Determine min and max if not provided
@@ -529,14 +716,24 @@ class GeneratedProfileCollection2D(GeneratedProfileCollection2DReadOnly):
         ignore_lithological_ids=['X'], 
         min_val = None, max_val = None, warn_cliping = False):
         """
-        Generates a spatial profile by merging boundary and utility layer matrices.
+        Generate a spatial profile for a specified property.
 
-        Args:
-        - coarsed_coordinate_checked_class (object): Class to handle coarsed coordinate checking.
-        - main_property_name (str): Property ID for the profile. Defaults to 'z_vals'.
-        - generate_z_vals (bool, optional): Whether to generate z values. Defaults to True.
-        - ignore_lithological_ids: list : Lithological ids to ignore during simulation. All values at these ids will have value -99999. 
-        - min_val, max_val (float/int/None): Optional bounds to clip the property values. Values below min_val or above max_val will be truncated accordingly. These limits are not applied to z-values.
+        This method creates an intermediate z-values profile, converts it
+        into the target property, merges across lithological sets, clips
+        values, and removes the temporary z-values.
+
+        Parameters
+        ----------
+        main_property_name : str
+            Name of the property to generate.
+        ignore_lithological_ids : list of str, optional
+            Lithological IDs to ignore during simulation. Values are set to -99999. Default ['X'].
+        min_val : float or int, optional
+            Minimum value for clipping the profile.
+        max_val : float or int, optional
+            Maximum value for clipping the profile.
+        warn_cliping : bool, optional
+            Whether to warn if values are clipped. Default False.
         """
         for trial in range(10000):
             zvals_property_name = f"___z_vals_{trial}"
@@ -554,36 +751,22 @@ class GeneratedProfileCollection2D(GeneratedProfileCollection2DReadOnly):
         
         self.delete_simulated_property_profile(zvals_property_name)
     
-    #TODO
-    def generate_profile_from_array(self, main_property_name, numpy_array, force_edit=False):
-        """
-        Generates a profile from a given numpy array.
-
-        Args:
-        - main_property_name (str): Property ID to assign to the generated profile.
-        - numpy_array (ndarray): The array to generate the profile from.
-        - force_edit (bool, optional): Whether to force edit if the profile exists. Defaults to False.
-        """
-        if not force_edit:
-            if main_property_name in self.get_simulated_properties:
-                raise ValueError(f"{main_property_name} already generated. Generated Keys: {self.get_simulated_properties}")
-        simulated_profile = numpy_array
-        # self.check_simulated_profile(simulated_profile)
-        self._all_generated_profiles[main_property_name] = simulated_profile
-    # save_generated_profiles
-    
     @classmethod
     def from_config(cls, config_dict):
         return super().from_config(config_dict, read_only=False, check_merged=True)
         
-def save_dict_to_hdf5(d, parent_group, compression_level=0):
+def save_dict_to_hdf5(d, parent_group, compression_level=6):
     """
-    Recursively saves a dictionary to an HDF5 group, with optional compression.
+    Recursively save a dictionary to an HDF5 group.
 
-    Args:
-        d (dict): Dictionary to save.
-        parent_group (h5py.Group): HDF5 group to save into.
-        compression_level (int): GZIP compression level (0–9). 0 disables compression.
+    Parameters
+    ----------
+    d : dict
+        Dictionary to save.
+    parent_group : h5py.Group
+        HDF5 group to save into.
+    compression_level : int, optional
+        GZIP compression level (0–9), default 0.
     """
     for key, value in d.items():
         if isinstance(value, dict):
@@ -633,5 +816,18 @@ def save_dict_to_hdf5(d, parent_group, compression_level=0):
                 print(f"Warning: Could not save key '{key}' with value type {type(value)}. Error: {e}")
 
 def convert_string_array_for_hdf5(string_array):
+    """
+    Convert a numpy string array to byte-encoded format for HDF5 storage.
+
+    Parameters
+    ----------
+    string_array : np.ndarray
+        Array of strings.
+
+    Returns
+    -------
+    np.ndarray
+        Byte-encoded array suitable for HDF5.
+    """
     shape = np.array(string_array).shape
     return np.array([s.encode('utf-8') for s in np.array(string_array).flatten()]).reshape(shape)#, np.array(string_array.shape)

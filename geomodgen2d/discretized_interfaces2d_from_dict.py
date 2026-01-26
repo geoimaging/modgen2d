@@ -5,17 +5,20 @@ from geomodgen2d.discretized_domain2d import DiscretizedDomain2D
 import geomodgen2d.general_functions as f
 
 class DiscretizedInterfaces2DFromDict(DiscretizedInterfaces2D):
+    """Generate discretized 2D interfaces from a configuration dictionary."""
     def __init__(self, domain: DiscretizedDomain2D, n_soil_layers: int, interfaces_settings_dict:dict, remesh_interp_method = 'linear', rng=np.random.default_rng()):
         """
         Generate soil and surface interfaces from a settings dictionary.
         
-        Parameters:
+        Parameters
+        ----------
         domain : DiscretizedDomain2D
             Discretized domain instance describing the model domain.
         n_soil_layers : int
-            Number of soil layers in the model whose interfaces are to be generated.
+            Number of soil layers in the model.
         interfaces_settings_dict : dict
             Dictionary defining interface generation settings.
+
             Example format:
             {
                 'generate_surface':True,
@@ -31,10 +34,11 @@ class DiscretizedInterfaces2DFromDict(DiscretizedInterfaces2D):
                     'simulate_erosion': True,
                 }
             }
-        rng : np.random.Generator
-            Random number generator instance.
+
         remesh_interp_method : str, optional
             Interpolation method for remeshing, by default 'linear'.
+        rng : numpy.random.Generator, optional
+            Random number generator.
         """
 
         required_keys = ['generate_surface', 'rough_interface_creator_instance', 'interfaces_depths_generation', 'interfaces_depth_reference_point_x']
@@ -70,17 +74,8 @@ class DiscretizedInterfaces2DFromDict(DiscretizedInterfaces2D):
 
         Parameters
         ----------
-        raw_interface_instance : AbstractInterfacesCreator2D
-            Interface instance to configure.
         interfaces_settings_dict : dict
-            Dictionary containing generator, filter, and processing settings.
-        surface_factor : float, optional
-            Factor to scale the generator settings for surface interfaces, by default 1.
-
-        Returns
-        -------
-        AbstractInterfacesCreator2D
-            Configured and locked interface instance.
+            Dictionary containing interface generator, filter, and processing settings.
         """
         filter_settings_dict = interfaces_settings_dict.get('filter_settings', None)
         processing_settings = interfaces_settings_dict.get('processing_settings', None)
