@@ -9,7 +9,7 @@ import numpy as np
 from geomodgen2d.discretized_interfaces2d import DiscretizedInterfaces2D
 from geomodgen2d.meta_class import _StrictProtectedMeta, _internal_classmethod, classproperty
 
-class GlobalSoilInterfaceConfig(metaclass=_StrictProtectedMeta):
+class GlobalSoilInterfaceConfig:#(metaclass=_StrictProtectedMeta):
     """
     Global configuration manager for the active/current soil interface model instance and 
     its processing behavior.

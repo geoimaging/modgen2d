@@ -12,9 +12,7 @@ extensions = [
     "sphinx.ext.viewcode",
 ]
 
-autodoc_mock_imports = [
-    "geomodgen2d.global_soil_interface_config"
-]
+add_module_names = False
 
 napoleon_google_docstring = False
 napoleon_numpy_docstring = True
