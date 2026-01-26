@@ -1,9 +1,9 @@
-.. features_config:
+FeaturesConfig
+==============
 
-features_config
-===============
+.. currentmodule:: geomodgen2d.features_config
 
-.. automodule:: geomodgen2d.features_config
+.. autoclass:: FeaturesConfig
    :members:
    :undoc-members:
    :show-inheritance:

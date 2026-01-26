@@ -1,7 +1,9 @@
 Units
 =====
 
-.. automodule:: geomodgen2d.units_config
+.. currentmodule:: geomodgen2d.units_config
+
+.. autoclass:: Units
    :members:
    :undoc-members:
    :show-inheritance:

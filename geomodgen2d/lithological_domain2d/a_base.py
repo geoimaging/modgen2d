@@ -326,14 +326,14 @@ class LithologicalDomain2DReadOnly():
         )
         return ax
 
-    def remeshing_lithological_matrix(self, new_dx, new_dz, interp_method = 'nearest', replace=True):
+    def remeshing_lithological_matrix(self, new_dx, new_dz, interp_method='nearest', replace=True):
         """
         Remesh (coarsen or refine) the lithological matrix based on new grid spacing.
 
-        This method allows the lithological matrix to be interpolated onto a new 
-        discretized domain with spacings `new_dx` and `new_dz`. It supports two 
-        interpolation methods: 'nearest' and 'nearest_up'. Optionally, the remeshed 
-        matrix can replace the existing one or return a copy.
+        This method interpolates the lithological matrix onto a new discretized domain
+        with spacings `new_dx` and `new_dz`. Two interpolation methods are supported:
+        'nearest' and 'nearest_up'. Optionally, the remeshed matrix can replace the
+        existing one or return a copy.
 
         Parameters
         ----------
@@ -343,20 +343,20 @@ class LithologicalDomain2DReadOnly():
             Desired spacing in the Z-direction for the remeshed domain.
         interp_method : str, optional
             Interpolation method to use for remeshing. Options:
+
             - 'nearest' : Assigns the value of the nearest original grid cell.
-            - 'nearest_up' : Similar to 'nearest' but may favor higher layer IDs 
-            (useful when upscaling layered properties).  
+            - 'nearest_up' : Similar to 'nearest' but may favor higher layer IDs, useful when upscaling layered properties.
+
             Default is 'nearest'.
         replace : bool, optional
-            If True, the remeshed matrix will replace the current lithological matrix 
-            and domain in-place. If False, a new `LithologicalDomain2DReadOnly` object 
+            If True, the remeshed matrix will replace the current lithological matrix
+            and domain in-place. If False, a new `LithologicalDomain2DReadOnly` object
             with the remeshed matrix is returned. Default is True.
 
         Returns
         -------
         LithologicalDomain2DReadOnly or None
-            - If `replace=False`, returns a new instance of `LithologicalDomain2DReadOnly` 
-            with the remeshed matrix.
+            - If `replace=False`, returns a new instance of `LithologicalDomain2DReadOnly` with the remeshed matrix.
             - If `replace=True`, updates the current object in-place and returns None.
 
         Raises
@@ -367,8 +367,7 @@ class LithologicalDomain2DReadOnly():
         Notes
         -----
         - The original domain is stored in `init_domain` if it has never been modified.
-        - The method preserves unique lithology identifiers, including integers 
-        and prefixed values like 'U_<int>'.
+        - The method preserves unique lithology identifiers, including integers and prefixed values like 'U_<int>'.
         - Colors, plotting, and validation remain compatible after remeshing.
         """
         self_copy = copy.deepcopy(self)  #Makes sure the change in the object is local to this function only.
