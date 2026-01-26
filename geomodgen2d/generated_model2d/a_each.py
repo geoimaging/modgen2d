@@ -1,6 +1,9 @@
+"""
+Modules for each 2D lithological domain and its associated simulated property fields. 
+"""
+
 import matplotlib.pyplot as plt
 from matplotlib.colors import LogNorm
-import matplotlib.cm as cm
 # from IPython.display import clear_output
 import numpy as np
 import geomodgen2d.general_functions as f
@@ -8,7 +11,24 @@ from geomodgen2d.lithological_domain2d import LithologicalDomain2D, Lithological
 import warnings
 
 class GeneratedModel2D:
+    """
+    Represents a 2D lithological domain with associated simulated property profiles.
+    """
     def __init__(self, lithological_domain_instance:LithologicalDomain2D, gwt_depth, lit_id2material_dict, simulated_val_for_ignored_lit_property=-99999):
+        """
+        Initializes 'GeneratedModel2D' object instance.
+
+        Parameters
+        ----------
+        lithological_domain_instance : LithologicalDomain2D
+            Instance of a 2D lithological domain.
+        gwt_depth : float
+            Depth of the groundwater table for wet/dry classification.
+        lit_id2material_dict : dict
+            Dictionary mapping lithological IDs (str) to arrays of material properties.
+        simulated_val_for_ignored_lit_property : int, default=-99999
+            Value used for ignored lithological IDs during simulation.
+        """
         self.lit_domain = lithological_domain_instance
         self.lit_order = lithological_domain_instance.lit_order
         self.gwt_depth = gwt_depth
@@ -32,10 +52,23 @@ class GeneratedModel2D:
     
     @property
     def simulated_val_for_ignored_lit_property(self):
+        """
+        int: The value used for ignored lithological IDs in simulated profiles.
+        """
         return self._simulated_val_for_ignored_lit_property
 
     @simulated_val_for_ignored_lit_property.setter
     def simulated_val_for_ignored_lit_property(self, value):
+        """
+        Sets the simulated value for ignored lithologies.
+
+        Raises
+        ------
+        AttributeError
+            If simulated profiles already exist.
+        TypeError
+            If the value is not an integer.
+        """
         if self.simulated_profiles is not None:
             raise AttributeError(
                 "Profiles has already been generated and hence, cannot be changed."
@@ -50,10 +83,19 @@ class GeneratedModel2D:
             
     def check(self, ignore_lithological_ids=['X'], allow_ignored_lit_property=True):
         """
-        Checks that the simulated profiles has the correct shape and contains no NaN values.
+        Validates simulated profiles for shape consistency, NaN values, and ignored IDs.
 
-        Args:
-        - simulated_profile (ndarray): The simulated profile to check.
+        Parameters
+        ----------
+        ignore_lithological_ids : list of str, default ['X']
+            Lithological IDs to ignore during the check.
+        allow_ignored_lit_property : bool, default True
+            If False, raises an error if ignored-value appears in profiles.
+
+        Raises
+        ------
+        ValueError
+            If shape mismatches, missing IDs, NaNs, or ignored-value inconsistencies are detected.
         """
         domain_shape = self.lit_domain.domain.shape
         lit_shape = self.lit_domain.lithological_matrix.shape
@@ -99,6 +141,26 @@ class GeneratedModel2D:
                 raise ValueError(f"Few numbers in simulated profile for property {key} is {self.simulated_val_for_ignored_lit_property}, despite not allowed with flag allow_ignored_lit_property False in the .check.")
     
     def remesh(self, new_dx, new_dz):
+        """
+        Resamples the lithological domain and simulated profiles onto a new grid.
+
+        Parameters
+        ----------
+        new_dx : float
+            New spacing in the X-direction.
+        new_dz : float
+            New spacing in the Z-direction.
+
+        Returns
+        -------
+        GeneratedModel2D
+            New model instance with remeshed domain and profiles.
+
+        Raises
+        ------
+        ValueError
+            If remeshed profile shape does not match the new domain.
+        """
         self.lit_domain.check_shape()
         
         # Make a copy of the lithological domain
@@ -134,31 +196,81 @@ class GeneratedModel2D:
                         'def': plt.get_cmap('tab20', 10),      # For integer values
                         'U_': plt.get_cmap('Set3', 10)   # For "U-{x}" values
                 }):
+        """
+        Plots the lithological domain.
+
+        Parameters
+        ----------
+        ax : matplotlib.axes.Axes, optional
+            Matplotlib axes to plot on.
+        discrete_point_size : float, default 0
+            Size of scatter points representing grid centers.
+        legend : bool, default True
+            Display a legend.
+        use_lit_id2material_dict : bool, default True
+            Use the material dictionary for coloring.
+        title : str, default 'Lithological Domain'
+            Plot title.
+        plot_interfaces : bool, default False
+            Plot interfaces between layers.
+        color_map : dict, optional
+            Colormap for integer or utility layers.
         
+        Returns
+        -------
+        ax : matplotlib.axes.Axes
+            Axes containing the plot.
+        """
         if self.lit_id2material_dict and use_lit_id2material_dict:
             lit_id2material_dict = self.lit_id2material_dict
         else:
             lit_id2material_dict = None 
         
-        self.lit_domain.plot(ax=ax, discrete_point_size=discrete_point_size, legend=legend,
+        ax = self.lit_domain.plot(ax=ax, discrete_point_size=discrete_point_size, legend=legend,
                id2material_dict = lit_id2material_dict, title=title, plot_interfaces=plot_interfaces,
                color_map = color_map)
 
+        return ax
+    
     def plot_profile(self, main_property_name, ax=None, discrete_point_size=0, plot_gwt = True,
                vlog = False, vmin=None, vmax=None, cmap='gist_earth_r', 
                title = 'auto', legend = True, legend_label = None, legendkwargs_dict={}):
         """
-        Plots a 2D section of the layered matrix.
+        Plots a 2D property profile.
 
-        Parameters:
-            ax: The matplotlib axes object for the plot (default is None, which creates a new figure).
-            scatter_point_size: Scatter points size (Shows points before interpolation.)
-            warning: Print warning message for odd section plots.
-            scatter_point_size: Scatter points size (Shows points before interpolation.)
-            vlog (boolean, optional): Use log normalization
-            vmin (float, optional): Minimum value for colormap scaling. Defaults to None.
-            vmax (float, optional): Maximum value for colormap scaling. Defaults to None.
-            color_map: A dictionary that defines the color map for the values in the matrix.
+        Parameters
+        ----------
+        main_property_name : str
+            Property name to plot.
+        ax : matplotlib.axes.Axes, optional
+            Matplotlib axes to plot on.
+        discrete_point_size : float, default 0
+            Size of scatter points.
+        plot_gwt : bool, default True
+            Plot groundwater table.
+        vlog : bool, default False
+            Apply logarithmic normalization.
+        vmin, vmax : float, optional
+            Color scale limits.
+        cmap : str or Colormap, default 'gist_earth_r'
+            Colormap.
+        title : str, default 'auto'
+            Plot title.
+        legend : bool, default True
+            Show colorbar.
+        legend_label : str, optional
+            Colorbar label.
+        legendkwargs_dict : dict, optional
+            Extra keyword arguments for colorbar.
+
+        Returns
+        -------
+        ax : matplotlib.axes.Axes
+            Axes containing the plot.
+        vmin : float
+            Minimum value used for colormap.
+        vmax : float
+            Maximum value used for colormap.
         """
         if ax is None:
             fig,ax = plt.subplots()
@@ -223,6 +335,14 @@ class GeneratedModel2D:
     
     @property
     def get_config(self):
+        """
+        Export configuration.
+
+        Returns
+        -------
+        dict
+            Serializable configuration.
+        """
         self_config = {}
         self_config['properties_metadata'] = {}
         self_config['properties_metadata']['gwt_depth'] = self.gwt_depth
@@ -238,6 +358,19 @@ class GeneratedModel2D:
 
     @classmethod
     def from_config(cls, config_dict, read_only=False):
+        """
+        Reconstruct a GeneratedModel2D from a configuration dictionary.
+
+        Parameters
+        ----------
+        config_dict : dict
+            Simulator configuration.
+
+        Returns
+        -------
+        GeneratedModel2D
+            Reconstructed GeneratedModel2D instance.
+        """
         if not isinstance(config_dict, dict):
             raise TypeError("Expected a dictionary.")
         try:
@@ -265,17 +398,22 @@ class GeneratedModel2D:
             raise ValueError(f"Invalid config dictionary: {e}")
         
     def __eq__(self, other):
+        """
+        Compares this model with another for deep equality.
+
+        Parameters
+        ----------
+        other : GeneratedModel2D
+            Other model instance to compare.
+
+        Returns
+        -------
+        bool
+            True if models are equivalent in content, False otherwise.
+        """
         if not isinstance(other, GeneratedModel2D):
             return NotImplemented
         
         return f.deep_object_equivalent(self, other, type_check=True)
-        # units_check = self.units_config == other.units_config
-        # spans_check = np.allclose(self._spans_in_domain_len_units, other._spans_in_domain_len_units)
-        # dhs_check = np.allclose(self._dhs_in_domain_len_units, other._dhs_in_domain_len_units)
-        # return (
-        #     units_check
-        #     and spans_check
-        #     and dhs_check
-        # )
       
         

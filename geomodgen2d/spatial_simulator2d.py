@@ -1,4 +1,5 @@
-"""All functions to perform spatial simulation"""
+"""Spatial simulation utilities for 2D lithological domains."""
+
 import numpy as np
 from abc import ABC, abstractmethod
 from geomodgen2d.generated_model2d import GeneratedModel2D
@@ -10,10 +11,18 @@ import pandas as pd
 class SpatialSimulator2D(ABC):
     def __init__(self, theta_x, theta_z, simulated_val_for_ignored_lit_property=-99999, rng=np.random.default_rng()):
         """
-        
-        # theta_x, theta_z = settings for spatial random field generation: relates the correlation in x and z direction
-        # rng = random_number generator with seed
-        #
+        Initialize a spatial simulator.
+
+        Parameters
+        ----------
+        theta_x : float or None
+            Correlation length in the x-direction.
+        theta_z : float or None
+            Correlation length in the z-direction.
+        simulated_val_for_ignored_lit_property : int, default=-99999
+            Constant value assigned to ignored lithological IDs.
+        rng : numpy.random.Generator, optional
+            Random number generator.
         """
         # Validate theta_x and theta_z
         if theta_x is not None and not isinstance(theta_x, (int, float)):
@@ -54,6 +63,21 @@ class SpatialSimulator2D(ABC):
         pass
     
     def change_spatial_simulator_type(self, new_simulator_class):
+        """
+        Convert the simulator to another simulator type.
+
+        The internal state and RNG are preserved.
+
+        Parameters
+        ----------
+        new_simulator_class : type
+            Subclass of :class:`SpatialSimulator2D`.
+
+        Returns
+        -------
+        SpatialSimulator2D
+            New simulator instance of the requested type.
+        """
         if not issubclass(new_simulator_class, SpatialSimulator2D):
             raise TypeError(
                 f"{new_simulator_class.__name__} is not a SpatialSimulator2D"
@@ -78,21 +102,23 @@ class SpatialSimulator2D(ABC):
                                                         generate_non_spatial_profile=False, 
                                                         ignore_lithological_ids=['X']):
         """
-        Generates a 2D spatially correlated random field based on a layered matrix representation.
+        Simulate standardized spatial fluctuations for a lithological domain.
 
-        Parameters:
-        lithological_domain2d_instance : object
-            An instance containing the 2D layered matrix and coordinate ranges.
+        Parameters
+        ----------
+        lithologicalDomain_class : LithologicalDomain2D
+            Lithological domain definition.
         gwt_depth : float, optional
-            Ground water table depth (used for wet/dry classification).
-        processed_property_dict : dict, optional
-            Dictionary mapping layer IDs to their mean and stddev (wet/dry or both) properties.
-        ignore_lithological_ids : list
-            List of lithological IDs to ignore. These will be assigned -99999.
+            Groundwater table depth.
+        generate_non_spatial_profile : bool, default=False
+            If True, generates zero-variance (non-spatial) fluctuations.
+        ignore_lithological_ids : list, default=['X']
+            Lithological IDs to ignore.
 
-        Returns:
+        Returns
+        -------
         numpy.ndarray
-            A 2D array representing the simulated spatially correlated random field.
+            2D array of standardized simulated values.
         """
         
         #if porcessed_property_dict is None: Then simulated profiles with mean 0 and standard dev 1.
@@ -160,19 +186,25 @@ class SpatialSimulator2D(ABC):
                                                   processed_property_dict:dict, gwt_depth=None, warn_inconsistent_stdev = True,
                                                   ignore_lithological_ids=['X']):
         """
-        Generates a 2D spatially correlated random field based on a layered matrix representation.
+        Generate a spatial property field from standardized fluctuations.
 
-        Parameters:
-        lithological_domain2d_instance : object
-            An instance containing the 2D layered matrix and coordinate ranges.
-        gwt_depth : float, optional
-            Ground water table depth (used for wet/dry classification).
-        processed_property_dict : dict, optional
+        Parameters
+        ----------
+        simulated_zvals_lit_profile : numpy.ndarray
+            Standardized spatial fluctuations.
+        lithologicalDomain_class : LithologicalDomain2D
+            Lithological domain definition.
+        processed_property_dict : dict
             Dictionary mapping layer IDs to their mean and stddev (wet/dry or both) properties.
-        ignore_lithological_ids : list
-            List of lithological IDs to ignore. These will be assigned -99999.
+        gwt_depth : float, optional
+            Groundwater table depth (used for wet/dry classification).
+        warn_inconsistent_stdev : bool, default=True
+            Emit warnings for inconsistent variance assumptions.
+        ignore_lithological_ids : list, default=['X']
+            Lithological IDs to ignore.
 
-        Returns:
+        Returns
+        -------
         numpy.ndarray
             A 2D array representing the simulated spatially correlated random field.
         """
@@ -340,19 +372,21 @@ class SpatialSimulator2D(ABC):
                                                   processed_property_dict=None, gwt_depth=None,
                                                   ignore_lithological_ids=['X']):
         """
-        Generates a 2D spatially correlated random field based on a layered matrix representation.
+        Simulate a full spatial property field from a lithological domain.
 
-        Parameters:
-        lithological_domain2d_instance : object
-            An instance containing the 2D layered matrix and coordinate ranges.
-        gwt_depth : float, optional
-            Ground water table depth (used for wet/dry classification).
+        Parameters
+        ----------
+        lithologicalDomain_class : LithologicalDomain2D
+            Lithological domain definition.
         processed_property_dict : dict, optional
             Dictionary mapping layer IDs to their mean and stddev (wet/dry or both) properties.
-        ignore_lithological_ids : list
-            List of lithological IDs to ignore. These will be assigned -99999.
+        gwt_depth : float, optional
+            Groundwater table depth (used for wet/dry classification).
+        ignore_lithological_ids : list, default=['X']
+            Lithological IDs to ignore.
 
-        Returns:
+        Returns
+        -------
         numpy.ndarray
             A 2D array representing the simulated spatially correlated random field.
         """
@@ -369,7 +403,19 @@ class SpatialSimulator2D(ABC):
     
     @staticmethod
     def get_means_am_bm(mean):
-        
+        """
+        Extract linear mean parameters.
+
+        Parameters
+        ----------
+        mean : float or sequence of length 2
+            Mean specification ``[a_m, b_m]`` or scalar.
+
+        Returns
+        -------
+        tuple of float
+            ``(a_m, b_m)``
+        """
         if np.isscalar(mean):
             # Use constant mean
             a_m = mean
@@ -385,6 +431,19 @@ class SpatialSimulator2D(ABC):
     
     @staticmethod
     def check_points(points):
+        """
+        Validate and normalize input coordinates.
+
+        Parameters
+        ----------
+        points : array-like, shape (n, 2)
+            Coordinate array.
+
+        Returns
+        -------
+        numpy.ndarray
+            Validated coordinate array.
+        """
         # Convert to array
         pts = np.asarray(points)
 
@@ -400,6 +459,14 @@ class SpatialSimulator2D(ABC):
     
     @property
     def get_config(self):
+        """
+        Export simulator configuration.
+
+        Returns
+        -------
+        dict
+            Serializable simulator configuration.
+        """
         return {
             'theta_x': self.theta_x,
             'theta_z': self.theta_z,
@@ -410,6 +477,19 @@ class SpatialSimulator2D(ABC):
         
     @classmethod
     def from_config(cls, config_dict):
+        """
+        Reconstruct a simulator from a configuration dictionary.
+
+        Parameters
+        ----------
+        config_dict : dict
+            Simulator configuration.
+
+        Returns
+        -------
+        SpatialSimulator2D
+            Reconstructed simulator instance.
+        """
         if not isinstance(config_dict, dict):
             raise TypeError("Expected a dictionary.")
         try:
@@ -439,6 +519,11 @@ class SpatialSimulator2D(ABC):
         # FOR LATER SAVE; CHANGE TYPE IF NEEDED.
         
 class ConstantSimulator(SpatialSimulator2D):
+    """
+    Deterministic non-spatial simulator.
+
+    Produces values using only the specified mean function.
+    """
     def __init__(self, simulated_val_for_ignored_lit_property=-99999, rng=np.random.default_rng()):
         super().__init__(None, None, simulated_val_for_ignored_lit_property, rng)
     
@@ -451,11 +536,17 @@ class ConstantSimulator(SpatialSimulator2D):
 
 ## All in One (Detailed demo in Random_Field_simulation_v1 and v2::)
 class CovarianceDecompositionSimulator(SpatialSimulator2D):
+    """
+    Spatial simulator using covariance decomposition.
+
+    Generates Gaussian random fields using exponential correlation
+    functions and Cholesky decomposition.
+    """
     def __init__(self, theta_x, theta_z, simulated_val_for_ignored_lit_property=-99999, rng=np.random.default_rng()):
         super().__init__(theta_x, theta_z, simulated_val_for_ignored_lit_property, rng)
         self.default_simulator_type=True  #To use in loading gen_model_collection from config, so dont use True for any other case.
     
-    def compute_correlation_matrix(self, points):
+    def _compute_correlation_matrix(self, points):
         """
         Compute the Cholesky factor of correlation matrix R. Note: C = sigma^2 * R,
         where R is the correlation matrix determined by theta_x/theta_z.
@@ -499,7 +590,7 @@ class CovarianceDecompositionSimulator(SpatialSimulator2D):
             return mean_vector
         
         # Step 2: Compute Cholesky of correlation/covariance
-        L = self.compute_correlation_matrix(pts)  # shape (N,N)
+        L = self._compute_correlation_matrix(pts)  # shape (N,N)
 
         # Step 3: Generate standard normal vector
         u = self.rng.standard_normal(pts.shape[0])   # shape (N,)

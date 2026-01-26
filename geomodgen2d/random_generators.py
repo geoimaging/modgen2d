@@ -2,28 +2,65 @@
 # 6/27/2023: Added discrete2continous_pdf
 # 3/27/2025: Cleaned
 
+"""Random number generator utilities."""
+
+
 import matplotlib.pyplot as plt
 import numpy as np
 from abc import ABC, abstractmethod
 
 class RandomGeneratorAbstract(ABC):
+    """
+    Abstract base class for random generators.
+
+    All random generators must implement the ``generate`` method.
+    """
     def __init__(self, rng=None):
         """
         Initializes the random generator.
         
-        Parameters:
-        rng: Universal random number generator defined by np.random.default_rng(seed=r_seed)
+        Parameters
+        ----------
+        rng : numpy.random.Generator, optional
+            NumPy random number generator instance. If None, a default
+            generator is created.
         """
         self.rng = rng or np.random.default_rng()
 
     @abstractmethod
     def generate(self, size=None):
-        """Return generated data"""
+        """
+        Generate random samples.
+
+        Parameters
+        ----------
+        size : int or tuple of int, optional
+            Output shape. If None, a single value is returned.
+
+        Returns
+        -------
+        object or numpy.ndarray
+            Generated random value(s).
+        """
         pass
 
     def plot_pmf(self, ax=None, n=1000000, bins=100):
         """
-        Default plotting function. Subclasses can override.
+        Plot the probability mass or density function.
+
+        Parameters
+        ----------
+        ax : matplotlib.axes.Axes, optional
+            Axis to plot on. If None, a new figure is created.
+        n : int, optional
+            Number of samples used for estimating the distribution.
+        bins : int, optional
+            Number of bins for histogram-based plots.
+
+        Returns
+        -------
+        matplotlib.axes.Axes
+            Axis containing the plot.
         """
         if ax is None:
             fig, ax = plt.subplots()
@@ -51,12 +88,21 @@ class RandomGeneratorAbstract(ABC):
     
 class Constant(RandomGeneratorAbstract):
     """
-    Random generator, but returns constant value only.
-    
-    Parameters:
-    val (float): The constant value to return
+    Constant-valued random generator.
+
+    Always returns the same value.
     """
     def __init__(self, val, rng=None):
+        """
+        Initialize a constant generator.
+
+        Parameters
+        ----------
+        val : float
+            Constant value to return.
+        rng : numpy.random.Generator, optional
+            Random generator (unused but kept for interface consistency).
+        """
         super().__init__(rng)
         
         if val is None or (isinstance(val, float) and np.isnan(val)):
@@ -65,6 +111,19 @@ class Constant(RandomGeneratorAbstract):
         self.value = val
     
     def generate(self, size=None):
+        """
+        Generate constant samples.
+
+        Parameters
+        ----------
+        size : int or tuple of int, optional
+            Output shape. If None, a single value is returned.
+
+        Returns
+        -------
+        object or numpy.ndarray
+            Constant value(s).
+        """
         # If size is None, return a single value instead of an array
         single_value = size is None
         size = (1,) if single_value else size
@@ -76,14 +135,21 @@ class Constant(RandomGeneratorAbstract):
 
 class Uniform(RandomGeneratorAbstract):
     """
-    Initializes the uniform random generator with a specified range.
-    
-    Parameters:
-    low (float): The lower bound of the range.
-    high (float): The upper bound of the range.
+    Uniform random generator.
     """
-    
     def __init__(self, low: float, high: float, rng=None):
+        """
+        Initialize a uniform distribution.
+
+        Parameters
+        ----------
+        low : float
+            Lower bound of the distribution.
+        high : float
+            Upper bound of the distribution.
+        rng : numpy.random.Generator, optional
+            Random number generator.
+        """
         super().__init__(rng)
     
         if not (isinstance(low, (int,float)) or not isinstance(high, (int,float))):
@@ -99,6 +165,19 @@ class Uniform(RandomGeneratorAbstract):
         self.high = high
     
     def generate(self, size=None):
+        """
+        Generate uniformly distributed samples.
+
+        Parameters
+        ----------
+        size : int or tuple of int, optional
+            Output shape. If None, a single value is returned.
+
+        Returns
+        -------
+        object or numpy.ndarray
+            Generated samples.
+        """
         single_value = size is None
         size = (1,) if single_value else size
 
@@ -107,19 +186,40 @@ class Uniform(RandomGeneratorAbstract):
     
 class LogUniform(Uniform):
     """
-    Initializes the log-uniform random generator with a specified range.
-    
-    Parameters:
-    low (float): The lower bound of the range.
-    high (float): The upper bound of the range.
+    Log-uniform random generator.
     """
     def __init__(self, low: float, high:float, rng=None):
+        """
+        Initialize a LogUniform distribution.
+
+        Parameters
+        ----------
+        low : float
+            Lower bound of the distribution.
+        high : float
+            Upper bound of the distribution.
+        rng : numpy.random.Generator, optional
+            Random number generator.
+        """
         super().__init__(low, high, rng)
         
         if low<=0 or high<=0:
             raise ValueError("Lows and/or highs cannot be zero or negative")
 
     def generate(self, size=None):
+        """
+        Generate log-uniformly distributed samples.
+
+        Parameters
+        ----------
+        size : int or tuple of int, optional
+            Output shape. If None, a single value is returned.
+
+        Returns
+        -------
+        object or numpy.ndarray
+            Generated samples.
+        """
         # If size is None, return a single value instead of an array
         single_value = size is None
         size = (1,) if single_value else size
@@ -131,13 +231,21 @@ class LogUniform(Uniform):
 
 class Normal(RandomGeneratorAbstract):
     """
-    Initializes the uniform random generator with a specified range.
-    
-    Parameters:
-    mean (float): The mean of the distribution.
-    stdev (float): The standard deviation of the distribution.
+    Normal (Gaussian) random generator.
     """
     def __init__(self, mean:float, stdev: float, rng=None):
+        """
+        Initialize a normal distribution.
+
+        Parameters
+        ----------
+        mean : float
+            Mean of the distribution.
+        stdev : float
+            Standard deviation of the distribution.
+        rng : numpy.random.Generator, optional
+            Random number generator.
+        """
         super().__init__(rng)
         
         if not (isinstance(mean, (int,float)) and isinstance(stdev, (int,float))):
@@ -150,6 +258,19 @@ class Normal(RandomGeneratorAbstract):
         self.stdev = stdev
 
     def generate(self, size=None):
+        """
+        Generate normally distributed samples.
+
+        Parameters
+        ----------
+        size : int or tuple of int, optional
+            Output shape. If None, a single value is returned.
+
+        Returns
+        -------
+        object or numpy.ndarray
+            Generated samples.
+        """
         # If size is None, return a single value instead of an array
         single_value = size is None
         size = (1,) if single_value else size
@@ -160,15 +281,23 @@ class Normal(RandomGeneratorAbstract):
         return gen[0] if single_value else gen
     
 class DiscreteChoice(RandomGeneratorAbstract):
-
     """
-    Perform random sampling from the given values `x` with probabilities `p`.
-    
-    Parameters:
-    x (1D-list or 1D-array): The possible choices. Either all numbers or all strings.
-    p (1D-list or 1D-array): Corresponding probabilities for each choice (must sum to 1). If provided empty list; then uniform distribution over all x
+    Discrete random choice generator.
     """
     def __init__(self, x, p = None, rng=None):
+        """
+        Initialize a discrete choice distribution.
+
+        Parameters
+        ----------
+        x : array-like
+            Possible discrete values (all numeric or all strings).
+        p : array-like, optional
+            Probabilities associated with each value. Must sum to 1.
+            If None, a uniform distribution is used.
+        rng : numpy.random.Generator, optional
+            Random number generator.
+        """
         super().__init__(rng)
         
         # Convert to numpy array if not already
@@ -199,6 +328,19 @@ class DiscreteChoice(RandomGeneratorAbstract):
         self.p = p
     
     def generate(self, size=None):
+        """
+        Generate discrete samples.
+
+        Parameters
+        ----------
+        size : int or tuple of int, optional
+            Output shape. If None, a single value is returned.
+
+        Returns
+        -------
+        object or numpy.ndarray
+            Generated samples.
+        """
         # If size is None, return a single value instead of an array
         single_value = size is None
         size = (1,) if single_value else size
@@ -210,7 +352,19 @@ class DiscreteChoice(RandomGeneratorAbstract):
         
     def plot_pmf(self, ax=None, n=1000000):
         """
-        Default plotting function. Subclasses can override.
+        Plot the probability mass function.
+
+        Parameters
+        ----------
+        ax : matplotlib.axes.Axes, optional
+            Axis to plot on. If None, a new figure is created.
+        n : int, optional
+            Number of samples used for estimating probabilities.
+
+        Returns
+        -------
+        matplotlib.axes.Axes
+            Axis containing the plot.
         """
         if ax is None:
             fig, ax = plt.subplots()
@@ -226,23 +380,37 @@ class DiscreteChoice(RandomGeneratorAbstract):
         return ax
     
 class Discrete2ContinuousPDF(DiscreteChoice):
+    """
+    Convert a discrete probability distribution into a continuous-like PDF
+    using linear interpolation.
+    """
     def __init__(self, x, p, new_del_x:float, new_x_min:float=None, new_x_max:float=None, incr_x_init:float=0, rng=None):
         """
+        Refine a discrete PDF into a continuous approximation by linear interpolation at each of new_x_array.
+
+        Parameters
+        ----------
+        x : array-like
+            Discrete support values (numeric only).
+        p : array-like
+            Probabilities associated with ``x`` (must sum to 1). If provided empty list; then uniform distribution over all x
+        new_del_x : float
+            Step size for the refined continuous grid.
+        new_x_min : float, optional
+            Minimum bound of the refined grid.
+        new_x_max : float, optional
+            Maximum bound of the refined grid.
+        incr_x_init : float, optional
+            Constant shift applied to ``x`` before interpolation.
+        rng : numpy.random.Generator, optional
+            Random number generator.
         refines discrete pdf to more of continuous one by linear interpolation at each of new_x_array
         
-        Parameters:
-            x (1D-list or 1D-array): The possible choices. Must be all numbers
-            p (1D-list or 1D-array): Corresponding probabilities for each choice (must sum to 1). If provided empty list; then uniform distribution over all x
-            
-            x = [0,1,5]; p = [0, 0.2, 0.4] -> means p(0) = 0; p(1) = 0.2; p[5]=0.4
-            incr_x_init: Value added to each element in `x` (useful for shifting).
-            Use of incr_x_init in this code: we have (depth2top vs pdf) but we need to convert it to depth2center vs pdf, so if we use incr_x_init=radius of utility then it converts to what we need,
-        
-            new_del_x: Step size of new_x for continous pdf
-            new_x_min: Minimum bound for new_x for continuous pdf (must be >= minimum of shifted_x). Default: min(x)
-            new_x_max: Maximum bound of new_x for continuous pdf (must be <= minimum of shifted_x). Default: max(x)
+        Example
+        -------
+        x = [0,1,5]; p = [0, 0.2, 0.4] -> means p(0) = 0; p(1) = 0.2; p[5]=0.4
            
-        Example: if new_del_x = 0.5
+        if new_del_x = 0.5
         then, {0:0, 0.5:0.1, 1:0.2, 1.5:0.225, 2:0.25 .... ,5:0.4}. i.e. linear interpolation in between
         then, pdf_values readjusted such that sum is 1.
         """

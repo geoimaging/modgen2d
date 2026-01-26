@@ -3,7 +3,7 @@
 #
 # LICENSE
 
-"""Define a two-dimensional domain that defines lithology."""
+"""Global configuration for two-dimensional soil interfaces."""
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        
 import numpy as np
 from geomodgen2d.discretized_interfaces2d import DiscretizedInterfaces2D
@@ -11,10 +11,11 @@ from geomodgen2d.meta_class import _StrictProtectedMeta, _internal_classmethod, 
 
 class GlobalSoilInterfaceConfig(metaclass=_StrictProtectedMeta):
     """
-    Global configuration manager for the active surface-interface instance and 
-    its processing behavior. This class acts as a centralized registry that 
-    stores the current interface, processing mode, and a revision token used 
-    to detect boundary changes.
+    Global configuration manager for the active/current soil interface model instance and 
+    its processing behavior.
+    
+    This class acts as a centralized registry that stores the current interface, 
+    processing mode, and a revision token used to detect boundary changes.
     """
 
     __slots__ = []  #Does not allow any instance variables. Only class variables.
@@ -32,6 +33,7 @@ class GlobalSoilInterfaceConfig(metaclass=_StrictProtectedMeta):
         
     @_internal_classmethod
     def reset(cls):
+        """Reset global configuration to default values."""
         for key, val in cls._DEFAULTS.items():
             setattr(cls, key, val)
     
@@ -39,7 +41,11 @@ class GlobalSoilInterfaceConfig(metaclass=_StrictProtectedMeta):
     def set_soil_interface(cls, discretized_interface2d_instance:DiscretizedInterfaces2D, 
                            force_set=False):
         """
-        Set the global soil interface configuration.
+        Set the global soil interface configuration. 
+        
+        It generates a _revision_id, which is a randomly generated integer that uniquely identifies the 
+        current configuration state. Updated every time `set_surface_interface()` is called. 
+        Allows downstream systems to detect changes in current/active interface2d instance.
 
         Parameters
         ----------
@@ -49,15 +55,14 @@ class GlobalSoilInterfaceConfig(metaclass=_StrictProtectedMeta):
         force_set : bool, default=False
             If False and a surface interface is already set, a RuntimeError 
             will be raised. If True, the existing interface is overwritten.
-            
-        Generates:
-        _revision_id : int or None
-            A randomly generated integer that uniquely identifies the 
-            current configuration state. Updated every time 
-            `set_surface_interface()` is called. Allows downstream systems to 
-            detect changes in surface boundaries or processing modes.
-            
-        """
+       
+        Raises
+        ------
+        RuntimeError
+            If an interface is already set and ``force_set=False``.
+        TypeError
+            If input is invalid.
+        """    
         
         if cls.get_revision_id() != 0 and not force_set:
             raise RuntimeError(
@@ -84,6 +89,14 @@ class GlobalSoilInterfaceConfig(metaclass=_StrictProtectedMeta):
             
     @_internal_classmethod
     def get_revision_id(cls):
+        """
+        Return the current revision identifier.
+
+        Returns
+        -------
+        int
+            Revision ID.
+        """
         return cls._revision_id
     
     @_internal_classmethod
@@ -118,12 +131,32 @@ class GlobalSoilInterfaceConfig(metaclass=_StrictProtectedMeta):
 
     @_internal_classmethod
     def set_revision_id(cls, revision_id, force_set=False):
+        """
+        Set revision ID explicitly.
+
+        Notes
+        -----
+        Intended only for use with ``from_config``.
+        """
         if force_set is False:
             raise ValueError("Note: This method is only intended for using .from_config. Not recommended for any other uses. set force_set to True for using.")
         cls._revision_id = revision_id
     
     @classmethod
     def set_soil_interface_from_config(cls, config_dict):
+        """
+        Restore configuration from a serialized dictionary.
+
+        Parameters
+        ----------
+        config_dict : dict
+            Serialized configuration.
+
+        Raises
+        ------
+        ValueError
+            If configuration is invalid.
+        """
         if not isinstance(config_dict, dict):
             raise TypeError("Expected a dictionary.")
         try:

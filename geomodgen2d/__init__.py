@@ -8,34 +8,58 @@
 from .metadata import __version__
 
 # Core modules
-from . import discretized_domain2d
-from . import discretized_interfaces2d_from_dict
-from . import features_config
-from . import generated_model2d
-from . import lithological_domain2d
-from . import main_properties
-from . import main_property_each
-from . import obstruction2d
-from . import random_generators
-from . import rough_interface_creator2d
-from . import spatial_simulator2d
-from . import units_config
-from . import load_generated_model2d_from_hdf5
+from .units_config import Units
+from .discretized_domain2d import DiscretizedDomain2D
+from .discretized_interfaces2d import DiscretizedInterfaces2D
+from .discretized_interfaces2d_from_dict import DiscretizedInterfaces2DFromDict 
+from .features_config import FeaturesConfig
+from .global_soil_interface_config import GlobalSoilInterfaceConfig
+from .generated_model2d import GeneratedModel2D, GeneratedModel2DMerged, GeneratedProfileCollection2DReadOnly, GeneratedProfileCollection2D
+from .lithological_domain2d import LithologicalDomain2D, LithologicalDomain2DCollection, LithologicalDomain2DFromObstruction2D, LithologicalDomain2DReadOnly
+from .main_properties import MainPropertiesConfig, AuxillaryProperties
+from .main_property_each import MainProperty, PropertyDistribution
+from .obstruction2d import Obstruction2D
+from .random_generators import RandomGeneratorAbstract, Constant, LogUniform, Uniform, Normal, Discrete2ContinuousPDF, DiscreteChoice
+from .rough_interface_creator2d import AbstractRoughInterfaceCreator, NormalInterfaceGen, UniformInterfaceGen, FBMInterfaceGen
+from .spatial_simulator2d import SpatialSimulator2D, ConstantSimulator, CovarianceDecompositionSimulator
+from .load_generated_model2d_from_hdf5 import load_dict_from_hdf5, read_hdf5_file
 
-# Optional: control what gets imported when using 'from geomodgen2d import *'
+# Expose a flat namespace for docs and imports
 __all__ = [
-    "discretized_domain2d",
-    "discretized_interfaces2d_from_dict",
-    "features_config",
-    "generated_model2d",
-    "lithological_domain2d",
-    "main_properties",
-    "main_property_each",
-    "obstruction2d",
-    "packages_ModelGenerator",
-    "random_generators",
-    "rough_interface_creator2d",
-    "spatial_simulator2d",
-    "units_config",
-    "load_generated_model2d_from_hdf5",
+    # Core
+    "Units",
+    "DiscretizedDomain2D",
+    "DiscretizedInterfaces2D",
+    "DiscretizedInterfaces2DFromDict",
+    "FeaturesConfig",
+    "GlobalSoilInterfaceConfig",
+    "GeneratedModel2D",
+    "GeneratedModel2DMerged",
+    "GeneratedProfileCollection2DReadOnly",
+    "GeneratedProfileCollection2D",
+    "LithologicalDomain2D",
+    "LithologicalDomain2DCollection",
+    "LithologicalDomain2DFromObstruction2D",
+    "LithologicalDomain2DReadOnly",
+    "MainPropertiesConfig",
+    "AuxillaryProperties",
+    "MainProperty",
+    "PropertyDistribution",
+    "Obstruction2D",
+    "RandomGeneratorAbstract",
+    "Constant",
+    "LogUniform",
+    "Uniform",
+    "Normal",
+    "Discrete2ContinuousPDF",
+    "DiscreteChoice",
+    "AbstractRoughInterfaceCreator",
+    "NormalInterfaceGen",
+    "UniformInterfaceGen",
+    "FBMInterfaceGen",
+    "SpatialSimulator2D",
+    "ConstantSimulator",
+    "CovarianceDecompositionSimulator",
+    "load_dict_from_hdf5",
+    "read_hdf5_file",
 ]

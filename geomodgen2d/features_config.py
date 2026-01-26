@@ -3,7 +3,7 @@
 #
 # LICENSE
 
-"""Define a three-dimensional domain that defines a material."""
+"""Feature configuration utilities."""
 
 import numpy as np
 from geomodgen2d.general_functions import validate_feature_ids_list, is_valid_feature_id
@@ -11,21 +11,44 @@ from geomodgen2d.random_generators import RandomGeneratorAbstract, DiscreteChoic
 
 class FeaturesConfig:
     """
-    Stores feature_id, feature description, and RandomGenerator for each feature.
+    Container for feature identifiers and their material distributions. Stores feature_id, 
+    feature description, and RandomGenerator for each feature.
     """
-
     __slots__ = ['_feature_ids_mapping'] 
 
     def __init__(self):
+        """Initialize an empty 'FeaturesConfig' class."""
         self._feature_ids_mapping = {}
         
     def reset(self):
+        """Remove all stored features."""
         self._feature_ids_mapping = {}
     
     def add_feature(self, feature_id:str, 
                     material_type_distribution:RandomGeneratorAbstract,
                     feature_description:str = None
                     ):
+        """
+        Add a feature definition.
+
+        Parameters
+        ----------
+        feature_id : str
+            Feature identifier.
+        material_type_distribution : RandomGeneratorAbstract
+            Distribution defining material types.
+        feature_description : str, optional
+            Human-readable feature description.
+
+        Raises
+        ------
+        KeyError
+            If feature_id is invalid or already exists.
+        TypeError
+            If material_type_distribution has an invalid type.
+        ValueError
+            If material types are invalid.
+        """
         
         valid_prefix, msg = is_valid_feature_id(feature_id)
         if not valid_prefix and feature_id != 'def':
@@ -76,11 +99,34 @@ class FeaturesConfig:
         }
         
     def remove_feature(self, feature_id:str):
+        """
+        Remove a feature.
+
+        Parameters
+        ----------
+        feature_id : str
+            Feature identifier.
+
+        Raises
+        ------
+        KeyError
+            If feature_id does not exist.
+        """
         if feature_id not in self._feature_ids_mapping.keys():
             raise KeyError(f"{feature_id} not added yet, so failed removing. Available feature_ids: {self.get_feature_ids()}.")
         self._feature_ids_mapping.pop(feature_id)
                
     def check(self):
+        """
+        Validate internal feature configuration.
+
+        Raises
+        ------
+        ValueError
+            If feature definitions are inconsistent.
+        TypeError
+            If invalid gene
+        """
         # 1) Check if _feature_ids_mapping is in correct format.
         # a. All keys in correct format 
         # b. All generators are random generator of type 'Constant', and 'DiscreteChoice'.
@@ -131,21 +177,68 @@ class FeaturesConfig:
                 raise ValueError(f"Cannot have 'layer0' in distribution. Found in feature_id:'{feature_id}' Note: Define layer0's distribution directly in MainProperties Class.")
                 
     def get_feature_ids(self):
+        """
+        Return all feature identifiers.
+
+        Returns
+        -------
+        list of str
+            Feature IDs.
+        """
         return list(self._feature_ids_mapping.keys())
     
     def get_feature_descriptions(self):
+        """
+        Return feature descriptions.
+
+        Returns
+        -------
+        dict
+            Mapping of feature_id to description.
+        """
         dict_ = {}
         for key, val in self._feature_ids_mapping.items():
             dict_[key] = val['description']
         return dict_
     
     def get_material_types_distribution(self, feature_id):
+        """
+        Return material type distribution for a feature.
+
+        Parameters
+        ----------
+        feature_id : str
+            Feature identifier.
+
+        Returns
+        -------
+        RandomGeneratorAbstract
+            Material type distribution.
+
+        Raises
+        ------
+        KeyError
+            If feature_id does not exist.
+        """
         self.check()
         if feature_id not in self.get_feature_ids():
             raise KeyError(f"feature_id {feature_id} not added yet. Available: {self.get_feature_ids()}")
         return self._feature_ids_mapping[feature_id]['material_type_distribution']
     
     def get_material_types(self, feature_id):
+        """
+        Return material types for a feature.
+
+        Parameters
+        ----------
+        feature_id : str
+            Feature identifier.
+
+        Returns
+        -------
+        list of str
+            Material types.
+        """
         if feature_id not in self.get_feature_ids():
             raise KeyError(f"feature_id {feature_id} not added yet. Available: {self.get_feature_ids()}")
         return self._feature_ids_mapping[feature_id]['material_type_list']

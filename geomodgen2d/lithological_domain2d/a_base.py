@@ -3,7 +3,13 @@
 #
 # LICENSE
 
-"""Define a two-dimensional domain that defines lithology."""
+"""
+Define a two-dimensional lithological domain class.
+
+This module provides a read-only class representing a 2D lithological domain 
+(matrix of layer IDs) with optional groundwater table (GWT) depth, utilities,
+and interfaces. It also provides plotting and remeshing capabilities.
+"""
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        
 import numpy as np
 import pandas as pd
@@ -18,17 +24,18 @@ from geomodgen2d.global_soil_interface_config import GlobalSoilInterfaceConfig
 
 class LithologicalDomain2DReadOnly():
     """
-    Class representing a 2D matrix (with layer_ID) with layers that can be created from a boundary or utility class.
+    Class representing a read-only 2D lithological domain with layer IDs.
     """
     def __init__(self, domain:DiscretizedDomain2D, name: str):
         """
-        Initializes the LithogolicalDomain2D instance with given spatial limits, and spacing.
-        
-        Parameters:
-        domain: DiscretizedDomain3D
-            Domain in which the interfaces are to be defined.
-        name: str
-            The name of lithologicaldomain
+        Initialize a 'LithologicalDomain2DReadOnly' instance.
+
+        Parameters
+        ----------
+        domain : DiscretizedDomain2D
+            Domain in which the lithological interfaces are defined.
+        name : str
+            Name of the lithological domain.
         """
         self.domain = domain
         self.name = name
@@ -49,15 +56,32 @@ class LithologicalDomain2DReadOnly():
         
     @property
     def lithological_matrix(self):
+        """Get the lithological matrix (2D numpy array)."""
         return self._lithological_matrix
 
     @lithological_matrix.setter
     def lithological_matrix(self, value):
+        """Set the lithological matrix and validate its contents."""
         self._lithological_matrix = value
-        self.validate_lithological_matrix()
+        self._validate_lithological_matrix()
         self.check_shape()
     
-    def validate_lithological_matrix(self):
+    def _validate_lithological_matrix(self):
+        """
+        Validate the lithological matrix for allowed values.
+
+        Checks:
+        - Must be a numpy array or None.
+        - Cannot contain NaN or None.
+        - Entries must be integers, 'X', or strings like 'prefix_<int>'.
+
+        Raises
+        ------
+        TypeError
+            If lithological_matrix is not a numpy array.
+        ValueError
+            If invalid entries are detected.
+        """
         lithological_matrix = self.lithological_matrix
 
         if lithological_matrix is None:
@@ -96,6 +120,7 @@ class LithologicalDomain2DReadOnly():
     
     @staticmethod
     def check_for_Xs(lit_matrix_vavaluelue):
+        """Check if 'X' placeholders exist in the lithological matrix."""
         return "X" in np.unique(np.asarray(lit_matrix_vavaluelue, dtype=str))
 
     def print(self):
@@ -151,6 +176,7 @@ class LithologicalDomain2DReadOnly():
         return result
     
     def check_shape(self):
+        """Ensure lithological matrix matches the domain shape."""
         domain_shape = self.domain.shape
         lit_shape = self.lithological_matrix.shape
         if domain_shape != lit_shape:
@@ -211,14 +237,24 @@ class LithologicalDomain2DReadOnly():
                         'U_': plt.get_cmap('Set3', 10)   # For "U-{x}" values
                 }):
         """
-        # If any change change in materialdomain too.
-        
-        Plots a 2D section of the layered matrix.
+        Plot the lithological domain.
 
-        Parameters:
-            ax: The matplotlib axes object for the plot (default is None, which creates a new figure).
-            idx: A list specifying the axis and index to slice (e.g., ['x', 0]).
-            color_map: A dictionary that defines the color map for the values in the matrix.
+        Parameters
+        ----------
+        ax : matplotlib.axes.Axes, optional
+            Axes object to draw on. Creates a new figure if None.
+        discrete_point_size : float, optional
+            Size of discrete scatter points; 0 disables scatter.
+        legend : bool, optional
+            Whether to display the legend.
+        id2material_dict : dict, optional
+            Maps IDs to material names.
+        title : str, optional
+            Plot title.
+        plot_interfaces : bool, optional
+            Whether to overlay soil interfaces.
+        color_map : dict, optional
+            Prefix-to-colormap dictionary.
         """
         if ax is None:
             fig,ax = plt.subplots()
@@ -292,12 +328,48 @@ class LithologicalDomain2DReadOnly():
 
     def remeshing_lithological_matrix(self, new_dx, new_dz, interp_method = 'nearest', replace=True):
         """
-        Coarsens/refines the layered matrix based on a coarsened coordinate class, optionally replacing the current matrix.
+        Remesh (coarsen or refine) the lithological matrix based on new grid spacing.
 
-        Args:
-            del_x_remeshed, del_z_remeshed: Spacing of remeshed (new) del_x and del_z.
-            interp_method (str): The interpolation method to use ('nearest' or 'nearest_up'). Defaults to 'nearest'.
-            replace (bool): Whether to replace the current matrix with the coarsened one. Defaults to False.
+        This method allows the lithological matrix to be interpolated onto a new 
+        discretized domain with spacings `new_dx` and `new_dz`. It supports two 
+        interpolation methods: 'nearest' and 'nearest_up'. Optionally, the remeshed 
+        matrix can replace the existing one or return a copy.
+
+        Parameters
+        ----------
+        new_dx : float
+            Desired spacing in the X-direction for the remeshed domain.
+        new_dz : float
+            Desired spacing in the Z-direction for the remeshed domain.
+        interp_method : str, optional
+            Interpolation method to use for remeshing. Options:
+            - 'nearest' : Assigns the value of the nearest original grid cell.
+            - 'nearest_up' : Similar to 'nearest' but may favor higher layer IDs 
+            (useful when upscaling layered properties).  
+            Default is 'nearest'.
+        replace : bool, optional
+            If True, the remeshed matrix will replace the current lithological matrix 
+            and domain in-place. If False, a new `LithologicalDomain2DReadOnly` object 
+            with the remeshed matrix is returned. Default is True.
+
+        Returns
+        -------
+        LithologicalDomain2DReadOnly or None
+            - If `replace=False`, returns a new instance of `LithologicalDomain2DReadOnly` 
+            with the remeshed matrix.
+            - If `replace=True`, updates the current object in-place and returns None.
+
+        Raises
+        ------
+        ValueError
+            If an unsupported interpolation method is provided.
+
+        Notes
+        -----
+        - The original domain is stored in `init_domain` if it has never been modified.
+        - The method preserves unique lithology identifiers, including integers 
+        and prefixed values like 'U_<int>'.
+        - Colors, plotting, and validation remain compatible after remeshing.
         """
         self_copy = copy.deepcopy(self)  #Makes sure the change in the object is local to this function only.
         org_dx, org_dz = self.domain.dhs
@@ -320,7 +392,7 @@ class LithologicalDomain2DReadOnly():
             
             self_copy.domain = new_domain
             self_copy.lithological_matrix = unique_values[remeshed_int_mapp.astype(int)]
-            # self_copy.validate_lithological_matrix() #Should be done automatically with setter
+            # self_copy._validate_lithological_matrix() #Should be done automatically with setter
             
             self_copy.lm_type = f'{self_copy.lm_type}_remeshed'
             if self_copy.init_domain is None:
@@ -334,6 +406,9 @@ class LithologicalDomain2DReadOnly():
             
     @property
     def get_config(self):
+        """
+        Return a serializable dictionary representing the lithological domain.
+        """
         self_config = {}
         self_config['domain'] = self.domain.get_config
         self_config['gwt_depth'] = self.gwt_depth
@@ -365,6 +440,19 @@ class LithologicalDomain2DReadOnly():
 
     @classmethod
     def from_config(cls, config_dict):
+        """
+        Create a LithologicalDomain2DReadOnly instance from a configuration dictionary.
+
+        Parameters
+        ----------
+        config_dict : dict
+            Dictionary produced by `get_config`.
+
+        Returns
+        -------
+        LithologicalDomain2DReadOnly
+            Reconstructed instance.
+        """
         if not isinstance(config_dict, dict):
             raise TypeError("Expected a dictionary.")
         

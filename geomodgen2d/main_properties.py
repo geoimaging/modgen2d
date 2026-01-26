@@ -1,3 +1,7 @@
+"""
+Configuration and sampling of material properties for 2D lithological domains.
+"""
+
 # Sanish Bhochhibhoya
 # Apr 12: Changed the Structure of properties. 
 #   Was: Main Property >> Feature ID >> wet/dry/both >> Dict of Random Generators or Random Generator
@@ -11,18 +15,39 @@ import numpy as np
 
 class MainPropertiesConfig:
     """
-    Collection of all main properties, and their features' probability distributions.
+    Container for all main material properties and their feature-based
+    probability distributions.
+
+    This class manages:
+    - Registration of main properties
+    - Sampling of material properties per lithological ID
+    - Consistency with a locked lithological domain
+
+    Notes
+    -----
+    The internal hierarchy is:
+
+    MainPropertiesConfig
+        >> MainProperty
+                >> Sub-divisions
+                        >> Property distributions
     """
     def __init__(self, features_config:FeaturesConfig, layer0_flag:bool=False):
         """
-        Initializes the MainPropertiesConfig class.
+        Initialize the 'MainPropertiesConfig' class object.
 
-        Args:
-            features_config: FeaturesConfig instance
-            A config describing all features, their ids, and material_type random generator.
-                    
-        Hierarchy:
-        MainPropertiesConfig >> MainProperty Instance ( >Sub_divisions >> Property instance)
+        Parameters
+        ----------
+        features_config : FeaturesConfig
+            Configuration describing all feature IDs and their
+            material-type random generators.
+        layer0_flag : bool, optional
+            Whether a special `layer0` handling is enabled, by default False.
+
+        Raises
+        ------
+        TypeError
+            If `features_config` is not a FeaturesConfig instance.
         """
         
         if not isinstance(features_config, FeaturesConfig):
@@ -76,6 +101,20 @@ class MainPropertiesConfig:
         self._lit_collection_unique_code = 0
         
     def add_main_property(self, main_property_instance:MainProperty):
+        """
+        Register a main property definition.
+
+        Parameters
+        ----------
+        main_property_instance : MainProperty
+            A fully defined and lockable main property.
+
+        Raises
+        ------
+        ValueError
+            If a property with the same name already exists.
+        """
+        
         main_property_name = main_property_instance.main_property_name
         if main_property_name in self.get_main_properties_names():
             raise ValueError(f"'{main_property_name}' already exists in the MainPropertiesConfig Instance")
@@ -95,12 +134,19 @@ class MainPropertiesConfig:
 
     def check(self):
         """
-        Performs validation checks on all stored main properties.
-    
-        Raises:
-        - TypeError: If a property instance is not of type Properties.
-        - AssertionError: If `check` is not performed on a property instance.
-        - AssertionError: If 'layer0_val' is not a number or None.
+        Validate all registered main properties.
+
+        Performs checks on:
+        - Main property naming
+        - Duplicate property definitions
+        - Internal consistency of each MainProperty
+
+        Raises
+        ------
+        TypeError
+            If a property name is not a string.
+        ValueError
+            If names are empty, duplicated, or invalid.
         """
             
         names = self.get_main_properties_names()
@@ -119,6 +165,27 @@ class MainPropertiesConfig:
             main_property.lock_and_check()
             
     def lock_and_generate_sample_properties(self, lit_domain2d_collection_instance:LithologicalDomain2DCollection):
+        """
+        Lock the configuration and generate sampled material properties.
+
+        This method:
+        1. Validates all main properties
+        2. Samples material types for each lithological ID
+        3. Generates property values for each material
+        4. Locks the configuration to prevent re-sampling
+
+        Parameters
+        ----------
+        lit_domain2d_collection_instance : LithologicalDomain2DCollection
+            Locked lithological domain defining layer IDs.
+
+        Raises
+        ------
+        ValueError
+            If properties are already locked or domain is not locked.
+        TypeError
+            If input is not a LithologicalDomain2DCollection instance.
+        """
         if self._locked:
             raise ValueError("Sample properties already generated. Try .unlock to generate again.")
         
@@ -175,6 +242,19 @@ class MainPropertiesConfig:
             ##TODO
     
     def check_consistent_with_lit_domain2d_collection(self, lit_domain2d_collection_instance:LithologicalDomain2DCollection):
+        """
+        Check consistency between sampled properties and a lithological domain.
+
+        Parameters
+        ----------
+        lit_domain2d_collection_instance : LithologicalDomain2DCollection
+            Locked domain used to verify consistency.
+
+        Raises
+        ------
+        ValueError
+            If lithological IDs or revision codes do not match.
+        """
         check_consistent_with_lit_domain2d_collection(lit_domain2d_collection_instance, self.lit_id2material_dict, self.sampled_properties, self.get_main_properties_names())
         if self._lit_collection_unique_code != lit_domain2d_collection_instance.unique_code:
             raise ValueError("While lit_domain2d is consistent, unique code mismatch. It means the sampled properties has been changed. Generate sample properties again for consistency.")
@@ -223,6 +303,21 @@ class AuxillaryProperties:
         self.aux_properties = {}
         
     def add_aux_property(self, name, randomGeneratorInstance_mean):
+        """
+        Add an auxiliary property.
+
+        Parameters
+        ----------
+        name : str
+            Name of the auxiliary property.
+        randomGeneratorInstance_mean
+            Mean value or representative scalar.
+
+        Raises
+        ------
+        AssertionError
+            If the property name already exists.
+        """
         assert name not in self.aux_properties.keys(), f"'{name}' already exists in the AuxillaryProperties Instance"
         self.aux_properties[name] = randomGeneratorInstance_mean
             
