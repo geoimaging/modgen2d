@@ -1,7 +1,7 @@
 Obstruction2D
 =============
 
-.. currentmodule:: geomodgen2d.obstruction2d
+.. currentmodule:: modgen2d.obstruction2d
 
 .. autoclass:: Obstruction2D
    :members:

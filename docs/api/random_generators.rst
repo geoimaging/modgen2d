@@ -1,7 +1,7 @@
 random_generators
 =================
 
-.. currentmodule:: geomodgen2d.random_generators
+.. currentmodule:: modgen2d.random_generators
 
 .. autoclass:: RandomGeneratorAbstract
    :members:

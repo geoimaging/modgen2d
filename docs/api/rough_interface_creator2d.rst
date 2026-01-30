@@ -1,7 +1,7 @@
 rough_interface_creator2d
 =========================
 
-.. currentmodule:: geomodgen2d.rough_interface_creator2d
+.. currentmodule:: modgen2d.rough_interface_creator2d
 
 .. autoclass:: AbstractRoughInterfaceCreator
    :members:

@@ -6,8 +6,8 @@
 """Feature configuration utilities."""
 
 import numpy as np
-from geomodgen2d.general_functions import validate_feature_ids_list, is_valid_feature_id
-from geomodgen2d.random_generators import RandomGeneratorAbstract, DiscreteChoice, Constant
+from modgen2d.general_functions import validate_feature_ids_list, is_valid_feature_id
+from modgen2d.random_generators import RandomGeneratorAbstract, DiscreteChoice, Constant
 
 class FeaturesConfig:
     """

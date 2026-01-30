@@ -1,10 +1,10 @@
 import numpy as np
 from testing_tools import unittest, TestCase
-import geomodgen2d.general_functions as f
-from geomodgen2d.material_domain2d import MaterialDomain2D, MaterialDomain2DReadOnly
-from geomodgen2d.main_properties import MainPropertiesConfig
-from geomodgen2d.lithological_domain2d import LithologicalDomain2D, LithologicalDomain2DFromObstruction2D, GlobalSoilInterfaceConfig
-from geomodgen2d.generated_model2d import GeneratedModel2D
+import modgen2d.general_functions as f
+from modgen2d.material_domain2d import MaterialDomain2D, MaterialDomain2DReadOnly
+from modgen2d.main_properties import MainPropertiesConfig
+from modgen2d.lithological_domain2d import LithologicalDomain2D, LithologicalDomain2DFromObstruction2D, GlobalSoilInterfaceConfig
+from modgen2d.generated_model2d import GeneratedModel2D
 from unittest.mock import MagicMock, patch
 
 ## Most near to model_collection

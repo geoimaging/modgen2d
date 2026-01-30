@@ -1,7 +1,7 @@
-geomodgen2d
-===========
+modgen2d
+========
 
-geomodgen2d is a Python package for generating 2D subsurface models with customizable soil properties, utilities, and spatial correlation.
+modgen2d is a Python package for generating 2D subsurface models with customizable soil properties, utilities, and spatial correlation.
 
 It contains the following modules:
 

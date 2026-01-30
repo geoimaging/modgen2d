@@ -1,4 +1,4 @@
-# This file is part of geomodgen2D a Python package for ...
+# This file is part of modgen2d a Python package for ...
 # Copyright (C) XXXX Joseph P. Vantassel (joseph.p.vantassel@gmail.com)
 #
 # LICENSE
@@ -6,10 +6,10 @@
 """Global configuration for two-dimensional soil interfaces."""
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        
 import numpy as np
-from geomodgen2d.discretized_interfaces2d import DiscretizedInterfaces2D
-from geomodgen2d.meta_class import _StrictProtectedMeta, _internal_classmethod, classproperty
+from modgen2d.discretized_interfaces2d import DiscretizedInterfaces2D
+from modgen2d.meta_class import _StrictProtectedMeta, _internal_classmethod, classproperty
 
-class GlobalSoilInterfaceConfig:#(metaclass=_StrictProtectedMeta):
+class GlobalSoilInterfaceConfig(metaclass=_StrictProtectedMeta):
     """
     Global configuration manager for the active/current soil interface model instance and 
     its processing behavior.

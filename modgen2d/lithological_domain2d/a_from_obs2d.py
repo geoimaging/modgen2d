@@ -1,4 +1,4 @@
-# This file is part of geomodgen2D a Python package for ...
+# This file is part of modgen2d a Python package for ...
 # Copyright (C) XXXX Joseph P. Vantassel (joseph.p.vantassel@gmail.com)
 #
 # LICENSE
@@ -6,12 +6,12 @@
 """Define a 2D lithological domain derived from obstruction (utility) data."""
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        
 import numpy as np
-import geomodgen2d.general_functions as f
+import modgen2d.general_functions as f
 import copy
 
-from geomodgen2d.discretized_domain2d import DiscretizedDomain2D
-from geomodgen2d.obstruction2d import Obstruction2D
-from geomodgen2d.global_soil_interface_config import GlobalSoilInterfaceConfig
+from modgen2d.discretized_domain2d import DiscretizedDomain2D
+from modgen2d.obstruction2d import Obstruction2D
+from modgen2d.global_soil_interface_config import GlobalSoilInterfaceConfig
 from .a_base import LithologicalDomain2DReadOnly
 from .common_functions import _warn_if_changed, _merge_lithological_domains
   

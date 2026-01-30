@@ -7,7 +7,7 @@
 
 import numpy as np
 from testing_tools import unittest, TestCase
-from geomodgen2d import random_generators
+from modgen2d import random_generators
 
 class TestDomain2D(TestCase):
     @classmethod

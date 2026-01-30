@@ -1,7 +1,7 @@
 MainPropertiesConfig
 ====================
 
-.. currentmodule:: geomodgen2d.main_properties
+.. currentmodule:: modgen2d.main_properties
 
 .. autoclass:: MainPropertiesConfig
    :members:

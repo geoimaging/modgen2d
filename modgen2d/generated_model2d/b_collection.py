@@ -6,17 +6,18 @@ import h5py
 import warnings
 # from IPython.display import clear_output
 import numpy as np
-import geomodgen2d.general_functions as f
-from geomodgen2d.spatial_simulator2d import CovarianceDecompositionSimulator, SpatialSimulator2D    
-from geomodgen2d.generated_model2d import GeneratedModel2D
-from geomodgen2d.lithological_domain2d import LithologicalDomain2DCollection, LithologicalDomain2DReadOnly
-from geomodgen2d.main_properties import MainPropertiesConfig
-from geomodgen2d.global_soil_interface_config import GlobalSoilInterfaceConfig
-from geomodgen2d.metadata import __version__
+import modgen2d.general_functions as f
+from modgen2d.spatial_simulator2d import CovarianceDecompositionSimulator, SpatialSimulator2D    
+from modgen2d.generated_model2d import GeneratedModel2D
+from modgen2d.lithological_domain2d import LithologicalDomain2DCollection, LithologicalDomain2DReadOnly
+from modgen2d.main_properties import MainPropertiesConfig
+from modgen2d.global_soil_interface_config import GlobalSoilInterfaceConfig
+from modgen2d.metadata import __version__
 
 class GeneratedProfileCollection2DReadOnly:
     """
-    Read-only collection of 2D generated property profiles over lithological domains.
+    Read-only collection of 2D generated property profiles over lithological domains. 
+    Accessible via: `modgen2d.GeneratedProfileCollection2DReadOnly`.
     """
     def __init__(self, main_properties_config_instance: MainPropertiesConfig, lithological_domain2d_collection: LithologicalDomain2DCollection, spatial_simulator2d_instance:SpatialSimulator2D):
         """
@@ -307,7 +308,7 @@ class GeneratedProfileCollection2DReadOnly:
         """
         self.check()
         to_save_dict = {
-            'geomodgen2d_version': __version__,
+            'modgen2d_version': __version__,
             'save_read_only': False,
             'global_interface_config': GlobalSoilInterfaceConfig.get_config,
             'gen_model_2d_collection': self.get_config
@@ -339,7 +340,7 @@ class GeneratedProfileCollection2DReadOnly:
             state_dict.pop('_generated_model2d_set', None)
                 
         to_save_dict = {
-            'geomodgen2d_version': __version__,
+            'modgen2d_version': __version__,
             'save_read_only': True,
             'global_interface_config': GlobalSoilInterfaceConfig.get_config,
             'gen_model_2d_collection': state_dict
@@ -375,7 +376,7 @@ class GeneratedProfileCollection2DReadOnly:
         self.check()
         with h5py.File(file_name, 'w') as hf:
             to_save_dict = {
-                'geomodgen2d_version': __version__,
+                'modgen2d_version': __version__,
             }
             save_dict_to_hdf5(to_save_dict, hf, compression_level=hdf5_compression_level)
             
@@ -438,6 +439,7 @@ class GeneratedProfileCollection2D(GeneratedProfileCollection2DReadOnly):
     """
     Editable subclass of `GeneratedProfileCollection2DReadOnly` for generating
     and managing 2D spatial property profiles.
+    Accessible via: `modgen2d.GeneratedProfileCollection2D`.
     """
     def __init__(self, main_properties_config_instance: MainPropertiesConfig, lithological_domain2d_collection: LithologicalDomain2DCollection, spatial_simulator2d_instance:SpatialSimulator2D):
         """

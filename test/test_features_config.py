@@ -1,7 +1,7 @@
-from geomodgen2d.features_config import FeaturesConfig
+from modgen2d.features_config import FeaturesConfig
 import numpy as np
 from testing_tools import unittest, TestCase
-from geomodgen2d.random_generators import DiscreteChoice, Constant
+from modgen2d.random_generators import DiscreteChoice, Constant
 
 class TestFeaturesConfig(TestCase):
     def test_add_feature_constant(self):

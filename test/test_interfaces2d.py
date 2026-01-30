@@ -5,9 +5,9 @@
 
 "Create basic sanity checks for project."
 
-import geomodgen2d
-from geomodgen2d import discretized_interfaces2d
-from geomodgen2d.rough_interface_creator2d import NormalInterfaceGen, UniformInterfaceGen, FBMInterfaceGen
+import modgen2d
+from modgen2d import discretized_interfaces2d
+from modgen2d.rough_interface_creator2d import NormalInterfaceGen, UniformInterfaceGen, FBMInterfaceGen
 
 import numpy as np
 from testing_tools import unittest, TestCase
@@ -15,21 +15,21 @@ from testing_tools import unittest, TestCase
 class TestBoundaryCreator(TestCase):
     def setUp(self):
         # 2D domain with default units
-        self.domain2D1 = geomodgen2d.discretized_domain2d.DiscretizedDomain2D(
+        self.domain2D1 = modgen2d.discretized_domain2d.DiscretizedDomain2D(
             span_x=5, span_z=4, dx=1, dz=1
         )
         
         self.boundary2D1 = discretized_interfaces2d.DiscretizedInterfaces2D(
             domain=self.domain2D1, n_soil_layers=3, generate_surface=True, rng=np.random.default_rng(2))
         
-        self.domain2D2 = geomodgen2d.discretized_domain2d.DiscretizedDomain2D(
+        self.domain2D2 = modgen2d.discretized_domain2d.DiscretizedDomain2D(
             span_x=10, span_z=8, dx=0.2, dz=0.1
         )
         
         self.boundary2D2 = discretized_interfaces2d.DiscretizedInterfaces2D(
             domain=self.domain2D2, n_soil_layers=4, generate_surface=False, rng=np.random.default_rng(2))
         
-        self.domain2D3 = geomodgen2d.discretized_domain2d.DiscretizedDomain2D(
+        self.domain2D3 = modgen2d.discretized_domain2d.DiscretizedDomain2D(
             span_x=5, span_z=4, dx=1.25, dz=.8
         )
         self.boundary2D3 = discretized_interfaces2d.DiscretizedInterfaces2D(domain=self.domain2D3, n_soil_layers=1, generate_surface=True, rng=np.random.default_rng(2))

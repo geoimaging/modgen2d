@@ -2,9 +2,9 @@
 
 import numpy as np
 from abc import ABC, abstractmethod
-from geomodgen2d.generated_model2d import GeneratedModel2D
-from geomodgen2d.lithological_domain2d import LithologicalDomain2D
-import geomodgen2d.general_functions as f
+from modgen2d.generated_model2d import GeneratedModel2D
+from modgen2d.lithological_domain2d import LithologicalDomain2D
+import modgen2d.general_functions as f
 import warnings
 import pandas as pd
 

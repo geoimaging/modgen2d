@@ -1,7 +1,7 @@
-import geomodgen2d
+import modgen2d
 import numpy as np
 from testing_tools import unittest, TestCase
-import geomodgen2d.general_functions as f
+import modgen2d.general_functions as f
 
 class TestGeneralFunctions(TestCase):
     

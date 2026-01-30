@@ -1,11 +1,11 @@
-# This file is part of geomodgen2d, a Python package for 2D subsurface model generation.
+# This file is part of modgen2d, a Python package for 2D subsurface model generation.
 # Copyright (C) XXXX Joseph P. Vantassel (joseph.p.vantassel@gmail.com)
 #
 # LICENSE
 
 """
 This module exposes the public API for working with 2D lithological domains
-in the geomodgen2d package. Users typically interact with these classes
+in the modgen2d package. Users typically interact with these classes
 to define, read, or manipulate lithological structures and collections
 for subsurface modeling.
 
