@@ -5,9 +5,9 @@
 
 "Create basic sanity checks for project."
 
-import geomodgen2d
-from geomodgen2d import discretized_interfaces2d
-from geomodgen2d.rough_interface_creator2d import NormalInterfaceGen, UniformInterfaceGen, FBMInterfaceGen
+import modgen2d
+from modgen2d import discretized_interfaces2d
+from modgen2d.rough_interface_creator2d import NormalInterfaceGen, UniformInterfaceGen, FBMInterfaceGen
 
 import numpy as np
 from testing_tools import unittest, TestCase
@@ -15,7 +15,7 @@ from testing_tools import unittest, TestCase
 class TestBoundaryCreator(TestCase):
     def setUp(self):
         # 2D domain with default units
-        self.domain2D1 = geomodgen2d.discretized_domain2d.DiscretizedDomain2D(
+        self.domain2D1 = modgen2d.discretized_domain2d.DiscretizedDomain2D(
             span_x=5, span_z=4, dx=1, dz=1
         )
     
@@ -40,14 +40,14 @@ class TestBoundaryCreator(TestCase):
                     'normal':UniformInterfaceGen(2)}
         for gen_option in ['fbm', 'normal', 'uniform']:
             interfaces_settings_dict['rough_interface_creator_instance'] = gen_dict[gen_option]
-            interface_instance = geomodgen2d.discretized_interfaces2d_from_dict.DiscretizedInterfaces2DFromDict(
+            interface_instance = modgen2d.discretized_interfaces2d_from_dict.DiscretizedInterfaces2DFromDict(
                 self.domain2D1, 3, interfaces_settings_dict, rng=np.random.default_rng(2))
         
             self.assertTupleEqual(interface_instance.interfaces_matrix.shape, (7,3))
             
         interfaces_settings_dict['interfaces_depths_generation'] = np.array([0,8,9])
         interfaces_settings_dict['interfaces_depth_reference_point_x']=2.1
-        interface_instance = geomodgen2d.discretized_interfaces2d_from_dict.DiscretizedInterfaces2DFromDict(
+        interface_instance = modgen2d.discretized_interfaces2d_from_dict.DiscretizedInterfaces2DFromDict(
                 self.domain2D1, 3, interfaces_settings_dict,  rng = np.random.default_rng(2))
         
         self.assertTupleEqual(interface_instance.interfaces_matrix.shape, (7,3))
@@ -73,7 +73,7 @@ class TestBoundaryCreator(TestCase):
         }
         for gen_option in ['fbm', 'normal', 'uniform']:
             interfaces_settings_dict['generator_settings_dict']['generator_option'] = gen_option
-            A, B = geomodgen2d.discretized_interfaces2d_from_dict.generate_interfaces_from_interfaces_settings_dict(
+            A, B = modgen2d.discretized_interfaces2d_from_dict.generate_interfaces_from_interfaces_settings_dict(
                 self.domain2D1, 0, interfaces_settings_dict,  np.random.default_rng(2))
         
             self.assertTupleEqual(A.interfaces_matrix.shape, (7,0))
@@ -81,7 +81,7 @@ class TestBoundaryCreator(TestCase):
             
         interfaces_settings_dict['interfaces_depths_generation'] = np.array([])
         interfaces_settings_dict['interfaces_depth_reference_point_x']=2.1
-        A, B = geomodgen2d.discretized_interfaces2d_from_dict.generate_interfaces_from_interfaces_settings_dict(
+        A, B = modgen2d.discretized_interfaces2d_from_dict.generate_interfaces_from_interfaces_settings_dict(
                 self.domain2D1, 0, interfaces_settings_dict,  np.random.default_rng(2))
         
         self.assertTupleEqual(A.interfaces_matrix.shape, (7,0))

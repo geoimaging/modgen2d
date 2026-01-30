@@ -1,7 +1,7 @@
 GlobalSoilInterfaceConfig
 =========================
 
-.. currentmodule:: geomodgen2d.global_soil_interface_config
+.. currentmodule:: modgen2d.global_soil_interface_config
 
 .. autoclass:: GlobalSoilInterfaceConfig
    :members:

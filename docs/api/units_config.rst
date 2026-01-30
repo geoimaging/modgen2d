@@ -1,7 +1,7 @@
 Units
 =====
 
-.. currentmodule:: geomodgen2d.units_config
+.. currentmodule:: modgen2d.units_config
 
 .. autoclass:: Units
    :members:

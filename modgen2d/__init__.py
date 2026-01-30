@@ -1,9 +1,9 @@
-# This file is part of geomodgen2d, a Python package for 2D subsurface model generation.
+# This file is part of modgen2d, a Python package for 2D subsurface model generation.
 # Copyright (C) XXXX Joseph P. Vantassel (joseph.p.vantassel@gmail.com)
 #
 # LICENSE
 
-"""Import modules into the geomodgen2d namespace."""
+"""Import modules into the modgen2d namespace."""
 
 from .metadata import __version__
 
@@ -17,7 +17,8 @@ from .global_soil_interface_config import GlobalSoilInterfaceConfig
 from .generated_model2d import GeneratedModel2D, GeneratedModel2DMerged, GeneratedProfileCollection2DReadOnly, GeneratedProfileCollection2D
 from .lithological_domain2d import LithologicalDomain2D, LithologicalDomain2DCollection, LithologicalDomain2DFromObstruction2D, LithologicalDomain2DReadOnly
 from .main_properties import MainPropertiesConfig, AuxillaryProperties
-from .main_property_each import MainProperty, PropertyDistribution
+from .property_distribution import PropertyDistribution
+from .main_property_each import MainProperty
 from .obstruction2d import Obstruction2D
 from .random_generators import RandomGeneratorAbstract, Constant, LogUniform, Uniform, Normal, Discrete2ContinuousPDF, DiscreteChoice
 from .rough_interface_creator2d import AbstractRoughInterfaceCreator, NormalInterfaceGen, UniformInterfaceGen, FBMInterfaceGen

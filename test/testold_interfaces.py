@@ -5,7 +5,7 @@
 
 "Create basic sanity checks for project."
 
-import geomodgen2d
+import modgen2d
 import numpy as np
 import unittest
 
@@ -13,15 +13,15 @@ class TestBoundaryCreator(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         # 2D domain with default units
-        cls.domain2D1 = geomodgen2d.discretized_domain2d.DiscretizedDomain2D(
+        cls.domain2D1 = modgen2d.discretized_domain2d.DiscretizedDomain2D(
             span_x=5, span_z=4, dx=1, dz=1
         )
         
-        cls.boundary2D1 = geomodgen2d.interfaces_creator2d.AbstractInterfacesCreator2D(
+        cls.boundary2D1 = modgen2d.interfaces_creator2d.AbstractInterfacesCreator2D(
             domain=cls.domain2D1, n_interfaces=3, rng=np.random.default_rng(2))
         
     
-        cls.boundary2D = geomodgen2d.interfaces_creator2d.AbstractInterfacesCreator2D(
+        cls.boundary2D = modgen2d.interfaces_creator2d.AbstractInterfacesCreator2D(
             domain=cls.domain2D1, n_interfaces=0, rng=np.random.default_rng(2))
                 
         cls.boundary_sett= {

@@ -1,16 +1,16 @@
 Installation
 ============
 
-You can install geomodgen2d via pip:
+You can install modgen2d via pip:
 
 .. code-block:: bash
 
-   pip install geomodgen2d
+   pip install modgen2d
 
 Or from source:
 
 .. code-block:: bash
 
-   git clone https://github.com/<username>/geomodgen2d.git
-   cd geomodgen2d
+   git clone <TBD> https://github.com/TBD/modgen2d.git
+   cd modgen2d
    pip install .

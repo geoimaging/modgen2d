@@ -1,17 +1,17 @@
-Introduction to `geomodgen2d`
-=============================
+Introduction to `modgen2d`
+==========================
 
-About `geomodgen2d`
--------------------
+About `modgen2d`
+----------------
 
-`geomodgen2d` is an open-source Python package for generating
+`modgen2d` is an open-source Python package for generating
 two-dimensional subsurface models for geotechnical and geophysical
 applications. The package provides a flexible, data-driven framework
 for simulating layered soil profiles, rough interfaces, utilities,
 and spatially variable material properties.
 
-`geomodgen2d` is developed by **Sanish Bhochhibhoya** and
-**Joseph P. Vantassel**, and is designed to support research and
+`modgen2d` is developed by **Sanish Bhochhibhoya** under the supervision of
+Professor **Joseph P. Vantassel** at Virginia Tech, and is designed to support research and
 education in subsurface characterization, numerical simulation,
 and uncertainty-aware modeling workflows.
 
@@ -22,19 +22,19 @@ propagation studies, and AI-driven subsurface imaging.
 Citation
 --------
 
-If you use `geomodgen2d` in your research or publications, please cite
+If you use `modgen2d` in your research or publications, please cite
 the software appropriately. A recommended citation will be provided
 here once an archival release is available.
 
 .. note::
    For software, version-specific citations should be preferred when
-   available. If using a development version of `geomodgen2d`, please
+   available. If using a development version of `modgen2d`, please
    cite the associated repository and commit hash.
 
 Key Features
 ------------
 
-`geomodgen2d` provides capabilities not commonly available in a single
+`modgen2d` provides capabilities not commonly available in a single
 model-generation framework, including:
 
 - Programmatic generation of 2D subsurface domains with user-defined
@@ -48,7 +48,7 @@ model-generation framework, including:
 Intended Use
 ------------
 
-`geomodgen2d` is intended for:
+`modgen2d` is intended for:
 
 - Synthetic model generation for seismic and electromagnetic simulations
 - Sensitivity and uncertainty analyses
@@ -64,7 +64,7 @@ custom property models, random field generators, and domain definitions.
 
    installation
    licensing
-   geomodgen2d
+   modgen2d
 
 Indices and tables
 ==================

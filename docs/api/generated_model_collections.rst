@@ -1,7 +1,7 @@
 GeneratedProfileCollection2D
 ============================
 
-.. currentmodule:: geomodgen2d.generated_model2d.b_collection
+.. currentmodule:: modgen2d.generated_model2d.b_collection
 
 .. autoclass:: GeneratedProfileCollection2D
    :members:

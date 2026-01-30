@@ -1,8 +1,8 @@
-import geomodgen2d
+import modgen2d
 import numpy as np
 from testing_tools import unittest, TestCase
-import geomodgen2d.utils_3d_functions as utils_3d_f
-import geomodgen2d.obstruction2d as obstruction2d
+import modgen2d.utils_3d_functions as utils_3d_f
+import modgen2d.obstruction2d as obstruction2d
 
 class TestGeneralFunctions(TestCase):
     

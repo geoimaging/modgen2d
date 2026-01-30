@@ -1,4 +1,4 @@
-# This file is part of geomodgen2D a Python package for ...
+# This file is part of modgen2d a Python package for ...
 # Copyright (C) XXXX Joseph P. Vantassel (joseph.p.vantassel@gmail.com)
 #
 # LICENSE
@@ -8,9 +8,9 @@
 import numpy as np
 import copy,warnings
 
-from geomodgen2d.discretized_domain2d import DiscretizedDomain2D
-from geomodgen2d.discretized_interfaces2d import DiscretizedInterfaces2D
-from geomodgen2d.global_soil_interface_config import GlobalSoilInterfaceConfig
+from modgen2d.discretized_domain2d import DiscretizedDomain2D
+from modgen2d.discretized_interfaces2d import DiscretizedInterfaces2D
+from modgen2d.global_soil_interface_config import GlobalSoilInterfaceConfig
 
 from .a_base import LithologicalDomain2DReadOnly
 from .a_from_obs2d import LithologicalDomain2DFromObstruction2D

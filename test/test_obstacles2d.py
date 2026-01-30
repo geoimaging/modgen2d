@@ -1,29 +1,29 @@
-import geomodgen2d
+import modgen2d
 import numpy as np
 from testing_tools import unittest, TestCase
 
 class TestObstruction2D(TestCase):
     @classmethod
     def setUp(self):
-        self.obs2D1 = geomodgen2d.obstruction2d.Obstruction2D(dl=0.5, ref_xz_symbolic=['c', 'C'], snap_to_dl=True)  #Should be same as above
-        self.obs2D2 = geomodgen2d.obstruction2d.Obstruction2D(dl=0.45, ref_xz_symbolic=('C', 0), snap_to_dl=False)  #Should be same as above
+        self.obs2D1 = modgen2d.obstruction2d.Obstruction2D(dl=0.5, ref_xz_symbolic=['c', 'C'], snap_to_dl=True)  #Should be same as above
+        self.obs2D2 = modgen2d.obstruction2d.Obstruction2D(dl=0.45, ref_xz_symbolic=('C', 0), snap_to_dl=False)  #Should be same as above
 
     def test_obstacles_definition_error(self):
-        self.assertRaises(ValueError, geomodgen2d.obstruction2d.Obstruction2D, 0) #del_z<=0
-        self.assertRaises(ValueError, geomodgen2d.obstruction2d.Obstruction2D, -0.1) #del_x<=0
-        self.assertRaises(ValueError, geomodgen2d.obstruction2d.Obstruction2D, 0.2, "a") #del_x<=0
+        self.assertRaises(ValueError, modgen2d.obstruction2d.Obstruction2D, 0) #del_z<=0
+        self.assertRaises(ValueError, modgen2d.obstruction2d.Obstruction2D, -0.1) #del_x<=0
+        self.assertRaises(ValueError, modgen2d.obstruction2d.Obstruction2D, 0.2, "a") #del_x<=0
        
     def test_validate_ref_xy_symbolic(self):
-        self.assertRaises(ValueError, geomodgen2d.obstruction2d.Obstruction2D.validate_ref_xz_symbolic_format, ['c', 'c', 0]) # dim issue
-        self.assertRaises(ValueError, geomodgen2d.obstruction2d.Obstruction2D.validate_ref_xz_symbolic_format, [['c', 'c']]) # dim issue
-        self.assertRaises(ValueError, geomodgen2d.obstruction2d.Obstruction2D.validate_ref_xz_symbolic_format, ['c']) # dimension issue
-        self.assertRaises(ValueError, geomodgen2d.obstruction2d.Obstruction2D.validate_ref_xz_symbolic_format, np.array(['c', 'c'])) #Only list or tuple not Array
+        self.assertRaises(ValueError, modgen2d.obstruction2d.Obstruction2D.validate_ref_xz_symbolic_format, ['c', 'c', 0]) # dim issue
+        self.assertRaises(ValueError, modgen2d.obstruction2d.Obstruction2D.validate_ref_xz_symbolic_format, [['c', 'c']]) # dim issue
+        self.assertRaises(ValueError, modgen2d.obstruction2d.Obstruction2D.validate_ref_xz_symbolic_format, ['c']) # dimension issue
+        self.assertRaises(ValueError, modgen2d.obstruction2d.Obstruction2D.validate_ref_xz_symbolic_format, np.array(['c', 'c'])) #Only list or tuple not Array
     
     def test_validate_xz_override(self):
-        self.assertRaises(ValueError, geomodgen2d.obstruction2d.Obstruction2D.validate_ref_xz_override, ['c', 0]) # Format issue
-        self.assertRaises(ValueError, geomodgen2d.obstruction2d.Obstruction2D.validate_ref_xz_override, [1,2,3]) # dim issue
-        self.assertRaises(ValueError, geomodgen2d.obstruction2d.Obstruction2D.validate_ref_xz_override, [[2,3]]) # dim issue
-        self.assertRaises(ValueError, geomodgen2d.obstruction2d.Obstruction2D.validate_ref_xz_override, ['2','3']) # dim issue
+        self.assertRaises(ValueError, modgen2d.obstruction2d.Obstruction2D.validate_ref_xz_override, ['c', 0]) # Format issue
+        self.assertRaises(ValueError, modgen2d.obstruction2d.Obstruction2D.validate_ref_xz_override, [1,2,3]) # dim issue
+        self.assertRaises(ValueError, modgen2d.obstruction2d.Obstruction2D.validate_ref_xz_override, [[2,3]]) # dim issue
+        self.assertRaises(ValueError, modgen2d.obstruction2d.Obstruction2D.validate_ref_xz_override, ['2','3']) # dim issue
     
     def test_set_manual_ref_xz(self):
         self.assertIsNone(self.obs2D1.ref_xz_override)

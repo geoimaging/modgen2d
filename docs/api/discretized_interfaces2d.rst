@@ -1,7 +1,7 @@
 DiscretizedInterfaces2D
 =======================
 
-.. currentmodule:: geomodgen2d.discretized_interfaces2d
+.. currentmodule:: modgen2d.discretized_interfaces2d
 
 .. autoclass:: DiscretizedInterfaces2D
    :members:

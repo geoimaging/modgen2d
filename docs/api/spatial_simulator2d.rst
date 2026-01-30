@@ -1,7 +1,7 @@
 spatial_simulator2d
 ===================
 
-.. currentmodule:: geomodgen2d.spatial_simulator2d
+.. currentmodule:: modgen2d.spatial_simulator2d
 
 .. autoclass:: SpatialSimulator2D
    :members:

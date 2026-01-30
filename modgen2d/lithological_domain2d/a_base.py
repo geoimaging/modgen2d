@@ -1,4 +1,4 @@
-# This file is part of geomodgen2D a Python package for ...
+# This file is part of modgen2d a Python package for ...
 # Copyright (C) XXXX Joseph P. Vantassel (joseph.p.vantassel@gmail.com)
 #
 # LICENSE
@@ -14,13 +14,13 @@ and interfaces. It also provides plotting and remeshing capabilities.
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-import geomodgen2d.general_functions as f
+import modgen2d.general_functions as f
 import copy,warnings
 import matplotlib.colors as mcolors
 
-from geomodgen2d.discretized_domain2d import DiscretizedDomain2D
-from geomodgen2d.obstruction2d import Obstruction2D
-from geomodgen2d.global_soil_interface_config import GlobalSoilInterfaceConfig
+from modgen2d.discretized_domain2d import DiscretizedDomain2D
+from modgen2d.obstruction2d import Obstruction2D
+from modgen2d.global_soil_interface_config import GlobalSoilInterfaceConfig
 
 class LithologicalDomain2DReadOnly():
     """
@@ -42,6 +42,7 @@ class LithologicalDomain2DReadOnly():
         self.lm_type = 'NA'
         self._lithological_matrix = None
         self.interface_config_revision_id = GlobalSoilInterfaceConfig.get_revision_id()
+        self.lit_id_set = {} #TDOD
         
         #For lithologicalDomain from Interface
         self.gwt_depth = None
@@ -115,7 +116,7 @@ class LithologicalDomain2DReadOnly():
             if not prefix or not suffix.isdigit():
                 raise ValueError(f"Invalid lithological entry: '{s}'")
             
-        print("Ran auto test: Check")
+        # print("Ran auto test: Check")
         return True
     
     @staticmethod

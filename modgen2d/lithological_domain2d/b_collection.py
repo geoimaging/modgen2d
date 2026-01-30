@@ -1,10 +1,10 @@
 import numpy as np
 import copy
-import geomodgen2d.general_functions as f
+import modgen2d.general_functions as f
 from .a_base import LithologicalDomain2DReadOnly
 from .a_from_interface import LithologicalDomain2D
 from .a_from_obs2d import LithologicalDomain2DFromObstruction2D
-from geomodgen2d.global_soil_interface_config import GlobalSoilInterfaceConfig
+from modgen2d.global_soil_interface_config import GlobalSoilInterfaceConfig
 
 class LithologicalDomain2DCollection:
     """

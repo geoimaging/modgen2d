@@ -6,13 +6,14 @@ import matplotlib.pyplot as plt
 from matplotlib.colors import LogNorm
 # from IPython.display import clear_output
 import numpy as np
-import geomodgen2d.general_functions as f
-from geomodgen2d.lithological_domain2d import LithologicalDomain2D, LithologicalDomain2DFromObstruction2D, LithologicalDomain2DReadOnly
+import modgen2d.general_functions as f
+from modgen2d.lithological_domain2d import LithologicalDomain2D, LithologicalDomain2DFromObstruction2D, LithologicalDomain2DReadOnly
 import warnings
 
 class GeneratedModel2D:
     """
     Represents a 2D lithological domain with associated simulated property profiles.
+    Accessible via: `modgen2d.GeneratedModel2D`.
     """
     def __init__(self, lithological_domain_instance:LithologicalDomain2D, gwt_depth, lit_id2material_dict, simulated_val_for_ignored_lit_property=-99999):
         """

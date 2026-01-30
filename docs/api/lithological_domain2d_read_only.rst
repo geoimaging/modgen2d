@@ -1,7 +1,7 @@
 LithologicalDomain2DReadOnly
 ============================
 
-.. currentmodule:: geomodgen2d.lithological_domain2d.a_base
+.. currentmodule:: modgen2d.lithological_domain2d.a_base
 
 .. autoclass:: LithologicalDomain2DReadOnly
    :members:

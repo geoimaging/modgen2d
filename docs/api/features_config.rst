@@ -1,7 +1,7 @@
 FeaturesConfig
 ==============
 
-.. currentmodule:: geomodgen2d.features_config
+.. currentmodule:: modgen2d.features_config
 
 .. autoclass:: FeaturesConfig
    :members:

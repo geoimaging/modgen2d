@@ -7,7 +7,7 @@
 
 import numpy as np
 from testing_tools import unittest, TestCase
-from geomodgen2d import discretized_domain2d, units_config
+from modgen2d import discretized_domain2d, units_config
 
 class TestDomain2D(TestCase):
     @classmethod

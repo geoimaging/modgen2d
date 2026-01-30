@@ -1,10 +1,10 @@
-# This file is part of geomodgen2d, a Python package for 2D subsurface model generation.
+# This file is part of modgen2d, a Python package for 2D subsurface model generation.
 # Copyright (C) XXXX Joseph P. Vantassel (joseph.p.vantassel@gmail.com)
 #
 # LICENSE
 
 """
-Public API for the 'geomodgen2d' generated model subpackage.
+Public API for the 'modgen2d' generated model subpackage.
 
 This module defines the user-facing interface for accessing generated
 2D subsurface models and collections. Only the classes imported and

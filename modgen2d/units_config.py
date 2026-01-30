@@ -8,8 +8,8 @@ class Units:
     
     def __init__(
         self,
-        domain_length_unit: str = "cm",
         physical_length_unit: str = "m",
+        domain_length_unit: str = "cm",
         conversion_factor: int = 100,
     ):
         """
@@ -17,12 +17,12 @@ class Units:
 
         Parameters
         ----------
-        domain_length_unit : str
-            The unit used internally by the computational domain (e.g., 'cm').
-            Typically smaller or discretized (integer-based representation).
         physical_length_unit : str
             The physical measurement unit used by the user (e.g., 'm').
             Represents real-world scale, and one to be used externally throughout.
+        domain_length_unit : str
+            The unit used internally by the computational domain (e.g., 'cm').
+            Typically smaller or discretized (integer-based representation).
         conversion_factor : int
             Conversion factor from the physical unit to the domain unit.
             Must be a power of 10 (1, 10, 100, 1000, ...).
@@ -43,25 +43,25 @@ class Units:
 
         Examples
         --------
-        >>> u = Units("cm", "m", 100)
+        >>> u = Units("m", "cm", 100)
         >>> u.to_domain_length_unit(1.25)
         125
         >>> u.to_physical(250)
         2.5
         """
-        self.__set_units(domain_length_unit, physical_length_unit, conversion_factor)
+        self.__set_units(physical_length_unit, domain_length_unit, conversion_factor)
 
-    def __set_units(self, domain_length_unit: str, physical_length_unit: str, conversion_factor: int):
+    def __set_units(self, physical_length_unit: str, domain_length_unit: str, conversion_factor: int):
         """
         Set and validate unit configuration.
 
         Parameters
         ----------
-        domain_length_unit : str
-            Unit used internally in the computational domain (e.g., 'cm').
-            Must be ≤ 4 characters.
         physical_length_unit : str
             Real-world measurement unit (e.g., 'm').
+            Must be ≤ 4 characters.
+        domain_length_unit : str
+            Unit used internally in the computational domain (e.g., 'cm').
             Must be ≤ 4 characters.
         conversion_factor : int or float
             Conversion factor from physical_length_unit to domain_length_unit.
@@ -69,8 +69,8 @@ class Units:
         """
         # --- Validate string units ---
         for name, val in {
-            "domain_length_unit": domain_length_unit,
             "physical_length_unit": physical_length_unit,
+            "domain_length_unit": domain_length_unit,
         }.items():
             if not isinstance(val, str):
                 raise TypeError(f"{name} must be a string.")
@@ -91,8 +91,8 @@ class Units:
             )
 
         # Assign values bypassing immutability 
-        object.__setattr__(self, "domain_length_unit", domain_length_unit)
         object.__setattr__(self, "physical_length_unit", physical_length_unit)
+        object.__setattr__(self, "domain_length_unit", domain_length_unit)
         object.__setattr__(self, "conversion_factor", int(conversion_factor))
 
     def __setattr__(self, name, value):
@@ -162,8 +162,8 @@ class Units:
         if not isinstance(other, Units):
             return NotImplemented
         return (
-            self.domain_length_unit == other.domain_length_unit
-            and self.physical_length_unit == other.physical_length_unit
+            self.physical_length_unit == other.physical_length_unit
+            and self.domain_length_unit == other.domain_length_unit
             and self.conversion_factor == other.conversion_factor
         )
         
@@ -171,8 +171,8 @@ class Units:
     def get_config(self):
         """Return unit configuration as a dictionary."""
         return {
-            'domain_length_unit': self.domain_length_unit,
             'physical_length_unit': self.physical_length_unit,
+            'domain_length_unit': self.domain_length_unit,
             'conversion_factor':self.conversion_factor,
         }
     
@@ -182,9 +182,9 @@ class Units:
         if not isinstance(config_dict, dict):
             raise TypeError("Expected a dictionary.")
         try:
-            dlu = config_dict['domain_length_unit']
             plu = config_dict['physical_length_unit']
+            dlu = config_dict['domain_length_unit']
             cf = config_dict['conversion_factor']
-            return cls(dlu, plu, cf)
+            return cls(plu, dlu, cf)
         except (KeyError, TypeError) as e:
             raise ValueError(f"Invalid config dictionary: {e}")

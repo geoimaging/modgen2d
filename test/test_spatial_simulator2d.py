@@ -1,8 +1,8 @@
-from geomodgen2d.features_config import FeaturesConfig
+from modgen2d.features_config import FeaturesConfig
 import numpy as np
 from testing_tools import unittest, TestCase
-from geomodgen2d.spatial_simulator2d import CovarianceDecompositionSimulator, ConstantSimulator, SpatialSimulator2D, check_for_zero_sigma
-from geomodgen2d.general_functions import validate_processed_property_dict
+from modgen2d.spatial_simulator2d import CovarianceDecompositionSimulator, ConstantSimulator, SpatialSimulator2D, check_for_zero_sigma
+from modgen2d.general_functions import validate_processed_property_dict
 
 class TestSpatialSimulator2D(TestCase):
     

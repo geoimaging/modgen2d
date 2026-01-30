@@ -11,9 +11,9 @@ import warnings
 import numpy as np
 import scipy
 
-from geomodgen2d.discretized_domain2d import DiscretizedDomain2D
-from geomodgen2d.rough_interface_creator2d import AbstractRoughInterfaceCreator, NormalInterfaceGen, UniformInterfaceGen
-import geomodgen2d.general_functions as f
+from modgen2d.discretized_domain2d import DiscretizedDomain2D
+from modgen2d.rough_interface_creator2d import AbstractRoughInterfaceCreator, NormalInterfaceGen, UniformInterfaceGen
+import modgen2d.general_functions as f
 import matplotlib.pyplot as plt
 
 class DiscretizedInterfaces2D:

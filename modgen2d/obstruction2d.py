@@ -1,4 +1,4 @@
-# This file is part of geomodgen2d a Python package for ...
+# This file is part of modgen2d a Python package for ...
 # Copyright (C) XXXX Joseph P. Vantassel (joseph.p.vantassel@gmail.com)
 #
 # LICENSE
@@ -7,7 +7,7 @@
 
 """2D obstruction geometry utilities. """
 import numpy as np
-import geomodgen2d.general_functions as f
+import modgen2d.general_functions as f
 import copy
 import warnings
 import matplotlib.colors as mcolors

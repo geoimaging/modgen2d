@@ -1,7 +1,7 @@
 """
 Module for Merged GeneratedModel2D
 """
-from geomodgen2d.lithological_domain2d import LithologicalDomain2DCollection
+from modgen2d.lithological_domain2d import LithologicalDomain2DCollection
 from .a_each import GeneratedModel2D
 from .b_collection import GeneratedProfileCollection2D
 import warnings
@@ -10,6 +10,8 @@ class GeneratedModel2DMerged(GeneratedModel2D):
     """
     Represents a merged 2D generated model created from multiple profile sets
     in a `GeneratedProfileCollection2D`.
+    Accessible via: `modgen2d.GeneratedModel2DMerged`.
+    
     """
     def __init__(self, generated_model_collection:GeneratedProfileCollection2D):
         """

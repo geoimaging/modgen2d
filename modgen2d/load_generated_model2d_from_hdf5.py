@@ -6,13 +6,13 @@
 import h5py, warnings
 import numpy as np
 import os, time
-import geomodgen2d.discretized_interfaces2d as discretized_interfaces3d
-import geomodgen2d.global_soil_interface_config as global_soil_interface_config
-from geomodgen2d.generated_model2d import GeneratedProfileCollection2D, GeneratedProfileCollection2DReadOnly
+import modgen2d.discretized_interfaces2d as discretized_interfaces3d
+import modgen2d.global_soil_interface_config as global_soil_interface_config
+from modgen2d.generated_model2d import GeneratedProfileCollection2D, GeneratedProfileCollection2DReadOnly
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 from IPython.display import display, clear_output
-from geomodgen2d.metadata import __version__
+from modgen2d.metadata import __version__
 
 def load_dict_from_hdf5(group):
     """
@@ -64,7 +64,7 @@ def load_dict_from_hdf5(group):
 
 def read_hdf5_file(to_file, read_only=False, check_merged = False):
     """
-    Reads a saved HDF5 file containing a geomodgen2D model collection and reconstructs
+    Reads a saved HDF5 file containing a modgen2d model collection and reconstructs
     the corresponding Python objects.
 
     Parameters
@@ -91,13 +91,13 @@ def read_hdf5_file(to_file, read_only=False, check_merged = False):
         full_config = load_dict_from_hdf5(hf)
     
     read_only_flag = full_config['save_read_only']
-    version = full_config['geomodgen2d_version']
+    version = full_config['modgen2d_version']
     
     if read_only_flag is True and read_only is False:
         raise ValueError("The hdf5 file was saved with read_only purpose, but attempted to open with non-read only purpose (i.e., read_only=False).")
     
     if version != __version__:
-        warnings.warn(f"The geomodgen2d version mismatch. Saved at version {version}, but attempting loading at version {__version__}.")
+        warnings.warn(f"The modgen2d version mismatch. Saved at version {version}, but attempting loading at version {__version__}.")
         
     global_soil_interface_config.GlobalSoilInterfaceConfig.set_soil_interface_from_config(full_config['global_interface_config'])
     if read_only:

@@ -7,10 +7,10 @@ Configuration and sampling of material properties for 2D lithological domains.
 #   Was: Main Property >> Feature ID >> wet/dry/both >> Dict of Random Generators or Random Generator
 #   Now: Main Property >> Feature ID >> Dictionary of material types as keys >> Wet/dry/both >> Random Generator Instance.
 
-from geomodgen2d.features_config import FeaturesConfig
-from geomodgen2d.main_property_each import MainProperty
-from geomodgen2d.lithological_domain2d import LithologicalDomain2DCollection
-import geomodgen2d.general_functions as f
+from modgen2d.features_config import FeaturesConfig
+from modgen2d.main_property_each import MainProperty
+from modgen2d.lithological_domain2d import LithologicalDomain2DCollection
+import modgen2d.general_functions as f
 import numpy as np
 
 class MainPropertiesConfig:
