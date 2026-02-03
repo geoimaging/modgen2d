@@ -260,10 +260,10 @@ class SpatialSimulator2D(ABC):
         if forbidden:
             raise KeyError(f"Forbidden (To ignore) lithological IDs present in processed_property_dict: {forbidden}")
 
-        # 3. Warn for extra keys
-        extra = set(processed_property_dict) - unique_layers
-        if extra:
-            warnings.warn(f"Extra keys in processed_property_dict ignored: {extra}")
+        # # 3. Warn for extra keys #Hidden as there will always be extra in case of lithological by lithological generations.
+        # extra = set(processed_property_dict) - unique_layers
+        # if extra:
+        #     warnings.warn(f"Extra keys in processed_property_dict ignored: {extra}")
 
         for layer_id in unique_layers:
             if layer_id in ignore_lithological_ids:
@@ -305,11 +305,11 @@ class SpatialSimulator2D(ABC):
                         sim_values = simulated_zvals_lit_profile[mask]
                         if sigma == 0 and np.any(sim_values != 0):
                             warnings.warn(
-                                f"Layer {layer_id}: sigma=0 but {np.sum(sim_values != 0)} values are non-zero."
+                                f"Layer {layer_id}: sigma=0 but {np.sum(sim_values != 0)} z-values are non-zero."
                             )
                         elif sigma != 0 and np.all(sim_values == 0):
                             warnings.warn(
-                                f"Layer {layer_id}: sigma={sigma} but all simulated values are zero."
+                                f"Layer {layer_id}: sigma={sigma} (i.e. non-zero) but all simulated z-values are zero."
                             )                    
                 else:
                     wet = processed_property_dict[layer_id]['wet']

@@ -39,7 +39,7 @@ class LithologicalDomain2DFromObstruction2D(LithologicalDomain2DReadOnly):
         self.obstruction2d_dict_list = []        
         self.obstruction_overlap = False
         
-    def add_obstruction2D(self, obstruction2D_instance:Obstruction2D, shift_ref2d_to_xy, added_prefix=None):
+    def add_obstruction2D(self, obstruction2D_instance:Obstruction2D, shift_ref2d_to_xy, feature_id):
         """
         Add a 2D obstruction dataset to the lithological domain.
 
@@ -49,14 +49,14 @@ class LithologicalDomain2DFromObstruction2D(LithologicalDomain2DReadOnly):
             Obstruction dataset (e.g., utilities) to incorporate.
         shift_ref2d_to_xy : array-like of shape (2,)
             Coordinates [x, y] to shift the reference point of the obstruction data.
-        added_prefix : str, optional
+        feature_id : str, optional
             Prefix for labeling this obstruction in the lithological matrix.
-            Must be <=8 characters, no underscores or numbers. Defaults to None.
+            Must be <=8 characters, no underscores or numbers. Use 'def' for soil.
 
         Raises
         ------
         ValueError
-            If shift_ref2d_to_xy shape is invalid or added_prefix is not valid.
+            If shift_ref2d_to_xy shape is invalid or feature_id is not valid.
         AssertionError
             If obstruction2D_instance is improperly defined.
         """
@@ -68,10 +68,9 @@ class LithologicalDomain2DFromObstruction2D(LithologicalDomain2DReadOnly):
         if shift_ref2d_to_xy.shape != (2,):
             raise ValueError("shift_ref2d_to_xy must have shape (2,)")
 
-        if added_prefix is not None:
-            valid_prefix, msg = f.is_valid_feature_id(added_prefix)
-            if not valid_prefix:
-                raise ValueError(msg)
+        valid_prefix, msg = f.is_valid_feature_id(feature_id)
+        if not valid_prefix:
+            raise ValueError(msg)
         
         # Note utils_3d is already shifted
         obstruction2D_instance = copy.deepcopy(obstruction2D_instance)  #Makes sure the change in the object is local to this function only.
@@ -94,15 +93,28 @@ class LithologicalDomain2DFromObstruction2D(LithologicalDomain2DReadOnly):
         vals_all = vals_all.reshape(X.shape)
         lithological_domain_matrix = vals_all.astype(int)
 
-        if added_prefix is not None:
-            lithological_domain_matrix = np.vectorize(lambda x: f"{added_prefix}_{x}")(lithological_domain_matrix)
-            mask_b_nonzero = (lithological_domain_matrix == f"{added_prefix}_0")
+        expected_ids = np.unique(obstruction2D_instance.grid2d)
+        expected_ids = expected_ids[expected_ids != 0]
+
+        if feature_id != 'def':
+            lithological_domain_matrix = np.vectorize(lambda x: f"{feature_id}_{x}")(lithological_domain_matrix)
+            mask_b_nonzero = (lithological_domain_matrix == f"{feature_id}_0")
             lithological_domain_matrix = np.where(mask_b_nonzero, 'X', lithological_domain_matrix)  
-            
+            expected_ids = [f"{feature_id}_{str(x)}" for x in expected_ids]
+        else:
+            # 'def' means for soil. Note '0' is not allowed.
+            lithological_domain_matrix = np.vectorize(lambda x: f"{x}")(lithological_domain_matrix)
+            mask_b_nonzero = (lithological_domain_matrix == f"0")
+            lithological_domain_matrix = np.where(mask_b_nonzero, 'X', lithological_domain_matrix)  
+            expected_ids = [f"{str(x)}" for x in expected_ids]
+        
+        expected_ids.append("X")
+        self._set_lit_ids_expected(expected_ids, merge=True)
+        
         obstruction2D_dict = {
             'obstruction_inst': obstruction2D_instance,
             'shift_ref2d_to_xy': shift_ref2d_to_xy,        
-            'added_prefix': added_prefix,   
+            'feature_id': feature_id,   
             'y_shift_for_surface_adj': y_shift_for_surface_adj,
         }  
         new_lit_domain_dict = {
@@ -127,7 +139,7 @@ class LithologicalDomain2DFromObstruction2D(LithologicalDomain2DReadOnly):
         obstruction2d_dict_list = self.obstruction2d_dict_list
         self.__init__(self.domain, self.name)
         for obs in obstruction2d_dict_list:
-            self.add_obstruction2D(obs['obstruction_inst'], obs['shift_ref2d_to_xy'], obs['added_prefix'])
+            self.add_obstruction2D(obs['obstruction_inst'], obs['shift_ref2d_to_xy'], obs['feature_id'])
         
         _warn_if_changed(self.lithological_matrix, init_lithological_matrix)
         

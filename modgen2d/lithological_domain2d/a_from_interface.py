@@ -49,6 +49,12 @@ class LithologicalDomain2D(LithologicalDomain2DReadOnly):
         super().__init__(domain, name)
         
         discretizedInterfaces2D_instance = copy.deepcopy(discretizedInterfaces2D_instance)  #Makes sure the change in the object is local to this function only.
+        
+        start = 0 if discretizedInterfaces2D_instance.generate_surface else 1
+        
+        exp_ids = [str(x) for x in range(start, discretizedInterfaces2D_instance.n_soil_layers + 1)]
+        self._set_lit_ids_expected(exp_ids)
+        
         self.gwt_depth = gwt_depth
         self.lm_type = 'from_interface_config'
         self.lithological_matrix = _layer_id_faster(discretizedInterfaces2D_instance)
@@ -89,7 +95,7 @@ class LithologicalDomain2D(LithologicalDomain2DReadOnly):
         
         _warn_if_changed(self.lithological_matrix, init_lithological_matrix)
         
-    def return_merged_lithological_domain(self, lithological_domain2D_list=[]):
+    def return_merged_lithological_domain(self, lithological_domain2D_list=[], warn_if_null_lithological_domain=True):
         """
         Merge this LithologicalDomain2D with a list of obstruction-based lithological domains.
 
@@ -97,7 +103,9 @@ class LithologicalDomain2D(LithologicalDomain2DReadOnly):
         ----------
         lithological_domain2D_list : list of LithologicalDomain2DFromObstruction2D
             List of obstruction-based lithological domains to merge into this one.
-
+        warn_if_null_lithological_domain: boolean, optional
+            Warns if any lithological_domain2D in the list is null. (I.e, just defined but not assigned, especially LithologicalDomain2DFromObstruction2D, but no obstacles added.)
+            
         Returns
         -------
         merged_lit_domain : LithologicalDomain2D
@@ -112,6 +120,7 @@ class LithologicalDomain2D(LithologicalDomain2DReadOnly):
           is refreshed before merging.
         - Only obstruction-based lithological domains should be provided in the list.
         """
+        
         if not GlobalSoilInterfaceConfig.get_config_status(self.interface_config_revision_id):
             self.refresh() #Compute for new surface
         
@@ -121,22 +130,37 @@ class LithologicalDomain2D(LithologicalDomain2DReadOnly):
         
         domain = self.domain if self.init_domain is None else self.init_domain
             
-        merged_lit_domain = self.__class__(domain, self.gwt_depth, self.name)
+        merged_lit_domain = copy.deepcopy(self)#self.__class__(domain, self.gwt_depth, self.name)
         
-        domains = []
-        for lit_domain in lithological_domain2D_list:
+        if not lithological_domain2D_list:
+            return merged_lit_domain
+        
+        domains = [self.domain]
+        filtered_lithological_domain2D_list = []
+        for i,lit_domain in enumerate(lithological_domain2D_list):
             if not isinstance(lit_domain, LithologicalDomain2DFromObstruction2D):
                 raise TypeError(
                     "Entries of lithological_domain2D_list must be instances of "
                     "LithologicalDomain2DFromObstruction2D."
                 )
+            if lit_domain.lm_type == 'NA' or lit_domain.lithological_matrix is None:
+                if lit_domain.lm_type == 'NA' and lit_domain.lithological_matrix is None:
+                    if warn_if_null_lithological_domain:
+                        warnings.warn(f"The {i}th lit_domain in lithological_domain2D_list is null so ignored.")
+                else:
+                    raise SystemError(f"The lithological matrix cannot be None (Provided {lit_domain.lithological_matrix}) for any other lm_type other than 'NA' (Provided: {lit_domain.lm_type}), and vice versa. Raise a ticket in github.")
+                continue
+            filtered_lithological_domain2D_list.append(lit_domain)
             domains.append(lit_domain.domain)
+            merged_lit_domain._set_lit_ids_expected(lit_domain.lit_ids_expected, merge=True)
+        
+        if not filtered_lithological_domain2D_list:
+            return merged_lit_domain
         
         min_domain = DiscretizedDomain2D.get_minimum_domain(domains)
-        
         merged_lit_domain.remeshing_lithological_matrix(*min_domain.dhs)
         
-        for lit_domain in lithological_domain2D_list:
+        for lit_domain in filtered_lithological_domain2D_list:
             if not GlobalSoilInterfaceConfig.get_config_status(lit_domain.interface_config_revision_id):
                 lit_domain.refresh() #Compute for new surface
         

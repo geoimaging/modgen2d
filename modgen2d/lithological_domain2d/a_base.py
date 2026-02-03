@@ -42,7 +42,9 @@ class LithologicalDomain2DReadOnly():
         self.lm_type = 'NA'
         self._lithological_matrix = None
         self.interface_config_revision_id = GlobalSoilInterfaceConfig.get_revision_id()
-        self.lit_id_set = {} #TDOD
+        
+        ##TODO add unittests
+        self.lit_ids_expected = []  
         
         #For lithologicalDomain from Interface
         self.gwt_depth = None
@@ -66,6 +68,49 @@ class LithologicalDomain2DReadOnly():
         self._lithological_matrix = value
         self._validate_lithological_matrix()
         self.check_shape()
+        
+    @staticmethod
+    def _validate_lit_ids(id_list):
+        # Must be a list
+        if not isinstance(id_list, list):
+            raise TypeError("lit_ids must be provided as a list of strings.")
+        
+        # Must be unique
+        if len(id_list) != len(set(id_list)):
+            raise ValueError("lit_ids must contain unique values.")
+
+        for s in id_list:
+            if not isinstance(s, str):
+                raise TypeError(
+                    f"lit_ids must be a 1D list of strings. "
+                    f"Lit_id {s} is of type {type(s).__name__}."
+                )
+                
+            # Allowed placeholder
+            if s == "X":
+                continue
+
+            # Pure integer label
+            if s.isdigit():
+                continue
+
+            # feature_id_<int>
+            parts = s.split("_", 1)
+            if len(parts) != 2:
+                raise ValueError(f"Invalid lithological entry: '{s}'")
+
+            prefix, suffix = parts
+            if not prefix or not suffix.isdigit():
+                raise ValueError(f"Invalid lithological entry: '{s}'")
+    
+    def _set_lit_ids_expected(self, lit_ids_expected, merge=False):
+        self._validate_lit_ids(lit_ids_expected)
+        expected_vals = set(lit_ids_expected)
+        
+        if merge:
+            expected_vals = expected_vals | set(self.lit_ids_expected)
+        
+        self.lit_ids_expected = sorted(expected_vals)
     
     def _validate_lithological_matrix(self):
         """
@@ -83,8 +128,9 @@ class LithologicalDomain2DReadOnly():
         ValueError
             If invalid entries are detected.
         """
+        self._validate_lit_ids(self.lit_ids_expected)
+        
         lithological_matrix = self.lithological_matrix
-
         if lithological_matrix is None:
             return True
 
@@ -98,24 +144,18 @@ class LithologicalDomain2DReadOnly():
         # Work only on unique string values (small loop)
         unique_vals = np.unique(lithological_matrix.astype(str))
 
-        for s in unique_vals:
-            # Allowed placeholder
-            if s == "X":
-                continue
+        # Expected lithology IDs (assumed iterable of strings)
+        expected_vals = set(self.lit_ids_expected)
 
-            # Pure integer label
-            if s.isdigit():
-                continue
+        # Find unexpected values
+        unexpected = set(unique_vals) - expected_vals
 
-            # feature_id_<int>
-            parts = s.split("_", 1)
-            if len(parts) != 2:
-                raise ValueError(f"Invalid lithological entry: '{s}'")
+        if unexpected:
+            raise ValueError(
+                f"Unexpected lithology IDs found in lithological_matrix: {sorted(unexpected)}. "
+                f"Expected only: {sorted(expected_vals)}."
+            )
 
-            prefix, suffix = parts
-            if not prefix or not suffix.isdigit():
-                raise ValueError(f"Invalid lithological entry: '{s}'")
-            
         # print("Ran auto test: Check")
         return True
     
@@ -126,22 +166,19 @@ class LithologicalDomain2DReadOnly():
 
     def print(self):
         print(f"N_x_coord = {self.lithological_matrix.shape[0]}, N_z_coord = {self.lithological_matrix.shape[1]}")
+        print(f"Expected lit_ids: {self.lit_ids_expected}")
         print("Layered Matrix : \n", self.lithological_matrix.T) 
     
     ##TODO add unittests
-    def get_feature_id_and_lit_val_from_lithological_matrix(self):
-        lithological_matrix = self.lithological_matrix
-
-        if lithological_matrix is None:
+    def get_feature_id_and_lit_val(self):
+        
+        self._validate_lithological_matrix()
+        
+        if not self.lit_ids_expected:
             return {}
 
-        if not isinstance(lithological_matrix, np.ndarray):
-            raise TypeError(
-                "lithological_matrix must be None or a numpy array."
-            )
-
         # Use only unique entries (much faster and avoids duplicates)
-        arr = np.unique(lithological_matrix.astype(str))
+        arr = np.unique(self.lit_ids_expected)
         arr = arr[arr != 'X']
         
         # mask for pure digits
@@ -423,6 +460,7 @@ class LithologicalDomain2DReadOnly():
         self_config['merged_lit'] = self.merged_lit
         self_config['name'] = self.name
         self_config['lit_order'] = self.lit_order
+        self_config['lit_ids_expected'] = self.lit_ids_expected
        
         self_config['obstruction2d_dict_list'] = {}
         if len(self.obstruction2d_dict_list)!=0:
@@ -430,7 +468,7 @@ class LithologicalDomain2DReadOnly():
                 self_config['obstruction2d_dict_list'][f'{i}'] = {
                     'obstruction_inst': obstruction2D_dict['obstruction_inst'].get_config,
                     'shift_ref2d_to_xy': obstruction2D_dict['shift_ref2d_to_xy'],        
-                    'added_prefix': obstruction2D_dict['added_prefix'],   
+                    'feature_id': obstruction2D_dict['feature_id'],   
                     'y_shift_for_surface_adj': obstruction2D_dict['y_shift_for_surface_adj'],
                 }
        
@@ -473,11 +511,12 @@ class LithologicalDomain2DReadOnly():
                 obj.init_domain = DiscretizedDomain2D.from_config(config_dict['init_domain'])
 
             obj.interface_config_revision_id = config_dict['interface_config_revision_id']
-            obj.lithological_matrix = config_dict['lithological_matrix']
             obj.lm_type = config_dict['lm_type']
             obj.merged_lit = config_dict['merged_lit']
             obj.obstruction_overlap = config_dict['obstruction_overlap']
             obj.lit_order = config_dict['lit_order']
+            obj.lit_ids_expected = config_dict['lit_ids_expected']
+            obj.lithological_matrix = config_dict['lithological_matrix']
             
             obj.obstruction2d_dict_list = []
             obstruction2D_instance_list = config_dict['obstruction2d_dict_list']
@@ -486,7 +525,7 @@ class LithologicalDomain2DReadOnly():
                     obstruction2D_dict = {
                         'obstruction_inst': Obstruction2D.from_config(obstruction2D_dict_raw['obstruction_inst']),
                         'shift_ref2d_to_xy': obstruction2D_dict_raw['shift_ref2d_to_xy'],        
-                        'added_prefix': obstruction2D_dict_raw['added_prefix'],   
+                        'feature_id': obstruction2D_dict_raw['feature_id'],   
                         'y_shift_for_surface_adj': obstruction2D_dict_raw['y_shift_for_surface_adj'],
                     }
                     obj.obstruction2d_dict_list.append(obstruction2D_dict)
