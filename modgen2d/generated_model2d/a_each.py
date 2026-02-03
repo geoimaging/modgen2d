@@ -39,7 +39,7 @@ class GeneratedModel2D:
         self._simulated_val_for_ignored_lit_property = simulated_val_for_ignored_lit_property #Make sure consistent with all generated profiles and spatial_simulator
         lithological_domain_instance.check_shape()
         
-        unique_ids = np.unique(self.lit_domain.lithological_matrix.astype(str))
+        unique_ids = np.unique(self.lit_domain.lit_ids_expected)
         unique_ids = unique_ids[unique_ids!="X"]
         
         # Check that all unique IDs are keys in lit_id2material
@@ -103,7 +103,7 @@ class GeneratedModel2D:
         if domain_shape != lit_shape:
             raise ValueError(f"Matrix shape mismatch. Domain shape {domain_shape} != lit_shape {lit_shape}.")
         
-        unique_ids = np.unique(self.lit_domain.lithological_matrix.astype(str))
+        unique_ids = np.unique(self.lit_domain.lit_ids_expected)
         
         # Check that all unique IDs are keys in lit_id2material
         missing_keys = (

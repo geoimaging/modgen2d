@@ -82,8 +82,8 @@ class DiscretizedInterfaces2D:
         if rough_interface_generator_scale.ndim != 1:
             raise ValueError("rough_interface_generator_scale must be a 1-D array or scalar")
 
-        if len(rough_interface_generator_scale)==1 and rough_interface_generator_scale[0]!=0:
-            warnings.warn("rough_interface_generator_scale is [0] and hence only horizontal interfaces will be created if not corrected.")
+        if len(rough_interface_generator_scale)==1 and self.n_soil_layers>1 and rough_interface_generator_scale[0]==0:
+            warnings.warn(f"rough_interface_generator_scale is [0] and hence only horizontal interfaces will be created for all {self.n_soil_layers} if not corrected.")
     
         adj_rough_interface_generator_scale = np.full(self.n_soil_layers, rough_interface_generator_scale[-1], dtype=float)
         min_len = min(len(rough_interface_generator_scale), self.n_soil_layers)
@@ -116,7 +116,7 @@ class DiscretizedInterfaces2D:
         """
         if np.isnan(self.interfaces_matrix).any():
             raise ValueError("Interfaces_matrix contains NaN values.")
-        if self.check_if_overlapping_interfaces():
+        if self.check_if_overlapping_interfaces()[0]:
             raise ValueError("Overlapping interfaces exist. Please use processing at the end if needed.") 
         if not self.check_if_surface_is_okay():
             raise ValueError("Surface must have minimum value zero. Use ._adjust_for_top_surface_interface if needed.") 
@@ -436,8 +436,17 @@ class DiscretizedInterfaces2D:
         self.set_interfaces_matrix(b_array)
     
     def check_if_overlapping_interfaces(self):
-        return np.sum(np.diff(self.interfaces_matrix)<0) > 0
-    
+        diffs = np.diff(self.interfaces_matrix)
+
+        # Not enough interfaces → no overlap possible
+        if diffs.size == 0:
+            return False, 0
+
+        has_overlap = np.any(diffs < 0)      # zero is NOT overlap
+        min_abs_diff = np.min(np.abs(diffs))
+
+        return has_overlap, min_abs_diff
+
     def _adjust_for_top_surface_interface(self):
         interfaces_matrix = self.interfaces_matrix
         top_interface = interfaces_matrix[:,0]
@@ -538,11 +547,13 @@ class DiscretizedInterfaces2D:
             
             # Possible issue of crisscross after remeshing on some rare conditions.
             if new._locked:
-                if new.check_if_overlapping_interfaces:
+                flag, min_val = new.check_if_overlapping_interfaces()
+                if flag:
                     new._locked = False
                     new.processing_interface()
                     new.lock_interfaces()
-                    warnings.warn("Overlapping interfaces found after remesh; Applied default erosion processing at the edges to correct them. This should not affect most models.")
+                    if min_val > 1e-5:
+                        warnings.warn("Overlapping interfaces found after remesh; Applied default erosion processing at the edges to correct them. This should not affect most models.")
         else:
             new.interfaces_matrix = self.interfaces_matrix.copy()
             

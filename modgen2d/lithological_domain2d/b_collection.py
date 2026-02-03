@@ -1,5 +1,6 @@
 import numpy as np
 import copy
+import warnings
 import modgen2d.general_functions as f
 from .a_base import LithologicalDomain2DReadOnly
 from .a_from_interface import LithologicalDomain2D
@@ -32,7 +33,7 @@ class LithologicalDomain2DCollection:
         self._merged_lit_domain = None
         self._invalid_set_names = ['merged', '']
         
-        self._all_lit_ids = {}
+        self._all_lit_ids = {} #TODO: Not checked but MergedLithDomain.lit_ids_expected should be same to this
         self._lit_id2material_dict = {}
         self._unique_code = 0
         self._locked = False
@@ -56,6 +57,8 @@ class LithologicalDomain2DCollection:
     @property
     def merged_lit_domain(self):
         """Returns the merged 'LithologicalDomain2D' instance after locking."""
+        if self._merged_lit_domain is None:
+            warnings.warn("Merged lit domain of the collection is None. Lock the collection first.")
         return self._merged_lit_domain
     
     @property
@@ -104,7 +107,7 @@ class LithologicalDomain2DCollection:
         self.__add_or_replace_lithological_domain(self.interface_set_name, lithological_domain_from_soil_interface_instance, 0, False)
         self._gwt_depth = lithological_domain_from_soil_interface_instance.gwt_depth
             
-    def add_lithological_domain_from_obstruction2d(self, set_name:str, lithological_domain_from_obstruction2d_instance, lit_order=None):
+    def add_lithological_domain_from_obstruction2d(self, set_name:str, lithological_domain_from_obstruction2d_instance, lit_order=None, warn_if_null_lithological_domain=True):
         """
         Adds a lithological domain derived from a 2D obstruction.
 
@@ -116,6 +119,9 @@ class LithologicalDomain2DCollection:
             Obstruction-based lithological domain to add.
         lit_order : int or float, optional
             Order for merging. Must be positive.
+        warn_if_null_lithological_domain: boolean, optional
+            Warns if any lithological_domain2D in the list is null. (I.e, just defined but not assigned, especially LithologicalDomain2DFromObstruction2D, but no obstacles added.)
+        
         """
         if self._locked:
             raise SystemError("Operation cannot be performed because the object is locked.")
@@ -132,7 +138,14 @@ class LithologicalDomain2DCollection:
         if set_name in self.lit_domain_set.keys():
             raise ValueError(f"set_name: {set_name} already defined. Remove that first if need to replace.")
         
-        self.__add_or_replace_lithological_domain(set_name, lithological_domain_from_obstruction2d_instance, lit_order, allow_merged_lit=True)
+        if lithological_domain_from_obstruction2d_instance.lm_type == 'NA' or lithological_domain_from_obstruction2d_instance.lithological_matrix is None:
+            if lithological_domain_from_obstruction2d_instance.lm_type == 'NA' and lithological_domain_from_obstruction2d_instance.lithological_matrix is None:
+                if warn_if_null_lithological_domain:
+                    warnings.warn(f"The provided lit_domain in lithological_domain2D_list is null so ignored.")
+            else:
+                raise SystemError(f"The lithological matrix cannot be None (Provided {lithological_domain_from_obstruction2d_instance.lithological_matrix}) for any other lm_type other than 'NA' (Provided: {lithological_domain_from_obstruction2d_instance.lm_type}), and vice versa. Raise a ticket in github.")
+        else:
+            self.__add_or_replace_lithological_domain(set_name, lithological_domain_from_obstruction2d_instance, lit_order, allow_merged_lit=True)
     
     def delete_lithological_domain_from_obstruction2d(self, set_name:str):
         """
@@ -258,7 +271,7 @@ class LithologicalDomain2DCollection:
         if not GlobalSoilInterfaceConfig.get_config_status(self.interface_config_revision_id):
             lithological_domain_instance.refresh() #Compute for new surface
             
-        lit_dict = lithological_domain_instance.get_feature_id_and_lit_val_from_lithological_matrix()
+        lit_dict = lithological_domain_instance.get_feature_id_and_lit_val()
 
         feature_ids = lit_dict.keys()
         invalid = [fid for fid in feature_ids if fid not in self.valid_feature_ids]
@@ -342,14 +355,13 @@ class LithologicalDomain2DCollection:
                     config = lithological_domain_instance.get_config
                     lithological_domain_instance = LithologicalDomain2D.from_config(config)
                 
-                merged_lit_domain = lithological_domain_instance
+                merged_lit_domain = copy.deepcopy(lithological_domain_instance)
                 gwt = lithological_domain_instance.gwt_depth
             else:
                 # Perform nearest interp only
                 merged_lit_domain = merged_lit_domain.return_merged_lithological_domain([lithological_domain_instance])
-        
             # Getting all_lit_dicts
-            lit_dict = lithological_domain_instance.get_feature_id_and_lit_val_from_lithological_matrix()
+            lit_dict = lithological_domain_instance.get_feature_id_and_lit_val()
             
             feature_ids = lit_dict.keys()
             invalid = [fid for fid in feature_ids if fid not in valid_feature_ids]
@@ -362,7 +374,7 @@ class LithologicalDomain2DCollection:
         merged_lit_domain.lit_order=-1
         merged_lit_domain.check_shape()
         
-        merged_lit_dict = merged_lit_domain.get_feature_id_and_lit_val_from_lithological_matrix()
+        merged_lit_dict = merged_lit_domain.get_feature_id_and_lit_val()
           
         #Check : all_lit_ids makes sense
         for prefix, vals in merged_lit_dict.items():

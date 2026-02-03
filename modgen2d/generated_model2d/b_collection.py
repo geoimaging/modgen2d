@@ -97,6 +97,8 @@ class GeneratedProfileCollection2DReadOnly:
         return self._main_properties_unique_code
     
     def get_generated_model2d(self, set_name):
+        if set_name is None:
+            return self.merged_generated_model2d
         return self._generated_model2d_set[set_name]
     
     @property
@@ -112,6 +114,8 @@ class GeneratedProfileCollection2DReadOnly:
     @property
     def get_simulated_profiles(self, set_name):
         """Get simulated profiles dictionary for a given set name."""
+        if set_name is None:
+            return self.merged_generated_model2d.simulated_profiles
         return self.generated_model2d_set[set_name].simulated_profiles
 
     @property
