@@ -96,12 +96,11 @@ class DiscretizedInterfaces2DFromDict(DiscretizedInterfaces2D):
             zs = self.get_reference_points_zs(method=interfaces_depths_generation)
         self.update_interfaces_depth(zs,interfaces_settings_dict['interfaces_depth_reference_point_x'])  # None means get one from
         
-        # Step 4: Processing
+        # Step 4: Processing and adjust for zero
         if processing_settings is not None:
             self.processing_interface(**processing_settings)
         
-        # Step 5: Adjust for zero
-        self._adjust_for_top_surface_interface()
+        self.adjust_top_of_surface_interface_to_zero()
         
         # Step 5: Locking
         self.lock_interfaces()
