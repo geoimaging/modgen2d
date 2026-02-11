@@ -49,3 +49,25 @@ class ManualObstruction2D(mg.Obstruction2D):
         self.description = f'Karst circle (smooth noise) 2D, base diameter {d:.6g}'
         self.shape = True
         self.center_in_unit_length = [center, center]
+
+    def tunnel_shape(self, lx, lz, obstruction_id=1, rng=np.random.default_rng()):
+
+        if lx/2 > lz:
+            raise ValueError("Height of the tunnel cannot be less than radius of the circle (roof) at top")
+
+        ## Create the base first
+        self.rectangle_2d(lx, lz, obstruction_id = obstruction_id)
+
+        ## Create the circular top 
+        circle_top = mg.obstruction2d.Obstruction2D(dl = self.dl, ref_xz_symbolic = ['c','c'], snap_to_dl=self.snap_to_dl)
+        circle_top.circle_2d(d=lx,  obstruction_id = obstruction_id)
+        
+        ## Truncate the circle to semi-circle.
+        r_to_grid_length = int(np.round(circle_top.center_in_unit_length[1]/self.dl,0))
+        circle_top.expand_grid(new_grid_xlen = None, new_grid_zlen = r_to_grid_length, warn_truncate=False)
+
+
+        ## Merge the base and top
+        self.merge_shapes(circle_top)
+        
+        self.description = f'Tunnel2D of size (lx x lz) = ({lx} x {lz})'

@@ -66,6 +66,8 @@ class DiscretizedInterfaces2D:
         self.rng = rng
         self._locked = False #Don't allow change in generated interfaces.
         self._reference_point_x = None #Reference point x used during updating interfaces,
+        self._simulate_erosion_curr = True # Default: Changed as per arg. in .processing_interface(simulate_erosion=____)
+        self._adjust_top_surface_zero = False # Sent to True if used .adjust_top_of_surface_interface_to_zero is used ever.
 
     @property
     def shape(self):
@@ -117,9 +119,16 @@ class DiscretizedInterfaces2D:
         if np.isnan(self.interfaces_matrix).any():
             raise ValueError("Interfaces_matrix contains NaN values.")
         if self.check_if_overlapping_interfaces()[0]:
-            raise ValueError("Overlapping interfaces exist. Please use processing at the end if needed.") 
+            warnings.warn(f"Overlapping interfaces exist. Using .processing_interface(simulate_erosion = {self._simulate_erosion_curr})")
+            self.processing_interface() 
         if not self.check_if_surface_is_okay():
             raise ValueError("Surface must have minimum value zero. Use ._adjust_for_top_surface_interface if needed.") 
+        
+        if self._adjust_top_surface_zero:
+            self.adjust_top_of_surface_interface_to_zero()
+        else:
+            if self.generate_surface:
+                warnings.warn("The top of surface_interface is not adjusted to zero. Use .adjust_top_of_surface_interface_to_zero() at least once for auto adjust everytime.")
         
         self._locked = True
     
@@ -214,8 +223,7 @@ class DiscretizedInterfaces2D:
         # Making the top of the surface_interface the top of the model too.
         new_instance._locked =False
         new_instance.set_interfaces_matrix(new_interface_matrix)
-        new_instance._adjust_for_top_surface_interface()
-        new_instance.processing_interface(simulate_erosion=True)
+        new_instance.processing_interface()
         new_instance.lock_interfaces()
         return new_instance
 
@@ -230,6 +238,7 @@ class DiscretizedInterfaces2D:
         surf_rough = self.rough_interface_generator_scale[0]
         surface_interface_instance = DiscretizedInterfaces2D(self.domain, 1, generate_surface=True, rough_interface_generator_scale=[surf_rough], remesh_interp_method=self.remesh_interp_method, rng=self.rng)
         surface_interface_instance.set_interfaces_matrix(self.interfaces_matrix[:,0:1])
+        surface_interface_instance._adjust_top_surface_zero = self._adjust_top_surface_zero
         
         new_scale = self.rough_interface_generator_scale.copy()
         new_scale[0] = 0
@@ -243,7 +252,8 @@ class DiscretizedInterfaces2D:
                 new_interface[:, 1:] = self.interfaces_matrix[:, 1:]
 
         soil_interface_instance.set_interfaces_matrix(new_interface)
-
+        soil_interface_instance._simulate_erosion_curr = self._simulate_erosion_curr
+        
         if self._locked:
             soil_interface_instance.lock_interfaces()
             surface_interface_instance.lock_interfaces()
@@ -406,7 +416,7 @@ class DiscretizedInterfaces2D:
         self.set_interfaces_matrix(interfaces_matrix)
         self._reference_point_x = reference_point_x
 
-    def processing_interface(self, simulate_erosion=True):#, trim_interfaces=False):
+    def processing_interface(self, simulate_erosion=None):#, trim_interfaces=False):
         """
         Post-process interfaces to remove overlaps.
 
@@ -418,6 +428,10 @@ class DiscretizedInterfaces2D:
         #b_line_filtered_dict, zlim, top_priority=True):
         # Process 1: Limiting the boundaries to 0 and zlim, if trim_interfaces
         # Process 2: Interface crossing handling - Currently, priority given to lower interface (v3: option to reverse the priority)
+        
+        if simulate_erosion is None:
+            simulate_erosion = self._simulate_erosion_curr
+        
         b_array = self.interfaces_matrix[:, 1:]
         
         if not simulate_erosion:
@@ -434,6 +448,7 @@ class DiscretizedInterfaces2D:
             
         # b_array=np.clip(b_array, 0, trim_z) #clip between 0 and trim_z           
         self.set_interfaces_matrix(b_array)
+        self._simulate_erosion_curr = simulate_erosion
     
     def check_if_overlapping_interfaces(self):
         diffs = np.diff(self.interfaces_matrix)
@@ -447,7 +462,7 @@ class DiscretizedInterfaces2D:
 
         return has_overlap, min_abs_diff
 
-    def _adjust_for_top_surface_interface(self):
+    def adjust_top_of_surface_interface_to_zero(self):
         interfaces_matrix = self.interfaces_matrix
         top_interface = interfaces_matrix[:,0]
         top_depth = np.min(top_interface)
@@ -458,6 +473,7 @@ class DiscretizedInterfaces2D:
         if np.abs(np.min(interfaces_matrix)) <= -1e-2:
             raise SyntaxError("The minimum should have been greater than 0.")
         self.set_interfaces_matrix(interfaces_matrix) 
+        self._adjust_top_surface_zero = True
      
     def plot(self, ax=None, plot_extents=True, **kwargs):
         if ax is None:
@@ -544,7 +560,8 @@ class DiscretizedInterfaces2D:
             )
             # new_instance.set_interfaces_matrix(new_interfaces)
             new.interfaces_matrix = new_interfaces
-            
+            new._simulate_erosion_curr = self._simulate_erosion_curr
+            new._adjust_top_surface_zero = self._adjust_top_surface_zero
             # Possible issue of crisscross after remeshing on some rare conditions.
             if new._locked:
                 flag, min_val = new.check_if_overlapping_interfaces()
@@ -575,6 +592,8 @@ class DiscretizedInterfaces2D:
             'rng_state':self.rng.bit_generator.state,
             'locked':self._locked,
             'reference_point_x': self._reference_point_x,
+            'simulate_erosion_curr':self._simulate_erosion_curr,
+            'adjust_top_surface_zero': self._adjust_top_surface_zero
         }
         
     @classmethod
@@ -595,6 +614,8 @@ class DiscretizedInterfaces2D:
                        remesh_interp_method, rng)
             obj.set_interfaces_matrix(interfaces_matrix)
             obj._reference_point_x = config_dict['reference_point_x']
+            obj._simulate_erosion_curr = config_dict['simulate_erosion_curr']
+            obj._adjust_top_surface_zero = config_dict['adjust_top_surface_zero']
             
             if config_dict['locked']:
                 obj.lock_interfaces()

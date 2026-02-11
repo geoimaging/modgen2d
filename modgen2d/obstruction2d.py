@@ -123,7 +123,13 @@ class _Obstruction2DFunctions:
         
         if discrete_point_size!=0:
             x, y = np.meshgrid(np.arange(x_lim_grid) + 1/2 - extra_grid, np.arange(z_lim_grid) + 1/2 - extra_grid)
-            ax.scatter(x.flatten()*plot_del_x, y.flatten()*plot_del_z, c=grid2d.T.flatten(), cmap=fixed_cmap, s=discrete_point_size, edgecolors='k') 
+            ax.scatter(x.flatten()*plot_del_x, y.flatten()*plot_del_z, c=grid2d.T.flatten(), 
+                       cmap=fixed_cmap, 
+                       edgecolors='white',  # thin white borders
+                       linewidths=0.3,   
+                       marker='s',          # square marker
+                       s=discrete_point_size, 
+                       ) 
         
         ref_xz_in_unit_length = self.get_ref_xz_in_unit_length()
             
@@ -310,7 +316,7 @@ class _Obstruction2DShapeFunctions(_Obstruction2DFunctions):
     def __init__(self, obs_grid_dl:float, ref_xz_symbolic = ['c', 'c'], snap_to_dl:bool=True):
         super().__init__(obs_grid_dl, ref_xz_symbolic, snap_to_dl)
                 
-    def shift_grid_one_axis(self, shift_axis='x', shift_val_in_unit_length=0, allow_negative_shift = False):
+    def shift_grid_one_axis(self, shift_axis='x', shift_val_in_length_unit=0, allow_negative_shift = False):
         """
         Shift the obstruction grid along one axis.
 
@@ -327,8 +333,8 @@ class _Obstruction2DShapeFunctions(_Obstruction2DFunctions):
         assert shift_axis in ['x', 'z'], f"shift axis can only be either 'x' or 'z'. Not {shift_axis}"
 
         # Auto snapping
-        shift_in_grid = int(np.round(shift_val_in_unit_length/self.dl,0))
-        shift_val_in_unit_length = shift_in_grid * self.dl
+        shift_in_grid = int(np.round(shift_val_in_length_unit/self.dl,0))
+        shift_val_in_length_unit = shift_in_grid * self.dl
         
         if shift_in_grid!=0:
             if not allow_negative_shift: 
@@ -363,7 +369,7 @@ class _Obstruction2DShapeFunctions(_Obstruction2DFunctions):
             
             if self.ref_xz_override is not None:
                 self.ref_xz_override = [self.ref_xz_override[0] + (new_xs-original_xs)*self.dl, self.ref_xz_override[1] + (new_zs-original_zs)*self.dl]
-            self.description += f', then shifted in {shift_axis}-axis by {shift_val_in_unit_length}'
+            self.description += f', then shifted in {shift_axis}-axis by {shift_val_in_length_unit}'
 
     def scale_shapes(self, scale_factor):
         """
@@ -396,7 +402,7 @@ class _Obstruction2DShapeFunctions(_Obstruction2DFunctions):
             self.ref_xz_override = [i*scale_factor for i in self.ref_xz_override] # To check if it is okay for non-integer scaling
         self.description += f', then scaled by factor of {scale_factor}'
     
-    def expand_grid(self, new_grid_xlen, new_grid_zlen):
+    def expand_grid(self, new_grid_xlen, new_grid_zlen, warn_truncate=True):
         """
         Expand or truncate the grid to new dimensions.
 
@@ -411,13 +417,14 @@ class _Obstruction2DShapeFunctions(_Obstruction2DFunctions):
         if new_grid_xlen is None:
             new_grid_xlen = self.grid2d.shape[0]
         if new_grid_zlen is None:
-            new_grid_zlen = self.grid2d.shape[0]
+            new_grid_zlen = self.grid2d.shape[1]
         new_grid_xlen = f.check_integer(new_grid_xlen)
         new_grid_zlen = f.check_integer(new_grid_zlen)
 
         self_xlen, self_zlen = self.grid2d.shape
-        if not (self_xlen<=new_grid_xlen and self_zlen<=new_grid_zlen):
-            warnings.warn(f"WARNING: shape (format: x * z) of old grid {self_xlen} x {self_zlen} is greater than {new_grid_xlen} x {new_grid_zlen}. Obstacles might get removed from the model")
+        if warn_truncate:
+            if not (self_xlen<=new_grid_xlen and self_zlen<=new_grid_zlen):
+                warnings.warn(f"WARNING: shape (format: x * z) of old grid {self_xlen} x {self_zlen} is greater than {new_grid_xlen} x {new_grid_zlen}. Obstacles might get removed from the model")
                     
         new_grid = np.zeros((max(self_xlen, new_grid_xlen), max(self_zlen, new_grid_zlen)), dtype = int)
         new_grid[:self_xlen, :self_zlen] = self.grid2d
@@ -446,19 +453,24 @@ class _Obstruction2DShapeFunctions(_Obstruction2DFunctions):
         new_grid_xlen, new_grid_zlen = np.max([self_xlen, util2_xlen]), np.max([self_zlen, util2_zlen])
 
         self.expand_grid(new_grid_xlen, new_grid_zlen)
-        obstruction2d_instance_other.expand_grid(new_grid_xlen, new_grid_zlen)
+        
+        # Old style replacing 0s
+        # obstruction2d_instance_other.expand_grid(new_grid_xlen, new_grid_zlen)
 
-        # Initialize the merged array
-        merged = np.zeros_like(self.grid2d)
+        # # Initialize the merged array
+        # merged = np.zeros_like(self.grid2d)
     
-        mask_a_nonzero = (self.grid2d != 0)
-        mask_b_nonzero = (obstruction2d_instance_other.grid2d != 0)
+        # mask_a_nonzero = (self.grid2d != 0)
+        # mask_b_nonzero = (obstruction2d_instance_other.grid2d != 0)
     
-        # Apply the merging rules using numpy's where function
-        merged = np.where(mask_b_nonzero, obstruction2d_instance_other.grid2d, merged)  # b != 0
-        merged = np.where(mask_a_nonzero, self.grid2d, merged)  # a != 0 (replace it with a even if merged already have values, i.e priortize b)
+        # # Apply the merging rules using numpy's where function
+        # merged = np.where(mask_b_nonzero, obstruction2d_instance_other.grid2d, merged)  # b != 0
+        # merged = np.where(mask_a_nonzero, self.grid2d, merged)  # a != 0 (replace it with a even if merged already have values, i.e priortize b)
     
-        self.grid2d = merged
+    
+        # New style just merge the origins. Use .shift_grid if needed.
+        self.grid2d[:util2_xlen, :util2_zlen] = obstruction2d_instance_other.grid2d
+        
         self.description+= f', then merged with Utils2d of {obstruction2d_instance_other.description}' 
             
     def clear_utils_properties(self, dl=None, ref_xz_symbolic = ['c', 'c'], snap_to_dl=True):

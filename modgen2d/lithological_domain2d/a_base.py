@@ -314,7 +314,12 @@ class LithologicalDomain2DReadOnly():
 
         x_data, z_data = np.meshgrid(x_centers, z_centers, indexing='ij')
         if discrete_point_size!=0:
-            ax.scatter(x_data.flatten(), z_data.flatten(), c = [color_mapping[value] for value in self.lithological_matrix.flatten()], edgecolors='k', s=discrete_point_size)
+            ax.scatter(x_data.flatten(), z_data.flatten(), 
+                       c = [color_mapping[value] for value in self.lithological_matrix.flatten()], 
+                       edgecolors='white',  # thin white borders
+                       linewidths=0.3,   
+                       marker='s',          # square marker
+                       s=discrete_point_size)
             
         # Plot Boundary:
         if plot_interfaces:
