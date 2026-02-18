@@ -20,8 +20,8 @@ from .main_properties import MainPropertiesConfig, AuxillaryProperties
 from .property_distribution import PropertyDistribution
 from .main_property_each import MainProperty
 from .obstruction2d import Obstruction2D
-from .random_generators import RandomGeneratorAbstract, Constant, LogUniform, Uniform, Normal, Discrete2ContinuousPDF, DiscreteChoice
-from .rough_interface_creator2d import AbstractRoughInterfaceCreator, NormalInterfaceGen, UniformInterfaceGen, FBMInterfaceGen
+from .random_generators import RandomGeneratorAbstract, Constant, LogUniform, Uniform, Normal, DiscreteChoice
+from .rough_interface_creator2d import AbstractRoughInterfaceCreator, NormalInterfaceGen, UniformInterfaceGen
 from .spatial_simulator2d import SpatialSimulator2D, ConstantSimulator, CovarianceDecompositionSimulator
 from .load_generated_model2d_from_hdf5 import load_dict_from_hdf5, read_hdf5_file
 
@@ -52,12 +52,10 @@ __all__ = [
     "LogUniform",
     "Uniform",
     "Normal",
-    "Discrete2ContinuousPDF",
     "DiscreteChoice",
     "AbstractRoughInterfaceCreator",
     "NormalInterfaceGen",
     "UniformInterfaceGen",
-    "FBMInterfaceGen",
     "SpatialSimulator2D",
     "ConstantSimulator",
     "CovarianceDecompositionSimulator",
