@@ -3,12 +3,8 @@ import modgen2d as mg
 import modgen2d.general_functions as f
 import numpy as np
 
-def smooth_noise(shape, sigma=3, rng=np.random.default_rng()):
-    noise = rng.random(shape) * 2 - 1  # random in [-1,1]
-    noise_smooth = gaussian_filter(noise, sigma=sigma)
-    # Normalize to [-1,1]
-    noise_smooth = noise_smooth / np.max(np.abs(noise_smooth))
-    return noise_smooth
+
+#================USER DEFINED OBSTRUCTION2D
 
 class ManualObstruction2D(mg.Obstruction2D):
     def __init__(self, dl:float, ref_xz_symbolic = ['c', 'c'], snap_to_dl:bool=True):
@@ -71,3 +67,75 @@ class ManualObstruction2D(mg.Obstruction2D):
         self.merge_shapes(circle_top)
         
         self.description = f'Tunnel2D of size (lx x lz) = ({lx} x {lz})'
+
+def smooth_noise(shape, sigma=3, rng=np.random.default_rng()):
+    noise = rng.random(shape) * 2 - 1  # random in [-1,1]
+    noise_smooth = gaussian_filter(noise, sigma=sigma)
+    # Normalize to [-1,1]
+    noise_smooth = noise_smooth / np.max(np.abs(noise_smooth))
+    return noise_smooth
+
+#================USER DEFINED INTERFACE CREATOR EXAMPLE
+class FBMInterfaceGen(gm.AbstractRoughInterfaceCreator):
+    """
+    Generate rough interfaces using fractional Brownian motion (fBM).
+    """
+    from fbm import FBM  # Requires fbm only if user need to use FBMInterfaceGen #Lazyimport
+    
+    def __init__(self, H, length, method, rng=np.random.default_rng()):
+        """
+        Initialize the fractional Brownian motion interface generator.
+
+        Parameters
+        ----------
+        H : float
+            Hurst exponent controlling roughness.
+        length : float
+            Total horizontal length of the interface.
+        method : str
+            fBM generation method supported by ''fbm.FBM''.
+        rng : numpy.random.Generator, optional
+            Random number generator.
+        """
+        generator_params = {'H': H,
+                            'length': length,
+                            'method': method}
+        super().__init__(generator_params, rng)
+       
+    def generate_rough_interfaces(self, rough_interface_generator_scale, nx, dx='ignored'):
+        """
+        Generate rough interfaces using fractional Brownian motion.
+
+        Parameters
+        ----------
+        rough_interface_generator_scale : array-like
+            Scaling factor for each interface.
+        nx : int
+            Number of horizontal discretization points.
+        dx : ignored
+            Included for API consistency; not used.
+
+        Returns
+        -------
+        numpy.ndarray
+            Interface elevation matrix of shape ''(nx, n_interfaces)''.
+        """
+        rough_interface_generator_scale = np.asarray(rough_interface_generator_scale, dtype=float)
+        self.check_rough_interface_generator_scale(rough_interface_generator_scale)
+        
+        n_soil_layers = len(rough_interface_generator_scale)
+        interfaces_matrix = np.zeros((nx, n_soil_layers))
+
+        H = self.generator_params['H']
+        L = self.generator_params['length'] # *surface_scaling_factor While this gives approx scaling
+        method = self.generator_params['method']
+    
+        n = nx - 1
+        for j in range(n_soil_layers):
+            scale = rough_interface_generator_scale[j]
+            #generates n+1 data ie n increments
+            rnd_layer = FBM(n=n, hurst=H, length=L, method=method).fbm() * scale  
+            interfaces_matrix[:, j]= rnd_layer
+        return interfaces_matrix
+    
+    
