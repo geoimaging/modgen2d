@@ -2,6 +2,8 @@ import modgen2d as mg
 import numpy as np
 from scipy.stats import multivariate_normal, norm
 
+#================USER DEFINED RANDOM GENERATORS
+
 class CorrelatedUniformBivariateXLogY(mg.RandomGeneratorAbstract):
     def __init__(self, u_low_x, u_high_x, u_low_logy, u_high_logy, r_x_logy, rng=None):
         """
@@ -58,3 +60,75 @@ class CorrelatedUniformBivariateXLogY(mg.RandomGeneratorAbstract):
        
         samples = np.column_stack((x, y))
         return samples.reshape(out_shape)
+
+#================ANOTHER USER DEFINED RANDOM GENERATORS (THOUGH NOT USED IN EXAMPLE)
+
+class Discrete2ContinuousPDF(mg.random_generators.DiscreteChoice):
+    """
+    Convert a discrete probability distribution into a continuous-like PDF
+    using linear interpolation.
+    """
+    def __init__(self, x, p, new_del_x:float, new_x_min:float=None, new_x_max:float=None, incr_x_init:float=0, rng=None):
+        """
+        Refine a discrete PDF into a continuous approximation by linear interpolation at each of new_x_array.
+
+        Parameters
+        ----------
+        x : array-like
+            Discrete support values (numeric only).
+        p : array-like
+            Probabilities associated with ``x`` (must sum to 1). If provided empty list; then uniform distribution over all x
+        new_del_x : float
+            Step size for the refined continuous grid.
+        new_x_min : float, optional
+            Minimum bound of the refined grid.
+        new_x_max : float, optional
+            Maximum bound of the refined grid.
+        incr_x_init : float, optional
+            Constant shift applied to ``x`` before interpolation.
+        rng : numpy.random.Generator, optional
+            Random number generator.
+        refines discrete pdf to more of continuous one by linear interpolation at each of new_x_array
+        
+        Example
+        -------
+        x = [0,1,5]; p = [0, 0.2, 0.4] -> means p(0) = 0; p(1) = 0.2; p[5]=0.4
+           
+        if new_del_x = 0.5
+        then, {0:0, 0.5:0.1, 1:0.2, 1.5:0.225, 2:0.25 .... ,5:0.4}. i.e. linear interpolation in between
+        then, pdf_values readjusted such that sum is 1.
+        """
+        # Convert to numpy array if not already
+        x = np.asarray(x, dtype=float)
+        p = np.asarray(p, dtype=float) if p is not None else np.ones_like(x) / len(x)
+        assert not np.isnan(p).any(), "p contains NaN values"
+        
+        # Ensure both x and p are 1D
+        if x.ndim != 1 or p.ndim != 1:
+            raise ValueError("Both x and p must be 1D lists or 1D numpy arrays.")
+
+        # Ensure all elements in `x` are numbers only
+        if not np.issubdtype(x.dtype, np.number):
+            raise TypeError("All elements in x must be numeric (int or float).")
+
+        # Apply shift to x
+        x = x+incr_x_init
+
+        if new_x_max is None:
+            new_x_max = np.max(x)
+        if new_x_min is None:
+            new_x_min = np.min(x)
+
+        # Ensure x_min ≤ min(x) and x_max ≥ max(x)
+        if new_x_min > np.min(x):
+            raise ValueError(f"x_min ({new_x_min}) must be less than or equal to the minimum value in shifted x ({x}).")
+        if new_x_max < np.max(x):
+            raise ValueError(f"x_max ({new_x_max}) must be greater than or equal to the maximum value in shifted x ({x}).")
+
+        new_x_array = np.arange(new_x_min, new_x_max + new_del_x, new_del_x)
+        new_p = np.interp(new_x_array, x, p)
+        
+        # Normalize probabilities so they sum to 1
+        new_p = new_p / np.sum(new_p)
+        
+        super().__init__(x = new_x_array, p = new_p, rng=rng)
