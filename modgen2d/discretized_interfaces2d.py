@@ -12,7 +12,7 @@ import numpy as np
 import scipy
 
 from modgen2d.discretized_domain2d import DiscretizedDomain2D
-from modgen2d.rough_interface_creator2d import AbstractRoughInterfaceCreator, NormalInterfaceGen, UniformInterfaceGen
+from modgen2d.rough_interface_creator2d import AbstractRoughInterfaceCreator
 import modgen2d.general_functions as f
 import matplotlib.pyplot as plt
 

@@ -16,11 +16,11 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import modgen2d.general_functions as f
 import copy,warnings
-import matplotlib.colors as mcolors
 
 from modgen2d.discretized_domain2d import DiscretizedDomain2D
 from modgen2d.obstruction2d import Obstruction2D
 from modgen2d.global_soil_interface_config import GlobalSoilInterfaceConfig
+from modgen2d._plots import _plot_lit_domain
 
 class LithologicalDomain2DReadOnly():
     """
@@ -220,52 +220,6 @@ class LithologicalDomain2DReadOnly():
         if domain_shape != lit_shape:
             raise ValueError(f"Matrix shape mismatch. Domain shape {domain_shape} != lit_shape {lit_shape}.")
         
-    @staticmethod
-    def __get_unique_lithological_color_map(
-        lithological_matrix,
-        color_map = {
-        'def': plt.get_cmap('tab20', 10),      # For integer values
-        'U_': plt.get_cmap('Set3', 10)   # For "U-{x}" values
-    }):
-        unique_values = np.unique(lithological_matrix)
-        color_mapping = {} 
-        for value in unique_values:
-            assigned = False
-            # print(value, f.is_integer_value(value))
-            for prefix, cmap in color_map.items():
-                if value == 'X':
-                    color_mapping[value] = (1.,1.,1.,1.)#'#ffffff'
-                    assigned = True
-                    
-                elif prefix == 'def' and f.is_integer_value(value):
-                    if value == 0 or value == '0':
-                        color_mapping[value] = (1.,1.,1.,1.)#'#ffffff'
-                    else:
-                        # If no prefix, assume integer or digit
-                        index = int(float(value)) % 10
-                        color_mapping[value] = cmap(index)
-                    assigned = True
-                    break
-                elif isinstance(value, str) and value.startswith(prefix):
-                    # For prefixed values
-                    index = int(float(value[len(prefix):])) % 10
-                    color_mapping[value] = cmap(index)
-                    assigned = True
-                    break
-            
-            # If no pattern matched, assign a random color
-            if not assigned:
-                color_val = "#" + ''.join([np.random.choice(list('0123456789ABCDEF')) for _ in range(6)])
-                color_mapping[value] = mcolors.to_rgba(color_val)
-                
-        # Create a colormap from the color mapping
-        colors = [color_mapping[value] for value in unique_values]
-        int_map = {value: color_mapping[value] for idx, value in enumerate(unique_values)}
-        integer_mapped_array = np.array(np.vectorize(int_map.get)(lithological_matrix), dtype='float')
-        integer_mapped_array = np.transpose(integer_mapped_array, axes=(2, 1, 0))  #Adjusting for imshow
-        fixed_cmap = mcolors.ListedColormap(colors)
-
-        return unique_values, color_mapping, integer_mapped_array, fixed_cmap
     
     def plot(self, ax=None, discrete_point_size=0, legend=True,
                id2material_dict = None, title='Lithological Domain',
@@ -273,7 +227,9 @@ class LithologicalDomain2DReadOnly():
                color_map = {
                         'def': plt.get_cmap('tab20', 10),      # For integer values
                         'U_': plt.get_cmap('Set3', 10)   # For "U-{x}" values
-                }):
+                },
+               origin_x = 0,
+               origin_z = 0):
         """
         Plot the lithological domain.
 
@@ -293,33 +249,16 @@ class LithologicalDomain2DReadOnly():
             Whether to overlay soil interfaces.
         color_map : dict, optional
             Prefix-to-colormap dictionary.
+        origin_x, origin_z: dict, float
+            Change origin for plotting only. (All plot elements are shifted based on provided origin.) 
         """
         if ax is None:
             fig,ax = plt.subplots()
 
-        z_centers, x_centers = self.domain.z_centers, self.domain.x_centers
-        span_x, span_z = self.domain.spans
-        
-        unique_values, color_mapping, integer_mapped_array, fixed_cmap = LithologicalDomain2DReadOnly.__get_unique_lithological_color_map(self.lithological_matrix, color_map)
-        
-        # Plot the data using imshow with the fixed colormap
-        extent = [0, span_x, span_z, 0]
-        cax = ax.imshow(integer_mapped_array, cmap=fixed_cmap, extent=extent, interpolation='none')
-        
-        # Plot gwt
-        if self.gwt_depth is not None:
-            edges_kw = dict(color='r', linestyle='dashed', linewidth=2, zorder=4000)
-            ax.plot([0, span_x], [self.gwt_depth, self.gwt_depth], **edges_kw)
-
-
-        x_data, z_data = np.meshgrid(x_centers, z_centers, indexing='ij')
-        if discrete_point_size!=0:
-            ax.scatter(x_data.flatten(), z_data.flatten(), 
-                       c = [color_mapping[value] for value in self.lithological_matrix.flatten()], 
-                       edgecolors='white',  # thin white borders
-                       linewidths=0.3,   
-                       marker='s',          # square marker
-                       s=discrete_point_size)
+        ax = _plot_lit_domain(self.domain, self.lithological_matrix, self.gwt_depth, ax=ax, 
+                        discrete_point_size=discrete_point_size, legend=legend,
+                        id2material_dict = id2material_dict, title=title,
+                        color_map = color_map, origin_x=origin_x, origin_z=origin_z)
             
         # Plot Boundary:
         if plot_interfaces:
@@ -337,36 +276,13 @@ class LithologicalDomain2DReadOnly():
                     else:
                         drawstyle = 'steps-mid'
                         warnings.warn(f"Interfaces might not reflect the exact interpolation in the plots except for 'linear' and 'nearest'. Provided {remesh_tech}.")
-                    ax.plot(discretizedInterfaces2D_instance.domain.get_interface_x_centers,
-                            discretizedInterfaces2D_instance.interfaces_matrix[:, i],
+                    ax.plot(discretizedInterfaces2D_instance.domain.get_interface_x_centers + origin_x,
+                            discretizedInterfaces2D_instance.interfaces_matrix[:, i] + origin_z,
                             linestyle='--',
                             color='k',
                             drawstyle=drawstyle,
                         )
         
-        # Create a custom legend
-        handles = [plt.Line2D([0], [0], marker='s', color=color_mapping[value], markersize=10, linestyle='') for value in unique_values]
-        gwt_handle = plt.Line2D([0], [0], color='red', linestyle='--', linewidth=2, label='GWT')
-        handles.append(gwt_handle)
-        labels = list(unique_values) + ['GWT']
-    
-        if id2material_dict is not None:
-            labels = [id2material_dict[label][1] if label in id2material_dict else label for label in labels]
-            labels = [lbl.decode('utf-8') if isinstance(lbl, bytes) else lbl for lbl in labels]
-        
-        if legend:
-            ax.legend(handles, unique_values, title="Legend", bbox_to_anchor=(1.05, 1), loc='upper left')
-        
-        if title is not None:
-            ax.set_title(title)
-            
-        ax.axis('scaled')
-        ax.set(
-            xlim= [0, span_x],
-            ylim= [span_z, 0],
-            xlabel='X',
-            ylabel='Z',
-        )
         return ax
 
     def remeshing_lithological_matrix(self, new_dx, new_dz, interp_method='nearest', replace=True):

@@ -1,4 +1,6 @@
-"""Discretized 2D computational domain utilities."""
+
+
+"""Discretized 2D computational domain utilities. Copied from Modgen2d"""
 
 import numpy as np
 from .units_config import Units
@@ -175,6 +177,14 @@ class DiscretizedDomain2D():
     @property
     def dhs(self):
         return [i/self.units_config.conversion_factor for i in self._dhs_in_domain_len_units]
+    
+    @property
+    def x_edges(self):
+        return np.arange(0, self.shape[0] + 1) * self.dhs[0]
+    
+    @property
+    def z_edges(self):
+        return np.arange(0, self.shape[1] + 1) * self.dhs[1]
     
     @property
     def get_interface_x_centers(self):

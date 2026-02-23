@@ -3,7 +3,7 @@ Module for Merged GeneratedModel2D
 """
 from modgen2d.lithological_domain2d import LithologicalDomain2DCollection
 from .a_each import GeneratedModel2D
-from .b_collection import GeneratedProfileCollection2D
+from .b_collection_main import GeneratedProfileCollection2D
 import warnings
 
 class GeneratedModel2DMerged(GeneratedModel2D):

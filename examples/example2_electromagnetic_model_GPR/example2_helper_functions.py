@@ -61,8 +61,6 @@ class CorrelatedUniformBivariateXLogY(mg.RandomGeneratorAbstract):
         samples = np.column_stack((x, y))
         return samples.reshape(out_shape)
 
-#================ANOTHER USER DEFINED RANDOM GENERATORS (THOUGH NOT USED IN EXAMPLE)
-
 class Discrete2ContinuousPDF(mg.random_generators.DiscreteChoice):
     """
     Convert a discrete probability distribution into a continuous-like PDF

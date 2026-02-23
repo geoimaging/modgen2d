@@ -3,12 +3,12 @@ Modules for each 2D lithological domain and its associated simulated property fi
 """
 
 import matplotlib.pyplot as plt
-from matplotlib.colors import LogNorm
 # from IPython.display import clear_output
 import numpy as np
 import modgen2d.general_functions as f
 from modgen2d.lithological_domain2d import LithologicalDomain2D, LithologicalDomain2DFromObstruction2D, LithologicalDomain2DReadOnly
 import warnings
+from modgen2d._plots import _plot_property_profile
 
 class GeneratedModel2D:
     """
@@ -235,7 +235,9 @@ class GeneratedModel2D:
     
     def plot_profile(self, main_property_name, ax=None, discrete_point_size=0, plot_gwt = True,
                vlog = False, vmin=None, vmax=None, cmap='gist_earth_r', 
-               title = 'auto', legend = True, legend_label = None, legendkwargs_dict={}):
+               title = 'auto', legend = True, legend_label = None, legendkwargs_dict={},
+               origin_x = 0,
+               origin_z = 0):
         """
         Plots a 2D property profile.
 
@@ -263,6 +265,9 @@ class GeneratedModel2D:
             Colorbar label.
         legendkwargs_dict : dict, optional
             Extra keyword arguments for colorbar.
+        origin_x, origin_z: dict, float
+            Change origin for plotting only. (All plot elements are shifted based on provided origin.) 
+        
 
         Returns
         -------
@@ -276,61 +281,21 @@ class GeneratedModel2D:
         if ax is None:
             fig,ax = plt.subplots()
 
-        simulated_profile_set = self.simulated_profiles
-        domain = self.lit_domain.domain
-        z_centers, x_centers = domain.z_centers, domain.x_centers
-        span_x, span_z = domain.spans
+        if origin_z!=0 or origin_x!=0:
+           warnings.warn(f"Plot origins are set to [{origin_x}, {origin_z}].  Note that this origin shift applies only to visualization; all computations are performed assuming an origin at (0, 0).")
         
-        if main_property_name not in simulated_profile_set.keys():
+        if main_property_name not in self.simulated_profiles.keys():
             raise ValueError(f"main_property_name: {main_property_name} not generated yet.")
         
-        data = simulated_profile_set[main_property_name].T
-        
-        extent=[0, span_x, span_z, 0]
-        # Create a colormap from the color mapping
-        if vmin is None:
-            vmin = np.min(data)
-
-        if vmax is None:
-            vmax = np.max(data)
-            
-        if vlog:
-            norm = LogNorm(vmin=vmin, vmax=vmax)
-            cax = ax.imshow(data, norm=norm, cmap=cmap, extent=extent, interpolation='none') 
-        else:
-            cax = ax.imshow(data, cmap=cmap, vmin=vmin, vmax=vmax, extent=extent, interpolation='none') 
-        
-        # Plot gwt
-        if self.lit_domain.gwt_depth is not None and plot_gwt:
-            edges_kw = dict(color='r', linestyle='dashed', linewidth=2, zorder=4000)
-            ax.plot([0, span_x], [self.lit_domain.gwt_depth, self.lit_domain.gwt_depth], **edges_kw)
-
-        x_data, z_data = np.meshgrid(x_centers, z_centers, indexing='ij')
-        if discrete_point_size!=0:
-            ax.scatter(x_data.flatten(), z_data.flatten(), c = 'k', s=discrete_point_size)
+        simulated_profile_np = self.simulated_profiles[main_property_name]
+        ax, vmin, vmax = _plot_property_profile(self.lit_domain.domain, simulated_profile_np, self.lit_domain.gwt_depth,
+                                               ax=ax, discrete_point_size=discrete_point_size, plot_gwt = plot_gwt,
+                                               vlog = vlog, vmin=vmin, vmax=vmax, cmap=cmap, legend=legend,
+                                               legend_label = legend_label, legendkwargs_dict=legendkwargs_dict,
+                                               origin_x = origin_x, origin_z = origin_z)
         
         if title=='auto':
             ax.set_title(f"Main_property_name:{main_property_name}")
-        
-        # Colorbar
-        # if legendkwargs_dict is None:
-        #     legendkwargs_dict = {
-        #         'shrink':0.6,
-        #         'aspect':20,
-        #         'pad':0.1
-        #     }
-        
-        if legend:
-            cbar = plt.colorbar(cax, ax=ax, **legendkwargs_dict)
-            cbar.set_label(legend_label)
-        
-        ax.axis('scaled')
-        ax.set(
-            xlim= [0, span_x],
-            ylim= [span_z, 0],
-            xlabel='X',
-            ylabel='Z',
-        )
 
         return ax, vmin, vmax
     

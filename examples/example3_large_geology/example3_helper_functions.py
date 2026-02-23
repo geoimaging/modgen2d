@@ -76,7 +76,7 @@ def smooth_noise(shape, sigma=3, rng=np.random.default_rng()):
     return noise_smooth
 
 #================USER DEFINED INTERFACE CREATOR EXAMPLE
-class FBMInterfaceGen(gm.AbstractRoughInterfaceCreator):
+class FBMInterfaceGen(mg.AbstractRoughInterfaceCreator):
     """
     Generate rough interfaces using fractional Brownian motion (fBM).
     """
