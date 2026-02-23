@@ -1,6 +1,8 @@
 """
 This module provides classes for managing and generating 2D spatial profiles
 of geotechnical properties over lithological domains.
+
+This is the main file of modgen2d that holds all the model objects, save and load them.
 """
 import h5py
 import warnings

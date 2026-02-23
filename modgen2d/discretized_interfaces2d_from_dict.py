@@ -2,7 +2,6 @@ import numpy as np
 
 from modgen2d.discretized_interfaces2d import DiscretizedInterfaces2D
 from modgen2d.discretized_domain2d import DiscretizedDomain2D
-import modgen2d.general_functions as f
 
 class DiscretizedInterfaces2DFromDict(DiscretizedInterfaces2D):
     """Generate discretized 2D interfaces from a configuration dictionary."""

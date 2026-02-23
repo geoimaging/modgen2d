@@ -5,13 +5,8 @@
 
 import h5py, warnings
 import numpy as np
-import os, time
-import modgen2d.discretized_interfaces2d as discretized_interfaces3d
 import modgen2d.global_soil_interface_config as global_soil_interface_config
 from modgen2d.generated_model2d import GeneratedProfileCollection2D, GeneratedProfileCollection2DReadOnly
-import matplotlib.pyplot as plt
-import matplotlib.gridspec as gridspec
-from IPython.display import display, clear_output
 from modgen2d.metadata import __version__
 
 def load_dict_from_hdf5(group):

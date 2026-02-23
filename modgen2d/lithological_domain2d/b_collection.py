@@ -1,7 +1,6 @@
 import numpy as np
 import copy
 import warnings
-import modgen2d.general_functions as f
 from .a_base import LithologicalDomain2DReadOnly
 from .a_from_interface import LithologicalDomain2D
 from .a_from_obs2d import LithologicalDomain2DFromObstruction2D

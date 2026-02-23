@@ -25,8 +25,8 @@ GeneratedModel2DMerged
 # PUBLIC API — this is the only file users ever see
 
 from .a_each import GeneratedModel2D
-from .b_collection import GeneratedProfileCollection2DReadOnly, GeneratedProfileCollection2D
-from .c_merged import GeneratedModel2DMerged
+from .a_merged import GeneratedModel2DMerged
+from .b_collection_main import GeneratedProfileCollection2DReadOnly, GeneratedProfileCollection2D
 
 __all__ = [
     "GeneratedModel2D",
