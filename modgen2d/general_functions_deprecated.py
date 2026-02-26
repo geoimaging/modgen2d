@@ -29,24 +29,7 @@ def safe_equal(a, b, tol=1e-10):
 def get_span_del_from_ranges(ranges):
     return (ranges[0] + ranges[-1]), (ranges[1] - ranges[0])
 
-def validate_feature_ids_list(features_ids_list:list):
-    """
-    Validates a list of feature IDs.
-    
-    Rules:
-    1. Must contain 'def'.
-    2. All other keys must be valid feature IDs (checked via is_valid_feature_id).
-    """
-    if 'def' not in features_ids_list:
-        raise KeyError("Key must contain 'def'")
-    
-    invalid = [
-        k for k in features_ids_list
-        if k != 'def' and not is_valid_feature_id(k) # only one underscore allowed at end
-    ]
-    if invalid:
-        raise KeyError(f"Invalid keys (must end with '_', no digits, no other underscores): {invalid}")
-    
+
 def coordinate_vars(x_ranges, z_ranges):
     del_x, del_z = x_ranges[0]*2, z_ranges[0]*2
     span_x, span_z = x_ranges[-1]+del_x/2, z_ranges[-1]+del_z/2
