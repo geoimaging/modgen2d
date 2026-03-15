@@ -475,7 +475,7 @@ class DiscretizedInterfaces2D:
         self.set_interfaces_matrix(interfaces_matrix) 
         self._adjust_top_surface_zero = True
      
-    def plot(self, ax=None, plot_extents=True, **kwargs):
+    def plot(self, ax=None, plot_extents=True, legend=False, **kwargs):
         if ax is None:
             fig, ax = plt.subplots(figsize=[8,8])
 
@@ -495,11 +495,13 @@ class DiscretizedInterfaces2D:
         
         for i in np.arange(n_soil_layers-1, -1, -1):
             if i == 0:
-                linestyle = '--'
+                linestyle = '-'
+                legend_label = 'Interface 0 (Surface)'
             else:
                 linestyle = '-'
+                legend_label = f'Interface {i}'
             ax.plot(self.domain.get_interface_x_centers,
-                    self.interfaces_matrix[:, i],label=i,
+                    self.interfaces_matrix[:, i],label=legend_label,
                     linestyle=linestyle,
                     drawstyle=drawstyle,
                     **kwargs,
@@ -513,6 +515,9 @@ class DiscretizedInterfaces2D:
                xlabel='Distance',
                ylabel='Depth',
                )
+
+        if legend:
+            ax.legend()
         ax.axis('scaled')
         return ax
 

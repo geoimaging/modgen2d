@@ -3,8 +3,10 @@ import numpy as np
 import warnings
 from .discretized_domain2d import DiscretizedDomain2D
 import matplotlib.colors as mcolors
+from matplotlib.lines import Line2D
 
-def _plot_property_profile(domain:DiscretizedDomain2D, simulated_profile_np:np.array, gwt_depth, ax=None, discrete_point_size=0, plot_gwt = True,
+def _plot_property_profile(domain:DiscretizedDomain2D, simulated_profile_np:np.array, gwt_depth, ax=None, 
+                           discrete_point_size=0, white_edges_size = 0, plot_gwt = True, gwt_kw={},
                vlog = False, vmin=None, vmax=None, cmap='gist_earth_r', 
                legend = True, legend_label = None, legendkwargs_dict={},
                origin_x = 0, origin_z = 0):
@@ -23,8 +25,12 @@ def _plot_property_profile(domain:DiscretizedDomain2D, simulated_profile_np:np.a
             Matplotlib axes to plot on.
         discrete_point_size : float, default 0
             Size of scatter points.
+        white_edges_size : float, default 0
+            Size of white edges of pixels.
         plot_gwt : bool, default True
             Plot groundwater table.
+        gwt_kw : dict,
+            keywords for controlling gwt_plot
         vlog : bool, default False
             Apply logarithmic normalization.
         vmin, vmax : float, optional
@@ -77,14 +83,26 @@ def _plot_property_profile(domain:DiscretizedDomain2D, simulated_profile_np:np.a
             cax = ax.imshow(data, cmap=cmap, vmin=vmin, vmax=vmax, extent=extent, interpolation='none') 
         
         # Plot gwt
+        gwt_handle = None
         if gwt_depth is not None and plot_gwt:
-            edges_kw = dict(color='r', linestyle='dashed', linewidth=2, zorder=4000)
-            ax.plot([0 + origin_x, span_x + origin_x], [gwt_depth + origin_z, gwt_depth + origin_z], **edges_kw)
+            gwt_handle, gwt_label = _draw_water_table(
+                ax, y_level = gwt_depth + origin_z, x_min = 0 + origin_x, x_max=span_x + origin_x,
+                **gwt_kw)
 
         x_data, z_data = np.meshgrid(x_centers, z_centers, indexing='ij')
         if discrete_point_size!=0:
             ax.scatter(x_data.flatten() + origin_x, z_data.flatten() + origin_z, c = 'k', s=discrete_point_size)
+
+        if white_edges_size != 0:
+            edges_x = np.arange(len(x_centers)) * domain.dhs[0]
+            edges_z = np.arange(len(z_centers)) * domain.dhs[1]
         
+            for e in edges_x:
+                ax.axvline(e, color='white', linewidth=white_edges_size)
+        
+            for e in edges_z:
+                ax.axhline(e, color='white', linewidth=white_edges_size)
+
         # Colorbar
         # if legendkwargs_dict is None:
         #     legendkwargs_dict = {
@@ -107,7 +125,8 @@ def _plot_property_profile(domain:DiscretizedDomain2D, simulated_profile_np:np.a
 
         return ax, vmin, vmax
     
-def _plot_lit_domain(domain:DiscretizedDomain2D, lithological_matrix:np.array, gwt_depth, ax=None, discrete_point_size=0, legend=True,
+def _plot_lit_domain(domain:DiscretizedDomain2D, lithological_matrix:np.array, gwt_depth, ax=None, 
+                     discrete_point_size=0, white_edges_size=1, plot_gwt = True, gwt_kw={}, legend=True, try_clean_legend=False,
                     id2material_dict = None, title='Lithological Domain',
                     color_map = {
                             'def': plt.get_cmap('tab20', 10),      # For integer values
@@ -130,6 +149,12 @@ def _plot_lit_domain(domain:DiscretizedDomain2D, lithological_matrix:np.array, g
         Axes object to draw on. Creates a new figure if None.
     discrete_point_size : float, optional
         Size of discrete scatter points; 0 disables scatter.
+    white_edges_size : float, default 0
+        Size of white edges of pixels.
+    plot_gwt : bool, default True
+        Plot groundwater table.
+    gwt_kw : dict,
+        keywords for controlling gwt_plot
     legend : bool, optional
         Whether to display the legend.
     id2material_dict : dict, optional
@@ -157,10 +182,12 @@ def _plot_lit_domain(domain:DiscretizedDomain2D, lithological_matrix:np.array, g
     cax = ax.imshow(integer_mapped_array, cmap=fixed_cmap, extent=extent, interpolation='none')
     
     # Plot gwt
-    if gwt_depth is not None:
-        edges_kw = dict(color='r', linestyle='dashed', linewidth=2, zorder=4000)
-        ax.plot([0 + origin_x, span_x + origin_x], [gwt_depth + origin_z, gwt_depth + origin_z], **edges_kw)
-
+    gwt_handle = None
+    gwt_label = None
+    if gwt_depth is not None and plot_gwt:
+        gwt_handle, gwt_label = _draw_water_table(
+            ax, y_level = gwt_depth + origin_z, x_min = 0 + origin_x, x_max=span_x + origin_x,
+            **gwt_kw)
 
     x_data, z_data = np.meshgrid(x_centers, z_centers, indexing='ij')
     if discrete_point_size!=0:
@@ -170,19 +197,33 @@ def _plot_lit_domain(domain:DiscretizedDomain2D, lithological_matrix:np.array, g
                     linewidths=0.3,   
                     marker='s',          # square marker
                     s=discrete_point_size)
-        
+
+    if white_edges_size != 0:
+        edges_x = np.arange(len(x_centers)) * domain.dhs[0]
+        edges_z = np.arange(len(z_centers)) * domain.dhs[1]
+    
+        for e in edges_x:
+            ax.axvline(e, color='white', linewidth=white_edges_size)
+    
+        for e in edges_z:
+            ax.axhline(e, color='white', linewidth=white_edges_size)
+
     # Create a custom legend
     handles = [plt.Line2D([0], [0], marker='s', color=color_mapping[value], markersize=10, linestyle='') for value in unique_values]
-    gwt_handle = plt.Line2D([0], [0], color='red', linestyle='--', linewidth=2, label='GWT')
-    handles.append(gwt_handle)
-    labels = list(unique_values) + ['GWT']
+    labels = unique_values
 
     if id2material_dict is not None:
         labels = [id2material_dict[label][1] if label in id2material_dict else label for label in labels]
         labels = [lbl.decode('utf-8') if isinstance(lbl, bytes) else lbl for lbl in labels]
-    
+    elif try_clean_legend:
+        labels = _get_clean_legend_labels(labels)
+
+    if gwt_handle is not None:
+        handles.append(gwt_handle)
+        labels = list(labels) + [gwt_label]
+
     if legend:
-        ax.legend(handles, unique_values, title="Legend", bbox_to_anchor=(1.05, 1), loc='upper left')
+        ax.legend(handles, labels, title="Legend", bbox_to_anchor=(1.05, 1), loc='upper left')
     
     if title is not None:
         ax.set_title(title)
@@ -242,6 +283,116 @@ def __get_unique_lithological_color_map(
 
     return unique_values, color_mapping, integer_mapped_array, fixed_cmap
 
+def _draw_water_table(
+    ax, y_level, x_min, x_max,
+    triangle_positions=None, triangle_size=10, triangle_hollow=False, triangle_offset_factor=0.03,
+    linewidth=.5, linestyle='--', color='r', triangle_color=None, label = 'GWT',
+    zorder=4000):
+
+    """
+    Draw geotechnical groundwater table symbol (line + inverted triangles).
+
+    Parameters
+    ----------
+    ax : matplotlib axis
+    y_level : float
+        Elevation of water table
+    x_min, x_max : float
+        Horizontal extent of water table line
+    triangle_positions : list or None
+        x locations for triangles (default evenly spaced)
+    triangle_size : int
+        Size of triangle markers
+    linewidth : float
+        Line thickness
+    linestyle : str or tuple
+        Line dash type ('-', '--', ':', '-.', or custom dash)
+    color : str
+        Color of symbol
+    """
+
+    # draw water table line
+    ax.plot([x_min, x_max], [y_level, y_level],
+            color=color,
+            linewidth=linewidth,
+            linestyle=linestyle,
+            zorder=zorder)
+
+    # default triangle positions
+    if triangle_positions is None:
+        triangle_positions = np.linspace(x_min, x_max, 3)[1:2]
+
+    # offset so triangle tip sits on line
+    triangle_offset = triangle_offset_factor * (ax.get_ylim()[1] - ax.get_ylim()[0])
+
+    # draw inverted triangles
+    y_tri = [y_level + triangle_offset] * len(triangle_positions)
+
+    if triangle_color is None:
+        triangle_color = color
+    
+    if triangle_hollow:
+        ax.scatter(
+            triangle_positions,
+            y_tri,
+            marker='v',
+            s=triangle_size,
+            facecolors='none',
+            edgecolors=triangle_color,
+            linewidths=linewidth,
+            zorder=zorder+1
+        )
+    else:
+        ax.scatter(
+            triangle_positions,
+            y_tri,
+            marker='v',
+            s=triangle_size,
+            color=triangle_color,
+            zorder=zorder+1
+        )
+
+    handle = None
+    if label is not None:
+        handle = Line2D([0], [0],
+                        color=color,
+                        marker='v',
+                        markersize=np.sqrt(triangle_size),
+                        linestyle=linestyle,
+                        markerfacecolor='none' if triangle_hollow else triangle_color,
+                        markeredgecolor=triangle_color,
+                        linewidth=linewidth)
+    return handle, label
+
+def _get_clean_legend_labels(init_legend_labels):
+    """
+    Convert original layer/anomaly IDs to descriptive legend labels.
+    Numeric → geomaterials (G)
+    Underscore-prefixed → anomalies/utilities (A)
+    If any existing values have prefix G_ (like "G_1"), numeric layers get "_G" prefix.
+    """
+    # conflict check: any value with "_" whose prefix is "G"
+    conflict = False
+    for v in init_legend_labels:
+        s = str(v)
+        if "_" in s:
+            prefix = s.split("_")[0]
+            if prefix == "G":
+                conflict = True
+                break
+
+    labels = []
+    for v in init_legend_labels:
+        s = str(v)
+        if "_" in s:           # utility / anomaly
+            labels.append(s.replace("_", ""))
+        elif s.isnumeric():             # geomaterial / layer
+            labels.append(f"_G{s}" if conflict else f"G{s}")
+        else:
+            labels.append(s)            # leave other strings as-is
+
+    return labels
+    
 def is_integer_value(value):
     try: 
         # Convert value to float, then to int, and back to string to check if integer-like
