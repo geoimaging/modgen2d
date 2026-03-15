@@ -190,7 +190,7 @@ class GeneratedModel2D:
 
         return new_profile_instance
     
-    def plot_lit_domain(self, ax=None, discrete_point_size=0, legend=True,
+    def plot_lit_domain(self, ax=None, discrete_point_size=0, white_edges_size=0, plot_gwt=True, gwt_kw = {}, legend=True, try_clean_legend=False,
                         use_lit_id2material_dict = True, title='Lithological Domain',
                         plot_interfaces = False,
                         color_map = {
@@ -206,6 +206,12 @@ class GeneratedModel2D:
             Matplotlib axes to plot on.
         discrete_point_size : float, default 0
             Size of scatter points representing grid centers.
+        white_edges_size : float, default 0
+            Size of white edges of pixels.
+        plot_gwt : bool, default True
+            Plot groundwater table.
+        gwt_kw : dict,
+            keywords for controlling gwt_plot
         legend : bool, default True
             Display a legend.
         use_lit_id2material_dict : bool, default True
@@ -227,13 +233,14 @@ class GeneratedModel2D:
         else:
             lit_id2material_dict = None 
         
-        ax = self.lit_domain.plot(ax=ax, discrete_point_size=discrete_point_size, legend=legend,
+        ax = self.lit_domain.plot(ax=ax, discrete_point_size=discrete_point_size, white_edges_size=white_edges_size,
+                                  plot_gwt=plot_gwt, gwt_kw=gwt_kw, legend=legend, try_clean_legend=try_clean_legend,
                id2material_dict = lit_id2material_dict, title=title, plot_interfaces=plot_interfaces,
                color_map = color_map)
 
         return ax
     
-    def plot_profile(self, main_property_name, ax=None, discrete_point_size=0, plot_gwt = True,
+    def plot_profile(self, main_property_name, ax=None, discrete_point_size=0, white_edges_size=0, plot_gwt = True, gwt_kw={},
                vlog = False, vmin=None, vmax=None, cmap='gist_earth_r', 
                title = 'auto', legend = True, legend_label = None, legendkwargs_dict={},
                origin_x = 0,
@@ -249,8 +256,12 @@ class GeneratedModel2D:
             Matplotlib axes to plot on.
         discrete_point_size : float, default 0
             Size of scatter points.
+        white_edges_size : float, default 0
+            Size of white edges of pixels.
         plot_gwt : bool, default True
             Plot groundwater table.
+        gwt_kw : dict,
+            keywords for controlling gwt_plot
         vlog : bool, default False
             Apply logarithmic normalization.
         vmin, vmax : float, optional
@@ -289,7 +300,7 @@ class GeneratedModel2D:
         
         simulated_profile_np = self.simulated_profiles[main_property_name]
         ax, vmin, vmax = _plot_property_profile(self.lit_domain.domain, simulated_profile_np, self.lit_domain.gwt_depth,
-                                               ax=ax, discrete_point_size=discrete_point_size, plot_gwt = plot_gwt,
+                                               ax=ax, discrete_point_size=discrete_point_size, white_edges_size=white_edges_size, plot_gwt = plot_gwt, gwt_kw=gwt_kw,
                                                vlog = vlog, vmin=vmin, vmax=vmax, cmap=cmap, legend=legend,
                                                legend_label = legend_label, legendkwargs_dict=legendkwargs_dict,
                                                origin_x = origin_x, origin_z = origin_z)

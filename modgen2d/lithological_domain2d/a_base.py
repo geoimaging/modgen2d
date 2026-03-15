@@ -221,7 +221,7 @@ class LithologicalDomain2DReadOnly():
             raise ValueError(f"Matrix shape mismatch. Domain shape {domain_shape} != lit_shape {lit_shape}.")
         
     
-    def plot(self, ax=None, discrete_point_size=0, legend=True,
+    def plot(self, ax=None, discrete_point_size=0, white_edges_size=0, plot_gwt=True, gwt_kw={}, legend=True, try_clean_legend=False,
                id2material_dict = None, title='Lithological Domain',
                plot_interfaces = False,
                color_map = {
@@ -239,6 +239,13 @@ class LithologicalDomain2DReadOnly():
             Axes object to draw on. Creates a new figure if None.
         discrete_point_size : float, optional
             Size of discrete scatter points; 0 disables scatter.
+        white_edges_size : float, default 0
+            Size of white edges of pixels.
+        plot_gwt : bool, default True
+            Plot groundwater table.
+        gwt_kw : dict,
+            keywords for controlling gwt_plot
+        
         legend : bool, optional
             Whether to display the legend.
         id2material_dict : dict, optional
@@ -255,8 +262,13 @@ class LithologicalDomain2DReadOnly():
         if ax is None:
             fig,ax = plt.subplots()
 
+        if id2material_dict is None and try_clean_legend:
+            feature_id_dict = self.get_feature_id_and_lit_val()
+            
+        
         ax = _plot_lit_domain(self.domain, self.lithological_matrix, self.gwt_depth, ax=ax, 
-                        discrete_point_size=discrete_point_size, legend=legend,
+                        discrete_point_size=discrete_point_size, white_edges_size=white_edges_size, 
+                        plot_gwt=plot_gwt, gwt_kw = gwt_kw, legend=legend, try_clean_legend=try_clean_legend,
                         id2material_dict = id2material_dict, title=title,
                         color_map = color_map, origin_x=origin_x, origin_z=origin_z)
             

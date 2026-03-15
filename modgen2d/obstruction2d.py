@@ -50,7 +50,7 @@ class _Obstruction2DFunctions:
         self.ref_xz_override = None # Reference coordinates [x, z] if manual set 
         self.description = ''
      
-    def plot(self, ax=None, discrete_point_size=0, legend = True, 
+    def plot(self, ax=None, discrete_point_size=0, white_edges_size = 0, ref_point_size = 1, legend = True, 
              title = 'Grid Visualization',
              show_padding = False,
              color_map_items = plt.get_cmap('Set3', 10)):
@@ -130,14 +130,33 @@ class _Obstruction2DFunctions:
                        marker='s',          # square marker
                        s=discrete_point_size, 
                        ) 
+
+        if white_edges_size != 0:
+            edges_x = (np.arange(x_lim_grid) - extra_grid) * plot_del_x
+            edges_z = (np.arange(z_lim_grid) - extra_grid) * plot_del_z
         
+            for e in edges_x:
+                ax.axvline(e, color='white', linewidth=white_edges_size)
+        
+            for e in edges_z:
+                ax.axhline(e, color='white', linewidth=white_edges_size)
+
         ref_xz_in_unit_length = self.get_ref_xz_in_unit_length()
             
-        ax.scatter(ref_xz_in_unit_length[0], ref_xz_in_unit_length[1], color='red', label='Reference Coordinate', zorder=5)
+        ax.scatter(ref_xz_in_unit_length[0], ref_xz_in_unit_length[1], color='red', s=ref_point_size, label='Reference Coordinate', zorder=5)
         # Create a custom legend
         if legend:
             handles = [plt.Line2D([0], [0], marker='s', color=color_mapping[value], markersize=10, linestyle='') for value in unique_values]
-            ax.legend(handles, unique_values, title="Legend", bbox_to_anchor=(1.05, 1), loc='upper left')
+
+            # add reference marker
+            handles.append(
+                plt.Line2D([0], [0], marker='o', color='red',
+                           markersize=ref_point_size, linestyle='')
+            )
+            
+            labels = list(unique_values) + ['Reference Coordinate']
+
+            ax.legend(handles, labels, title="Legend", bbox_to_anchor=(1.05, 1), loc='upper left')
         ax.set_title(title)
         ax.set_xlabel('X Coordinate')
         ax.set_ylabel('Z Coordinate')
