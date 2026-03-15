@@ -3,7 +3,7 @@
 """Discretized 2D computational domain utilities. Copied from Modgen2d"""
 
 import numpy as np
-from .units_config import Units
+from .model_resolution import ModelResolution
 
 class DiscretizedDomain2D():
     """
@@ -13,18 +13,18 @@ class DiscretizedDomain2D():
     for each element.
     """
     
-    def __init__(self, span_x: float, span_z: float, dx: float, dz: float, units_config = None):
+    def __init__(self, span_x: float, span_z: float, dx: float, dz: float, model_resolution_config:ModelResolution = None):
         """
         Initialize a DiscretizedDomain2D class object.
         
-         Parameters
+        Parameters
         ----------
         span_x, span_z : float
             Domain size in the x-direction and z-direction respectively (physical units).
         dx, dz : float
             Discretization step in x-direction ans z-direction (physical units).
-        units_config : Units, optional
-            Unit configuration for conversion. Defaults to ``Units()`` -> physical units is "m", and domain units is "cm".
+        model_resolution_config : ModelResolution, optional
+            ModelResolution configuration for conversion. Defaults to ``ModelResolution()`` -> physical units is "m", and min_dl = 0.0001.
 
         Raises
         ------
@@ -43,25 +43,25 @@ class DiscretizedDomain2D():
         #     dx = span_x  # Making sure there is only one point in x axis.
         #     self._dim = 1 #2d
         
-        if units_config is None:
-            units_config = Units() # Default config - cm, m
+        if model_resolution_config is None:
+            model_resolution_config = ModelResolution() # Default config - cm, m
         
-        self.units_config = units_config
+        self.model_resolution_config = model_resolution_config
         
-        self._spans_in_domain_len_units = [units_config.to_domain_length_unit(span_x),
-                                           units_config.to_domain_length_unit(span_z)]
+        self._spans_in_domain_len_units = [model_resolution_config.to_domain_length_unit(span_x),
+                                           model_resolution_config.to_domain_length_unit(span_z)]
         
-        self._dhs_in_domain_len_units = [units_config.to_domain_length_unit(dx), 
-                                         units_config.to_domain_length_unit(dz)]
+        self._dhs_in_domain_len_units = [model_resolution_config.to_domain_length_unit(dx), 
+                                         model_resolution_config.to_domain_length_unit(dz)]
         
         # check discretization is valid
         if not self.is_valid_mesh(self._spans_in_domain_len_units, self._dhs_in_domain_len_units):
-            msg = f"Requirements: spans and dels must be positive and spans in {units_config.domain_length_unit}={self._spans_in_domain_len_units} must be divisible by dhs in {units_config.domain_length_unit}={self._dhs_in_domain_len_units}."
+            msg = f"Requirements: spans and dels must be positive and spans in domain_units (where 1 {model_resolution_config.physical_length_unit} = {model_resolution_config.max_grid_density} domain_units)={self._spans_in_domain_len_units} must be divisible by dhs in domain_units={self._dhs_in_domain_len_units}."
             raise ValueError(msg)
         
         # define centers of each element
-        self.x_centers = (np.arange(0, self._spans_in_domain_len_units[0], self._dhs_in_domain_len_units[0]) + self._dhs_in_domain_len_units[0] / 2)/units_config.conversion_factor
-        self.z_centers = (np.arange(0, self._spans_in_domain_len_units[1], self._dhs_in_domain_len_units[1]) + self._dhs_in_domain_len_units[1] / 2)/units_config.conversion_factor
+        self.x_centers = (np.arange(0, self._spans_in_domain_len_units[0], self._dhs_in_domain_len_units[0]) + self._dhs_in_domain_len_units[0] / 2)/model_resolution_config.conversion_factor
+        self.z_centers = (np.arange(0, self._spans_in_domain_len_units[1], self._dhs_in_domain_len_units[1]) + self._dhs_in_domain_len_units[1] / 2)/model_resolution_config.conversion_factor
         self.shape = (len(self.x_centers), len(self.z_centers))
         
     @staticmethod
@@ -87,8 +87,8 @@ class DiscretizedDomain2D():
     def can_domain_be_remeshed(self, new_dx: float, new_dz: float):
         """Check if the domain can be remeshed."""
         new_dhs_in_domain_len_units = [
-            self.units_config.to_domain_length_unit(new_dx), 
-            self.units_config.to_domain_length_unit(new_dz)
+            self.model_resolution_config.to_domain_length_unit(new_dx), 
+            self.model_resolution_config.to_domain_length_unit(new_dz)
             ]
         return self.is_valid_mesh(self._spans_in_domain_len_units, new_dhs_in_domain_len_units)
 
@@ -116,9 +116,9 @@ class DiscretizedDomain2D():
             new_dz = self.dhs[1]
         
         # if inplace:
-            # self.__init__(self.spans[0], self.spans[1], new_dx, new_dz, self.units_config)
+            # self.__init__(self.spans[0], self.spans[1], new_dx, new_dz, self.model_resolution_config)
         
-        return DiscretizedDomain2D(self.spans[0], self.spans[1], new_dx, new_dz, self.units_config)
+        return DiscretizedDomain2D(self.spans[0], self.spans[1], new_dx, new_dz, self.model_resolution_config)
     
     @staticmethod
     def get_minimum_domain(domain2d_list:list):
@@ -143,14 +143,14 @@ class DiscretizedDomain2D():
                 min_dh_z = min(min_dh_x, lit_domain.dhs[1])
         
         return DiscretizedDomain2D(base_domain.spans[0], base_domain.spans[1],
-                                   min_dh_x, min_dh_z, base_domain.units_config)
+                                   min_dh_x, min_dh_z, base_domain.model_resolution_config)
         
     def is_equivalent(self, other):
         """Check span and unit equivalence."""
         if not isinstance(other, DiscretizedDomain2D):
             raise ValueError("Other is not discretized domain")
         
-        if self.units_config != other.units_config:
+        if self.model_resolution_config != other.model_resolution_config:
             return False
             
         spans_check = np.allclose(self._spans_in_domain_len_units, other._spans_in_domain_len_units)
@@ -161,7 +161,7 @@ class DiscretizedDomain2D():
         if not isinstance(other, DiscretizedDomain2D):
             return NotImplemented
         
-        units_check = self.units_config == other.units_config
+        units_check = self.model_resolution_config == other.model_resolution_config
         spans_check = np.allclose(self._spans_in_domain_len_units, other._spans_in_domain_len_units)
         dhs_check = np.allclose(self._dhs_in_domain_len_units, other._dhs_in_domain_len_units)
         return (
@@ -172,11 +172,11 @@ class DiscretizedDomain2D():
           
     @property
     def spans(self):
-        return [i/self.units_config.conversion_factor for i in self._spans_in_domain_len_units]
+        return [i/self.model_resolution_config.max_grid_density for i in self._spans_in_domain_len_units]
 
     @property
     def dhs(self):
-        return [i/self.units_config.conversion_factor for i in self._dhs_in_domain_len_units]
+        return [i/self.model_resolution_config.max_grid_density for i in self._dhs_in_domain_len_units]
     
     @property
     def x_edges(self):
@@ -212,7 +212,7 @@ class DiscretizedDomain2D():
         return {
             'spans_xz': self.spans,
             'dhs_xz': self.dhs,
-            'units_config':self.units_config.get_config
+            'model_resolution_config':self.model_resolution_config.get_config
         }
     
     @classmethod
@@ -235,7 +235,7 @@ class DiscretizedDomain2D():
         try:
             spans = config_dict['spans_xz']
             dhs = config_dict['dhs_xz']
-            units_config = Units.from_config(config_dict['units_config'])
-            return cls(*spans, *dhs, units_config)
+            model_resolution_config = ModelResolution.from_config(config_dict['model_resolution_config'])
+            return cls(*spans, *dhs, model_resolution_config)
         except (KeyError, TypeError) as e:
             raise ValueError(f"Invalid config dictionary: {e}")
