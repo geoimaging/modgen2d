@@ -4,7 +4,7 @@ import warnings
 from .a_base import LithologicalDomain2DReadOnly
 from .a_from_interface import LithologicalDomain2D
 from .a_from_obs2d import LithologicalDomain2DFromObstruction2D
-from modgen2d.global_soil_interface_config import GlobalSoilInterfaceConfig
+from modgen2d.interface.global_soil_interface_config import GlobalSoilInterfaceConfig
 
 class LithologicalDomain2DCollection:
     """

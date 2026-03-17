@@ -11,7 +11,7 @@ import copy
 
 from modgen2d.discretized_domain2d import DiscretizedDomain2D
 from modgen2d.obstruction2d import Obstruction2D
-from modgen2d.global_soil_interface_config import GlobalSoilInterfaceConfig
+from modgen2d.interface.global_soil_interface_config import GlobalSoilInterfaceConfig
 from .a_base import LithologicalDomain2DReadOnly
 from .common_functions import _warn_if_changed, _merge_lithological_domains
   

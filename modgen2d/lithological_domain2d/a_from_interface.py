@@ -9,8 +9,8 @@ import numpy as np
 import copy,warnings
 
 from modgen2d.discretized_domain2d import DiscretizedDomain2D
-from modgen2d.discretized_interfaces2d import DiscretizedInterfaces2D
-from modgen2d.global_soil_interface_config import GlobalSoilInterfaceConfig
+from modgen2d.interface import DiscretizedInterfaces2D
+from modgen2d.interface.global_soil_interface_config import GlobalSoilInterfaceConfig
 
 from .a_base import LithologicalDomain2DReadOnly
 from .a_from_obs2d import LithologicalDomain2DFromObstruction2D
