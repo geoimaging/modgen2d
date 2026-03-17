@@ -11,7 +11,7 @@ class PropertyDistribution:
         Defines the probabilistic distribution of a material property.
         A property is described by a mean distribution and an optional standard deviation (or coefficient of variation) distribution.
     """
-    def __init__(self, property_name, mean_distribution, stdev_distribution=None, stdev_type = 'stdev', description = ''):
+    def __init__(self, property_name, mean_distribution, stdev_distribution=None, stdev_type = 'stdev', mean_slope_with_depth_distribution = None, description = ''):
         """
         Initializes the 'PropertyDistribution' object.
 
@@ -27,6 +27,8 @@ class PropertyDistribution:
         stdev_type : {'stdev', 'cov'}, optional
             Type of variability definition. If 'cov', standard deviation is
             computed as mean × cov.
+        mean_slope_with_depth_distribution : RandomGeneratorAbstract
+            Random generator defining the slope of mean value (w/ depth). None, if not provided!
         description : str, optional
             Human-readable description of conditions or assumptions.
         """
@@ -43,6 +45,12 @@ class PropertyDistribution:
         else:
             self._check_distribution(stdev_distribution)
             self._stdev_distribution = stdev_distribution 
+            
+        if mean_slope_with_depth_distribution is None:
+            self._mean_slope_with_depth_distribution = None
+        else:
+            self._check_distribution(mean_slope_with_depth_distribution)
+            self._mean_slope_with_depth_distribution = mean_slope_with_depth_distribution 
 
         self._description = description # Condition details: Eg. If mean or variance is dependent to anything, if so will have a user-understandable conditions mentioned like "soil type", "Vs > "
         self._check = False # Validation check flag
@@ -79,6 +87,10 @@ class PropertyDistribution:
         self._check_distribution(self._mean_distribution)
         if self._stdev_distribution is not None:
             self._check_distribution(self._stdev_distribution)
+            
+        if self._mean_slope_with_depth_distribution is not None:
+            self._check_distribution(self._mean_slope_with_depth_distribution)
+            
         self._check = True
             
     @property
@@ -97,6 +109,10 @@ class PropertyDistribution:
     def stdev_type(self):
         return self._stdev_type
 
+    @property
+    def mean_slope_with_depth_distribution(self):
+        return self._mean_slope_with_depth_distribution
+    
     @property
     def description(self):
         return self._description
