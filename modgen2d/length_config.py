@@ -2,14 +2,14 @@
 
 from math import log10, isclose
 
-class ModelResolution:
+class LengthConfig:
     """Manage the physical length unit and minimum spatial resolution
     used by the computational model."""
     
     def __init__(
         self,
         physical_length_unit: str = "m",
-        min_dl: float = 0.0001,
+        min_dl: float = None,
         max_grid_density: int = None,
     ):
         """
@@ -23,7 +23,7 @@ class ModelResolution:
         min_dl: float, optional
             Minimum spatial increment (dl) allowed by the model for stable remeshing.
             It's 'inverse' must be 10^N where N is a whole number. 
-            All dl values must be multiples of this value. Defaults to 0.0001.
+            All dl values must be multiples of this value. 
             Can be set to None if max_grid_density is provided.
         max_grid_density : int, optional
             If min_dl is None, then max_grid_density is used. 
@@ -40,7 +40,7 @@ class ModelResolution:
         Notes
         -----
         - Users specify all model parameters and geometry in **length units** (e.g., meters).
-        - Users can provide either max
+        - Users must provide either min_dl or max_grid_density
         - Internally, discretized domain dimensions are internally converted to **domain length units** for computation,
         ensuring that domain spans and grid sizes remain integer-based.
 
@@ -52,9 +52,6 @@ class ModelResolution:
         >>> u.to_physical(250)
         2.5
         """
-        self.physical_length_unit = None
-        self.min_dl = None
-        self.max_grid_density = None
         self.__set_model_resolutions(physical_length_unit, min_dl, max_grid_density)
 
     def __set_model_resolutions(self, physical_length_unit: str, min_dl: float, max_grid_density:int):
@@ -176,7 +173,7 @@ class ModelResolution:
         return domain_value / self.max_grid_density
     
     def __eq__(self, other):
-        if not isinstance(other, ModelResolution):
+        if not isinstance(other, LengthConfig):
             return NotImplemented
         return (
             self.physical_length_unit == other.physical_length_unit

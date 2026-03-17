@@ -13,7 +13,7 @@ from modgen2d.spatial_simulator2d import CovarianceDecompositionSimulator, Spati
 from modgen2d.generated_model2d import GeneratedModel2D
 from modgen2d.lithological_domain2d import LithologicalDomain2DCollection, LithologicalDomain2DReadOnly
 from modgen2d.main_properties import MainPropertiesConfig
-from modgen2d.global_soil_interface_config import GlobalSoilInterfaceConfig
+from modgen2d.interface.global_soil_interface_config import GlobalSoilInterfaceConfig
 from modgen2d.metadata import __version__
 
 class GeneratedProfileCollection2DReadOnly:

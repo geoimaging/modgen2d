@@ -6,7 +6,7 @@
 """Global configuration for two-dimensional soil interfaces."""
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        
 import numpy as np
-from modgen2d.discretized_interfaces2d import DiscretizedInterfaces2D
+from ._read_only import DiscretizedInterfaces2DReadOnly
 from modgen2d.meta_class import _StrictProtectedMeta, _internal_classmethod, classproperty
 
 class GlobalSoilInterfaceConfig(metaclass=_StrictProtectedMeta):
@@ -38,7 +38,7 @@ class GlobalSoilInterfaceConfig(metaclass=_StrictProtectedMeta):
             setattr(cls, key, val)
     
     @_internal_classmethod
-    def set_soil_interface(cls, discretized_interface2d_instance:DiscretizedInterfaces2D, 
+    def set_soil_interface(cls, discretized_interface2d_instance:DiscretizedInterfaces2DReadOnly, 
                            force_set=False):
         """
         Set the global soil interface configuration. 
@@ -72,7 +72,7 @@ class GlobalSoilInterfaceConfig(metaclass=_StrictProtectedMeta):
         if discretized_interface2d_instance is None:
             raise TypeError("soil_interface2d_instance cannot be None")
         
-        if not isinstance(discretized_interface2d_instance, DiscretizedInterfaces2D):
+        if not isinstance(discretized_interface2d_instance, DiscretizedInterfaces2DReadOnly):
             raise TypeError("discretized_interface2d_instance must be from subclass of DiscretizedInterfaces2D class.")
         
         discretized_interface2d_instance._locked = False
@@ -160,7 +160,7 @@ class GlobalSoilInterfaceConfig(metaclass=_StrictProtectedMeta):
         if not isinstance(config_dict, dict):
             raise TypeError("Expected a dictionary.")
         try:
-            discretized_interface2d_instance = DiscretizedInterfaces2D.from_config(config_dict['_discretized_interface2d_instance'])
+            discretized_interface2d_instance = DiscretizedInterfaces2DReadOnly.from_config(config_dict['_discretized_interface2d_instance'])
             cls.set_soil_interface(discretized_interface2d_instance, force_set=True)
             cls.set_revision_id(config_dict['_revision_id'], True)
 

@@ -4,33 +4,19 @@
 # LICENSE
 
 """
-Public API for the 'modgen2d' generated model subpackage.
-
-This module defines the user-facing interface for accessing generated
-2D subsurface models and collections. Only the classes imported and
-exported here are considered part of the stable public API.
-
-Classes
--------
-GeneratedModel2D
-    Represents a single generated 2D subsurface model.
-GeneratedProfileCollection2DReadOnly
-    Read-only collection of generated 2D profiles.
-GeneratedProfileCollection2D
-    Mutable collection of generated 2D profiles.
-GeneratedModel2DMerged
-    Merged representation of multiple generated 2D models.
+Public API for the 'modgen2d.interface' generated model subpackage.
 """
 
 # PUBLIC API — this is the only file users ever see
 
-from .a_each import GeneratedModel2D
-from .a_merged import GeneratedModel2DMerged
-from .b_collection_main import GeneratedProfileCollection2DReadOnly, GeneratedProfileCollection2D
+from . import rough_interface_generator, interface_smoother, depth_updaters
+from ._read_only import DiscretizedInterfaces2DReadOnly
+from ._main import DiscretizedInterfaces2D
+from ._from_dict import DiscretizedInterfaces2DFromDict
+from .global_soil_interface_config import GlobalSoilInterfaceConfig
 
 __all__ = [
-    "GeneratedModel2D",
-    "GeneratedProfileCollection2DReadOnly",
-    "GeneratedProfileCollection2D",
-    "GeneratedModel2DMerged",
+    "rough_interface_generator", "interface_smoother", "depth_updaters",
+    "DiscretizedInterfaces2D", "DiscretizedInterfaces2DReadOnly", "DiscretizedInterfaces2DFromDict", 
+    "GlobalSoilInterfaceConfig",
 ]

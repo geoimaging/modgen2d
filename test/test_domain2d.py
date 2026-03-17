@@ -7,7 +7,7 @@
 
 import numpy as np
 from testing_tools import unittest, TestCase
-from modgen2d import discretized_domain2d, model_resolution
+from modgen2d import discretized_domain2d, length_config
 
 class TestDomain2D(TestCase):
     @classmethod
@@ -19,7 +19,7 @@ class TestDomain2D(TestCase):
         )
         
         # Custom Units: domain 'l1', physical 'l2', conversion factor 100000
-        units_custom = model_resolution.Units()
+        units_custom = length_config.Units()
         units_custom.set_units('l1', 'l2', 1000000)
         
         cls.units_custom = units_custom
@@ -83,7 +83,7 @@ class TestDomain2D(TestCase):
         diff_units = discretized_domain2d.DiscretizedDomain2D(5, 4, 0.2, 0.5, self.units_custom)
         self.assertNotEqual(self.domain2D1, diff_units)
         
-        other_units = model_resolution.Units()
+        other_units = length_config.Units()
         other_units.set_units("cm2", "m", 100)
         diff_units = discretized_domain2d.DiscretizedDomain2D(5, 4, 0.2, 0.5, other_units)
         self.assertNotEqual(self.domain2D1, diff_units)

@@ -7,7 +7,7 @@
 
 import modgen2d
 from modgen2d import discretized_interfaces2d
-from modgen2d.rough_interface_creator2d import NormalInterfaceGen, UniformInterfaceGen, FBMInterfaceGen
+from modgen2d.interface.rough_interface_generator import NormalInterfaceGen, UniformInterfaceGen, FBMInterfaceGen
 
 import numpy as np
 from testing_tools import unittest, TestCase

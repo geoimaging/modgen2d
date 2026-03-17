@@ -1,10 +1,10 @@
-import modgen2d as mg
+import modgen2d as mg2d
 import numpy as np
 from scipy.stats import multivariate_normal, norm
 
 #================USER DEFINED RANDOM GENERATORS
 
-class CorrelatedUniformBivariateXLogY(mg.RandomGeneratorAbstract):
+class CorrelatedUniformBivariateXLogY(mg2d.random_generators.RandomGeneratorAbstract):
     def __init__(self, u_low_x, u_high_x, u_low_logy, u_high_logy, r_x_logy, rng=None):
         """
         Initializes a correlated uniform random generator using a Gaussian copula.
@@ -61,7 +61,7 @@ class CorrelatedUniformBivariateXLogY(mg.RandomGeneratorAbstract):
         samples = np.column_stack((x, y))
         return samples.reshape(out_shape)
 
-class Discrete2ContinuousPDF(mg.random_generators.DiscreteChoice):
+class Discrete2ContinuousPDF(mg2d.random_generators.DiscreteChoice):
     """
     Convert a discrete probability distribution into a continuous-like PDF
     using linear interpolation.

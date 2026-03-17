@@ -19,7 +19,7 @@ import copy,warnings
 
 from modgen2d.discretized_domain2d import DiscretizedDomain2D
 from modgen2d.obstruction2d import Obstruction2D
-from modgen2d.global_soil_interface_config import GlobalSoilInterfaceConfig
+from modgen2d.interface.global_soil_interface_config import GlobalSoilInterfaceConfig
 from modgen2d._plots import _plot_lit_domain
 
 class LithologicalDomain2DReadOnly():
