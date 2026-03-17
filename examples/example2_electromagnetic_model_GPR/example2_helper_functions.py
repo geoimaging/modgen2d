@@ -2,8 +2,64 @@ import modgen2d as mg2d
 import numpy as np
 from scipy.stats import multivariate_normal, norm
 
-#================USER DEFINED RANDOM GENERATORS
+def add_features_from_pd(rng, ec_main_property_instance, dc_main_property_instance, corr_coeff, feature_id, pd_dataframe, cov_distribution = None, cov_type='cov'):
+    
+    # Get col_name for relevant limit values for both property X (ec) and Y (dc)
+    X_wet_a_colname, X_wet_b_colname = f"ec_wet_a", f"ec_wet_b" 
+    X_dry_a_colname, X_dry_b_colname = f"ec_dry_a", f"ec_dry_b" 
+    Y_wet_a_colname, Y_wet_b_colname = f"dc_wet_a", f"dc_wet_b" 
+    Y_dry_a_colname, Y_dry_b_colname = f"dc_dry_a", f"dc_dry_b" 
 
+    # Running the loop and adding property of each material for that feature
+    for material_name in pd_dataframe.index.tolist():
+        # print(material_name)
+
+        # 
+        # NOTE: This generator takes properties of both main_properties (ec, and dc), and produces two values (Ec and dc) in a single go, unlike default random generators.
+        # Hence, additional post-processing is needed to adjust to format later.
+        
+        X_wet_a, X_wet_b = pd_dataframe[X_wet_a_colname].loc[material_name], pd_dataframe[X_wet_b_colname].loc[material_name]
+        X_dry_a, X_dry_b = pd_dataframe[X_dry_a_colname].loc[material_name], pd_dataframe[X_dry_b_colname].loc[material_name]
+        
+        Y_wet_a, Y_wet_b = pd_dataframe[X_wet_a_colname].loc[material_name], pd_dataframe[X_wet_b_colname].loc[material_name]
+        Y_dry_a, Y_dry_b = pd_dataframe[X_dry_a_colname].loc[material_name], pd_dataframe[X_dry_b_colname].loc[material_name]
+
+        assert not pd.isna(wet_a), f"wet_a for {material_name} must be a number"
+        assert not pd.isna(wet_b), f"wet_a for {material_name} must be a number"
+        # wet_mean_distribution = mg2d.random_generators.Uniform(wet_a, wet_b, rng)
+        wet_mean_distribution = hCorrelatedUniformBivariateXLogY(X_wet_a, X_wet_b, Y_wet_a, Y_wet_b, corr_coeff, rng)  
+        wet_prop = mg2d.PropertyDistribution(main_property_name, wet_mean_distribution, cov_distribution, stdev_type=cov_type)
+
+        dry_mean_distribution = None
+        if pd.isna(X_dry_a) or pd.isna(X_dry_b) or pd.isna(Y_dry_b) or pd.isna(Y_dry_b): 
+            dry_prop = None
+        else:
+            # dry_mean_distribution = mg2d.random_generators.Uniform(dry_a, dry_b, rng)
+            dry_mean_distribution = CorrelatedUniformBivariateXLogY(X_dry_a, X_dry_b, Y_dry_a, Y_dry_b, corr_coeff, rng)
+            dry_prop = mg2d.PropertyDistribution(main_property_name, dry_mean_distribution, cov_distribution, stdev_type=cov_type)
+        
+        ec_main_property_instance.add_material_property_of_feature(feature_id, material_name, wet_prop, dry_prop)
+
+
+        ### Repeat for 'dc'
+        ## But since 'dc' is already generated from the bivariate random generator above, so this is defined for a placeholder in sampled properties only.
+        # Note: right now, ec_main_property_instance will generate ['ec', 'dc'], but we need to post-process to have 'ec' and 'dc' on relevant properties. So, need a placeholder.
+
+        wet_mean_distribution = mg2d.random_generators.Constant(-999, rng)  # Filler to be replaced later
+        wet_prop = mg2d.PropertyDistribution(main_property_name, wet_mean_distribution, cov_distribution, stdev_type=cov_type)
+        dry_mean_distribution = None
+        if pd.isna(X_dry_a) or pd.isna(X_dry_b) or pd.isna(Y_dry_b) or pd.isna(Y_dry_b): 
+            dry_prop = None
+        else:
+            # dry_mean_distribution = mg2d.random_generators.Uniform(dry_a, dry_b, rng)
+            dry_mean_distribution = mg2d.random_generators.Constant(-999, rng)  # Filler to be replaced later
+            dry_prop = mg2d.PropertyDistribution(main_property_name, dry_mean_distribution, cov_distribution, stdev_type=cov_type)
+        
+        dc_main_property_instance.add_material_property_of_feature(feature_id, material_name, wet_prop, dry_prop)
+
+    return ec_main_property_instance, dc_main_property_instance
+
+#================USER DEFINED RANDOM GENERATORS
 class CorrelatedUniformBivariateXLogY(mg2d.random_generators.RandomGeneratorAbstract):
     def __init__(self, u_low_x, u_high_x, u_low_logy, u_high_logy, r_x_logy, rng=None):
         """

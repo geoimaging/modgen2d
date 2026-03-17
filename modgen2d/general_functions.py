@@ -157,11 +157,11 @@ def validate_processed_property_dict(processed_property_dict):
     Validates if the given dictionary follows the required format:
     
     {
-        'layer_ID': {'wet': {'mean': float, 'mean_bm': float (optional), 'stdev_or_cov': float, 'stdev_type':string}, 
-                     'dry': {'mean': float, 'mean_bm': float (optional), 'stdev_or_cov': float, 'stdev_type':string}},
-        'layer_ID2': {'wet': {'mean': float, 'mean_bm': float (optional), 'stdev_or_cov': float, 'stdev_type':string}, 
-                     'dry': {'mean': float, 'mean_bm': float (optional), 'stdev_or_cov': float, 'stdev_type':string}},
-        'layer_ID3': {'both': {'mean': float, 'mean_bm': float (optional), 'stdev_or_cov': float, 'stdev_type':string}},                      
+        'layer_ID': {'wet': {'mean': float, 'mean_slope_with_depth': float (optional), 'stdev_or_cov': float, 'stdev_type':string}, 
+                     'dry': {'mean': float, 'mean_slope_with_depth': float (optional), 'stdev_or_cov': float, 'stdev_type':string}},
+        'layer_ID2': {'wet': {'mean': float, 'mean_slope_with_depth': float (optional), 'stdev_or_cov': float, 'stdev_type':string}, 
+                     'dry': {'mean': float, 'mean_slope_with_depth': float (optional), 'stdev_or_cov': float, 'stdev_type':string}},
+        'layer_ID3': {'both': {'mean': float, 'mean_slope_with_depth': float (optional), 'stdev_or_cov': float, 'stdev_type':string}},                      
         ...
     }
 
@@ -170,7 +170,7 @@ def validate_processed_property_dict(processed_property_dict):
         Dictionary containing layer IDs as keys and their corresponding mean and standard deviation values as nested dictionaries.
 
     Returns:
-    processed_property dict; adjusted if mean_bm (optional) is not provided.
+    processed_property dict; adjusted if mean_slope_with_depth (optional) is not provided.
     """
     if processed_property_dict is not None:
         assert isinstance(processed_property_dict, dict), "Input must be a dictionary."
@@ -195,11 +195,11 @@ def validate_processed_property_dict(processed_property_dict):
                     assert isinstance(subvalue['stdev_or_cov'], (int, float)), f"'stdev_or_cov' for '{subkey}' in layer '{key}' must be a number."
                     assert subvalue['stdev_type'] in ['stdev', 'cov'], "stdev_type must be either 'stdev', or 'cov'."
                     
-                    # 'mean_bm' is optional, but if present, must be a number
-                    if 'mean_bm' in subvalue:
-                        assert isinstance(subvalue['mean_bm'], (int, float)), f"'mean_bm' for '{subkey}' in layer '{key}' must be a number (if provided)."
+                    # 'mean_slope_with_depth' is optional, but if present, must be a number
+                    if 'mean_slope_with_depth' in subvalue:
+                        assert isinstance(subvalue['mean_slope_with_depth'], (int, float)), f"'mean_slope_with_depth' for '{subkey}' in layer '{key}' must be a number (if provided)."
                     else:
-                        processed_property_dict[key][subkey]['mean_bm'] = 0.0
+                        processed_property_dict[key][subkey]['mean_slope_with_depth'] = 0.0
 
     return processed_property_dict
 

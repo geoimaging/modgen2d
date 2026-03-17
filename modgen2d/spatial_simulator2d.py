@@ -238,7 +238,7 @@ class SpatialSimulator2D(ABC):
         # print(unique_layers)
         
         mean_matrix = np.full_like(layer_mat, np.nan, dtype=float)
-        mean_bm_matrix = np.full_like(layer_mat, np.nan, dtype = float)
+        mean_slope_with_depth_matrix = np.full_like(layer_mat, np.nan, dtype = float)
         stdev_matrix = np.full_like(layer_mat, np.nan, dtype = float)
         
         # Validate processed_property_dict
@@ -269,7 +269,7 @@ class SpatialSimulator2D(ABC):
                 
                 mask = (layer_mat == layer_id)
                 mean_matrix[mask]    = simulated_val_for_ignored_lit_property
-                mean_bm_matrix[mask] = 0
+                mean_slope_with_depth_matrix[mask] = 0
                 stdev_matrix[mask]   = 0
 
                 # --- Check simulated values---
@@ -290,14 +290,14 @@ class SpatialSimulator2D(ABC):
                 if 'both' in processed_property_dict[layer_id].keys():
                     both = processed_property_dict[layer_id]['both']
                     a_m = both['mean']  
-                    b_m = both['mean_bm']
+                    b_m = both['mean_slope_with_depth']
                     sigma = both['stdev_or_cov']
                     if both['stdev_type'] == 'cov':
                         sigma*=a_m
                     
                     mask = (layer_mat == layer_id)
                     mean_matrix[mask] = a_m
-                    mean_bm_matrix[mask] = b_m
+                    mean_slope_with_depth_matrix[mask] = b_m
                     stdev_matrix[mask] = sigma
                     
                     if warn_inconsistent_stdev:                 
@@ -315,8 +315,8 @@ class SpatialSimulator2D(ABC):
                     dry = processed_property_dict[layer_id]['dry']
                     
                     # Convert cov → stdev if needed
-                    a_wet,  b_wet  = wet['mean'],  wet['mean_bm']
-                    a_dry,  b_dry  = dry['mean'],  dry['mean_bm']
+                    a_wet,  b_wet  = wet['mean'],  wet['mean_slope_with_depth']
+                    a_dry,  b_dry  = dry['mean'],  dry['mean_slope_with_depth']
 
                     s_wet  = wet['stdev_or_cov'] *  (a_wet if  wet['stdev_type'] == 'cov' else 1)
                     s_dry  = dry['stdev_or_cov'] *  (a_dry if  dry['stdev_type'] == 'cov' else 1)
@@ -327,12 +327,12 @@ class SpatialSimulator2D(ABC):
                     mask_wet = mask & gwt_z
                     mask_dry = mask & ~gwt_z
 
-                    # Assign mean, mean_bm, and stdev
+                    # Assign mean, mean_slope_with_depth, and stdev
                     mean_matrix[mask_wet]    = a_wet
                     mean_matrix[mask_dry]    = a_dry
 
-                    mean_bm_matrix[mask_wet] = b_wet
-                    mean_bm_matrix[mask_dry] = b_dry
+                    mean_slope_with_depth_matrix[mask_wet] = b_wet
+                    mean_slope_with_depth_matrix[mask_dry] = b_dry
 
                     stdev_matrix[mask_wet]   = s_wet
                     stdev_matrix[mask_dry]   = s_dry
@@ -360,10 +360,10 @@ class SpatialSimulator2D(ABC):
                                 f"Layer {layer_id} (dry): sigma={s_dry} but all simulated values are zero."
                             )
 
-        if np.isnan(mean_matrix).any() or np.isnan(mean_bm_matrix).any() or np.isnan(stdev_matrix).any():
+        if np.isnan(mean_matrix).any() or np.isnan(mean_slope_with_depth_matrix).any() or np.isnan(stdev_matrix).any():
             raise RuntimeError("NaN values remain in property matrices—processed_property_dict or ignore IDs may be inconsistent.")
 
-        simulated_2d = (mean_matrix + mean_bm_matrix * z_coord_mat) + simulated_zvals_lit_profile * stdev_matrix
+        simulated_2d = (mean_matrix + mean_slope_with_depth_matrix * z_coord_mat) + simulated_zvals_lit_profile * stdev_matrix
         
         return simulated_2d
 
@@ -605,10 +605,10 @@ class CovarianceDecompositionSimulator(SpatialSimulator2D):
 def check_for_zero_sigma(processed_property_dict_layer_id):
     """
     Check if the layer_id has zero stdev_or_cov value in all its possible case.
-        {'wet': {'mean': float, 'mean_bm': float (optional), 'stdev_or_cov': float, 'stdev_type':string}, 
-         'dry': {'mean': float, 'mean_bm': float (optional), 'stdev_or_cov': float, 'stdev_type':string}},
+        {'wet': {'mean': float, 'mean_slope_with_depth': float (optional), 'stdev_or_cov': float, 'stdev_type':string}, 
+         'dry': {'mean': float, 'mean_slope_with_depth': float (optional), 'stdev_or_cov': float, 'stdev_type':string}},
     Or,
-        {'both': {'mean': float, 'mean_bm': float (optional), 'stdev_or_cov': float, 'stdev_type':string}},                      
+        {'both': {'mean': float, 'mean_slope_with_depth': float (optional), 'stdev_or_cov': float, 'stdev_type':string}},                      
 
     Parameters:
     processed_property_dict : dict
