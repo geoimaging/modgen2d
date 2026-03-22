@@ -3,17 +3,57 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 
+def add_features_from_pd(pd_dataframe, main_property_instance, main_property_name, feature_id,  rng, cov_distribution = None, cov_type='cov'):
+    wet_a_colname, wet_b_colname = f"{main_property_name}_wet_a", f"{main_property_name}_wet_b" 
+    dry_a_colname, dry_b_colname = f"{main_property_name}_dry_a", f"{main_property_name}_dry_b" 
+    wet_slope_colname, dry_slope_colname = f"{main_property_name}_wet_slope", f"{main_property_name}_dry_slope" 
+    for material_name in pd_dataframe.index.tolist():
+        # print(material_name)
+        wet_a, wet_b = pd_dataframe[wet_a_colname].loc[material_name], pd_dataframe[wet_b_colname].loc[material_name]
+        dry_a, dry_b = pd_dataframe[dry_a_colname].loc[material_name], pd_dataframe[dry_b_colname].loc[material_name]
+        wet_slope, dry_slope = pd_dataframe[wet_slope_colname].loc[material_name], pd_dataframe[dry_slope_colname].loc[material_name]
+        
+        assert not pd.isna(wet_a), f"wet_a for {material_name} must be a number"
+        assert not pd.isna(wet_b), f"wet_a for {material_name} must be a number"
 
-def Vp_profile(Vs_profile, miu_profile):
-    """
-    Computes P-wave velocity (Vp) from S-wave velocity (Vs) and Poisson's ratio (μ)
-    for element-wise 3D NumPy arrays.
+        if pd.isna(wet_slope):
+            wet_mean_slope_with_depth_distribution = None
+        else:
+            wet_mean_slope_with_depth_distribution = mg2d.random_generators.Constant(wet_slope)
+        
+        wet_mean_distribution = mg2d.random_generators.Uniform(wet_a, wet_b, rng)
+        wet_prop = mg2d.PropertyDistribution(main_property_name, wet_mean_distribution,
+                                             cov_distribution, stdev_type=cov_type,
+                                             mean_slope_with_depth_distribution = wet_mean_slope_with_depth_distribution)
 
-    Formula:
-        Vp = Vs * sqrt((1 / (1 - 2*μ)) + 1)
-    """
-    return Vs_profile * np.sqrt((1 / (1 - 2 * miu_profile)) + 1)
+        dry_mean_distribution = None
+        if pd.isna(dry_a) or pd.isna(dry_b): 
+            dry_prop = None
+        else:
+            if pd.isna(dry_slope):
+                dry_mean_slope_with_depth_distribution = None
+            else:
+                dry_mean_slope_with_depth_distribution = mg2d.random_generators.Constant(dry_slope)
+            
+            dry_mean_distribution = mg2d.random_generators.Uniform(dry_a, dry_b, rng)
+            dry_prop = mg2d.PropertyDistribution(main_property_name, dry_mean_distribution, 
+                                                 cov_distribution, stdev_type=cov_type,
+                                                 mean_slope_with_depth_distribution = dry_mean_slope_with_depth_distribution)
+        
+        main_property_instance.add_material_property_of_feature(feature_id, material_name, wet_prop, dry_prop)
+    return main_property_instance
 
+def add_layer0(rng, main_property_instance, main_property_name, air_val, water_val):
+    material_name = 'layer0'
+    feature_id = 'def'
+    wet_mean_distribution = mg2d.random_generators.Constant(water_val, rng)
+    wet_prop = mg2d.PropertyDistribution(main_property_name, wet_mean_distribution)
+
+    dry_mean_distribution = mg2d.random_generators.Constant(air_val, rng)
+    dry_prop = mg2d.PropertyDistribution(main_property_name, dry_mean_distribution)
+    main_property_instance.add_material_property_of_feature(feature_id, material_name, wet_prop, dry_prop)
+    return main_property_instance
+    
 def plot_profile(gen_profile_like, main_property_like, new_simulated_profile, ax=None, discrete_point_size=0, plot_gwt = True,
                vlog = False, vmin=None, vmax=None, cmap='gist_earth_r', 
                title = 'auto', legend = True, legend_label = None, legendkwargs_dict={}):

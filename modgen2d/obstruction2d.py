@@ -51,8 +51,9 @@ class _Obstruction2DFunctions:
         self.description = ''
      
     def plot(self, ax=None, discrete_point_size=0, white_edges_size = 0, ref_point_size = 1, legend = True, 
-             title = 'Grid Visualization',
              show_padding = False,
+             title = 'Grid Visualization',
+             id2label_dict = None, ref_coord_label='Ref. Coord.', legend_title='Legend',
              color_map_items = plt.get_cmap('Set3', 10)):
         """
         Plot the obstruction grid and reference point.
@@ -143,9 +144,14 @@ class _Obstruction2DFunctions:
 
         ref_xz_in_unit_length = self.get_ref_xz_in_unit_length()
             
-        ax.scatter(ref_xz_in_unit_length[0], ref_xz_in_unit_length[1], color='red', s=ref_point_size, label='Reference Coordinate', zorder=5)
+        ax.scatter(ref_xz_in_unit_length[0], ref_xz_in_unit_length[1], color='red', s=ref_point_size, label=ref_coord_label, zorder=5)
         # Create a custom legend
         if legend:
+            labels = unique_values
+            if id2label_dict is not None:
+                labels = [id2label_dict[label] if label in id2label_dict else label for label in labels]
+                labels = [lbl.decode('utf-8') if isinstance(lbl, bytes) else lbl for lbl in labels]
+
             handles = [plt.Line2D([0], [0], marker='s', color=color_mapping[value], markersize=10, linestyle='') for value in unique_values]
 
             # add reference marker
@@ -154,9 +160,9 @@ class _Obstruction2DFunctions:
                            markersize=ref_point_size, linestyle='')
             )
             
-            labels = list(unique_values) + ['Reference Coordinate']
+            labels = list(labels) + [ref_coord_label]
 
-            ax.legend(handles, labels, title="Legend", bbox_to_anchor=(1.05, 1), loc='upper left')
+            ax.legend(handles, labels, title=legend_title, bbox_to_anchor=(1.05, 1), loc='upper left')
         ax.set_title(title)
         ax.set_xlabel('X Coordinate')
         ax.set_ylabel('Z Coordinate')

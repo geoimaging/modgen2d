@@ -273,7 +273,7 @@ class DiscretizedInterfaces2DReadOnly:
             warnings.warn(f"Interfaces might not reflect the exact interpolation in the plots except for 'linear' and 'nearest'. Provided {remesh_tech}.")
         
         
-        for i in np.arange(n_soil_layers-1, -1, -1):
+        for i in np.arange(0, n_soil_layers):
             if i == 0:
                 linestyle = '-'
                 legend_label = 'Interface 0 (Surface)'
