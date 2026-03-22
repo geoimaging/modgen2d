@@ -241,19 +241,22 @@ def __get_unique_lithological_color_map(
     lithological_matrix,
     color_map = {
     'def': plt.get_cmap('tab20', 10),      # For integer values
-    'U_': plt.get_cmap('Set3', 10)   # For "U-{x}" values
+    'U': plt.get_cmap('Set3', 10)   # For "U_{x}" values
 }):
     unique_values = np.unique(lithological_matrix)
     color_mapping = {} 
+    random_assigned_flag = False
+     
     for value in unique_values:
         assigned = False
         # print(value, f.is_integer_value(value))
         for prefix, cmap in color_map.items():
+            prefix = f"{prefix}_"
             if value == 'X':
                 color_mapping[value] = (1.,1.,1.,1.)#'#ffffff'
                 assigned = True
                 
-            elif prefix == 'def' and is_integer_value(value):
+            elif prefix == 'def_' and is_integer_value(value):
                 if value == 0 or value == '0':
                     color_mapping[value] = (1.,1.,1.,1.)#'#ffffff'
                 else:
@@ -273,7 +276,10 @@ def __get_unique_lithological_color_map(
         if not assigned:
             color_val = "#" + ''.join([np.random.choice(list('0123456789ABCDEF')) for _ in range(6)])
             color_mapping[value] = mcolors.to_rgba(color_val)
-            
+            random_assigned_flag = True
+          
+    if random_assigned_flag:
+        warnings.warn("Warning: Some feature_ids of lithological ids in the plot were not found, and used random colors for them. Use color_map argument for consistent colors.")  
     # Create a colormap from the color mapping
     colors = [color_mapping[value] for value in unique_values]
     int_map = {value: color_mapping[value] for idx, value in enumerate(unique_values)}

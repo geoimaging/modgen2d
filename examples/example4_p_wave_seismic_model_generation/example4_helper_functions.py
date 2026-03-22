@@ -3,7 +3,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 
-def add_features_from_pd(rng, main_property_instance, main_property_name, feature_id, pd_dataframe, cov_distribution = None, cov_type='cov'):
+def add_features_from_pd(pd_dataframe, main_property_instance, main_property_name, feature_id, rng, cov_distribution = None, cov_type='cov'):
     wet_a_colname, wet_b_colname = f"{main_property_name}_wet_a", f"{main_property_name}_wet_b" 
     dry_a_colname, dry_b_colname = f"{main_property_name}_dry_a", f"{main_property_name}_dry_b" 
     for material_name in pd_dataframe.index.tolist():

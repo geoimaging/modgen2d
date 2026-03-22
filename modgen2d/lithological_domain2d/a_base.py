@@ -223,10 +223,10 @@ class LithologicalDomain2DReadOnly():
     
     def plot(self, ax=None, discrete_point_size=0, white_edges_size=0, plot_gwt=True, gwt_kw={}, legend=True, try_clean_legend=False,
                id2material_dict = None, title='Lithological Domain',
-               plot_interfaces = False,
+               plot_interfaces = False, plot_interfaces_kw={},
                color_map = {
                         'def': plt.get_cmap('tab20', 10),      # For integer values
-                        'U_': plt.get_cmap('Set3', 10)   # For "U-{x}" values
+                        'U': plt.get_cmap('Set3', 10)   # For "U-{x}" values
                 },
                origin_x = 0,
                origin_z = 0):
@@ -262,8 +262,8 @@ class LithologicalDomain2DReadOnly():
         if ax is None:
             fig,ax = plt.subplots()
 
-        if id2material_dict is None and try_clean_legend:
-            feature_id_dict = self.get_feature_id_and_lit_val()
+        # if id2material_dict is None and try_clean_legend:
+        #     feature_id_dict = self.get_feature_id_and_lit_val()
             
         
         ax = _plot_lit_domain(self.domain, self.lithological_matrix, self.gwt_depth, ax=ax, 
@@ -274,6 +274,10 @@ class LithologicalDomain2DReadOnly():
             
         # Plot Boundary:
         if plot_interfaces:
+            if 'linestyle' not in plot_interfaces_kw.keys():
+                plot_interfaces_kw['linestyle'] = '--'
+            if 'color' not in plot_interfaces_kw.keys():
+                plot_interfaces_kw['color'] = 'k'
             discretizedInterfaces2D_instance = GlobalSoilInterfaceConfig.get_interface_instance()
             if discretizedInterfaces2D_instance is not None:
                 n_soil_layers = discretizedInterfaces2D_instance.n_soil_layers
@@ -290,9 +294,8 @@ class LithologicalDomain2DReadOnly():
                         warnings.warn(f"Interfaces might not reflect the exact interpolation in the plots except for 'linear' and 'nearest'. Provided {remesh_tech}.")
                     ax.plot(discretizedInterfaces2D_instance.domain.get_interface_x_centers + origin_x,
                             discretizedInterfaces2D_instance.interfaces_matrix[:, i] + origin_z,
-                            linestyle='--',
-                            color='k',
                             drawstyle=drawstyle,
+                            **plot_interfaces_kw,
                         )
         
         return ax

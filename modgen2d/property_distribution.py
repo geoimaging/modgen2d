@@ -6,7 +6,7 @@
 from modgen2d.random_generators import RandomGeneratorAbstract
 
 class PropertyDistribution:
-    __slots__ = ['_property_name', '_mean_distribution', '_stdev_distribution', '_stdev_type', '_description', '_check']
+    __slots__ = ['_property_name', '_mean_distribution', '_stdev_distribution', '_stdev_type', '_mean_slope_with_depth_distribution', '_description', '_check']
     """
         Defines the probabilistic distribution of a material property.
         A property is described by a mean distribution and an optional standard deviation (or coefficient of variation) distribution.

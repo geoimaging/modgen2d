@@ -1,6 +1,6 @@
 
 
-"""Discretized 2D computational domain utilities. Copied from Modgen2d"""
+"""Discretized 2D computational domain utilities"""
 
 import numpy as np
 from .length_config import LengthConfig

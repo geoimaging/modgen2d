@@ -187,8 +187,7 @@ class NormalInterfaceGen(AbstractRoughInterfaceGenerator):
             Whether a surface interface is present.
         roughness_multipliers : array-like
             Scaling factor applied to each interface.
-        rng : numpy.random.Generator, optional
-            Random number generator.
+        
         """
         generator_params = {'stdev_in_unit_length': stdev_in_unit_length}
         super().__init__(generator_params, generate_surface, roughness_multipliers)
