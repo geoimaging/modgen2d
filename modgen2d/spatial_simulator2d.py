@@ -182,7 +182,7 @@ class SpatialSimulator2D(ABC):
         return simulated_2d
    
     def simulate_profile_from_zvals_lit_profile(self, simulated_zvals_lit_profile:np.ndarray, lithologicalDomain_class:LithologicalDomain2D,
-                                                  processed_property_dict:dict, gwt_depth=None, warn_inconsistent_stdev = True,
+                                                  processed_property_dict:dict, gwt_depth=None, warn_inconsistent_stdev = False,
                                                   ignore_lithological_ids=['X']):
         """
         Generate a spatial property field from standardized fluctuations.
@@ -368,7 +368,7 @@ class SpatialSimulator2D(ABC):
         return simulated_2d
 
     def simulate_profile_from_lithological_domain(self, lithologicalDomain_class:LithologicalDomain2D,  
-                                                  processed_property_dict=None, gwt_depth=None,
+                                                  processed_property_dict=None, gwt_depth=None, warn_inconsistent_stdev=False,
                                                   ignore_lithological_ids=['X']):
         """
         Simulate a full spatial property field from a lithological domain.
@@ -396,7 +396,7 @@ class SpatialSimulator2D(ABC):
         simulated_profile = self.simulate_profile_from_zvals_lit_profile(
             simulated_zvals_lit_profile, lithologicalDomain_class=lithologicalDomain_class,
             processed_property_dict=processed_property_dict, gwt_depth=gwt_depth,
-            warn_inconsistent_stdev = True, ignore_lithological_ids = ignore_lithological_ids)
+            warn_inconsistent_stdev = warn_inconsistent_stdev, ignore_lithological_ids = ignore_lithological_ids)
         
         return simulated_profile
     
