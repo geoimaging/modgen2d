@@ -227,9 +227,7 @@ class LithologicalDomain2DReadOnly():
                color_map = {
                         'def': plt.get_cmap('tab20', 10),      # For integer values
                         'U': plt.get_cmap('Set3', 10)   # For "U-{x}" values
-                },
-               origin_x = 0,
-               origin_z = 0):
+                }):
         """
         Plot the lithological domain.
 
@@ -256,8 +254,6 @@ class LithologicalDomain2DReadOnly():
             Whether to overlay soil interfaces.
         color_map : dict, optional
             Prefix-to-colormap dictionary.
-        origin_x, origin_z: dict, float
-            Change origin for plotting only. (All plot elements are shifted based on provided origin.) 
         """
         if ax is None:
             fig,ax = plt.subplots()
@@ -270,7 +266,7 @@ class LithologicalDomain2DReadOnly():
                         discrete_point_size=discrete_point_size, white_edges_size=white_edges_size, 
                         plot_gwt=plot_gwt, gwt_kw = gwt_kw, legend=legend, try_clean_legend=try_clean_legend,
                         id2material_dict = id2material_dict, title=title,
-                        color_map = color_map, origin_x=origin_x, origin_z=origin_z)
+                        color_map = color_map)
             
         # Plot Boundary:
         if plot_interfaces:
@@ -292,8 +288,8 @@ class LithologicalDomain2DReadOnly():
                     else:
                         drawstyle = 'steps-mid'
                         warnings.warn(f"Interfaces might not reflect the exact interpolation in the plots except for 'linear' and 'nearest'. Provided {remesh_tech}.")
-                    ax.plot(discretizedInterfaces2D_instance.domain.get_interface_x_centers + origin_x,
-                            discretizedInterfaces2D_instance.interfaces_matrix[:, i] + origin_z,
+                    ax.plot(discretizedInterfaces2D_instance.domain.get_interface_x_centers,
+                            discretizedInterfaces2D_instance.interfaces_matrix[:, i],
                             drawstyle=drawstyle,
                             **plot_interfaces_kw,
                         )

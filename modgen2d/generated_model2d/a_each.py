@@ -242,9 +242,7 @@ class GeneratedModel2D:
     
     def plot_profile(self, main_property_name, ax=None, discrete_point_size=0, white_edges_size=0, plot_gwt = True, gwt_kw={},
                vlog = False, vmin=None, vmax=None, cmap='gist_earth_r', 
-               title = 'auto', legend = True, legend_label = None, legendkwargs_dict={},
-               origin_x = 0,
-               origin_z = 0):
+               title = 'auto', legend = True, legend_label = None, legendkwargs_dict={}):
         """
         Plots a 2D property profile.
 
@@ -276,9 +274,6 @@ class GeneratedModel2D:
             Colorbar label.
         legendkwargs_dict : dict, optional
             Extra keyword arguments for colorbar.
-        origin_x, origin_z: dict, float
-            Change origin for plotting only. (All plot elements are shifted based on provided origin.) 
-        
 
         Returns
         -------
@@ -292,9 +287,6 @@ class GeneratedModel2D:
         if ax is None:
             fig,ax = plt.subplots()
 
-        if origin_z!=0 or origin_x!=0:
-           warnings.warn(f"Plot origins are set to [{origin_x}, {origin_z}].  Note that this origin shift applies only to visualization; all computations are performed assuming an origin at (0, 0).")
-        
         if main_property_name not in self.simulated_profiles.keys():
             raise ValueError(f"main_property_name: {main_property_name} not generated yet.")
         
@@ -302,8 +294,7 @@ class GeneratedModel2D:
         ax, vmin, vmax = _plot_property_profile(self.lit_domain.domain, simulated_profile_np, self.lit_domain.gwt_depth,
                                                ax=ax, discrete_point_size=discrete_point_size, white_edges_size=white_edges_size, plot_gwt = plot_gwt, gwt_kw=gwt_kw,
                                                vlog = vlog, vmin=vmin, vmax=vmax, cmap=cmap, legend=legend,
-                                               legend_label = legend_label, legendkwargs_dict=legendkwargs_dict,
-                                               origin_x = origin_x, origin_z = origin_z)
+                                               legend_label = legend_label, legendkwargs_dict=legendkwargs_dict)
         
         if title=='auto':
             ax.set_title(f"Main_property_name:{main_property_name}")
