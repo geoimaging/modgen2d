@@ -8,8 +8,7 @@ from matplotlib.lines import Line2D
 def _plot_property_profile(domain:DiscretizedDomain2D, simulated_profile_np:np.array, gwt_depth, ax=None, 
                            discrete_point_size=0, white_edges_size = 0, plot_gwt = True, gwt_kw={},
                vlog = False, vmin=None, vmax=None, cmap='gist_earth_r', 
-               legend = True, legend_label = None, legendkwargs_dict={},
-               origin_x = 0, origin_z = 0):
+               legend = True, legend_label = None, legendkwargs_dict={}):
         """
         Plots a 2D property profile.
 
@@ -45,9 +44,6 @@ def _plot_property_profile(domain:DiscretizedDomain2D, simulated_profile_np:np.a
             Colorbar label.
         legendkwargs_dict : dict, optional
             Extra keyword arguments for colorbar.
-        origin_x, origin_z: dict, float
-            Change origin for plotting only. (All plot elements are shifted based on provided origin.) 
-        
 
         Returns
         -------
@@ -61,9 +57,7 @@ def _plot_property_profile(domain:DiscretizedDomain2D, simulated_profile_np:np.a
         if ax is None:
             fig,ax = plt.subplots()
 
-        if origin_z!=0 or origin_x!=0:
-           warnings.warn(f"Plot origins are set to [{origin_x}, {origin_z}].  Note that this origin shift applies only to visualization; all computations are performed assuming an origin at (0, 0).")
-        
+        origin_x, origin_z = domain.origins
         z_centers, x_centers = domain.z_centers, domain.x_centers
         span_x, span_z = domain.spans
         data = simulated_profile_np.T
@@ -131,8 +125,7 @@ def _plot_lit_domain(domain:DiscretizedDomain2D, lithological_matrix:np.array, g
                     color_map = {
                             'def': plt.get_cmap('tab20', 10),      # For integer values
                             'U_': plt.get_cmap('Set3', 10)   # For "U-{x}" values
-                    },
-                    origin_x = 0, origin_z = 0):
+                    }):
     """
     Plot the lithological domain.
 
@@ -163,15 +156,11 @@ def _plot_lit_domain(domain:DiscretizedDomain2D, lithological_matrix:np.array, g
         Plot title.
     color_map : dict, optional
         Prefix-to-colormap dictionary.
-    origin_x, origin_z: dict, float
-        Change origin for plotting only. (All plot elements are shifted based on provided origin.) 
     """
     if ax is None:
         fig,ax = plt.subplots()
 
-    if origin_z!=0 or origin_x!=0:
-        warnings.warn(f"Plot origins are set to [{origin_x}, {origin_z}].  Note that this origin shift applies only to visualization; all computations are performed assuming an origin at (0, 0).")
-    
+    origin_x, origin_z = domain.origins
     z_centers, x_centers = domain.z_centers, domain.x_centers
     span_x, span_z = domain.spans
     
