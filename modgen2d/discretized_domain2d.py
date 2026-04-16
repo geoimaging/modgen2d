@@ -5,7 +5,7 @@
 import numpy as np
 from .length_config import LengthConfig
 import matplotlib.pyplot as plt
-from general_functions import is_integer_value
+from .general_functions import is_integer_value
 
 class DiscretizedDomain2D():
     """
@@ -76,7 +76,7 @@ class DiscretizedDomain2D():
     @staticmethod
     def is_valid_discretization(span_domain_unit, delta_domain_unit, origin_domain_unit):
         """ Check if a span is divisible by a discretization step."""
-        integer_check = is_integer_value(span_domain_unit) and is_integer_value(delta_domain_unit) and not is_integer_value(origin_domain_unit)
+        integer_check = is_integer_value(span_domain_unit) and is_integer_value(delta_domain_unit) and is_integer_value(origin_domain_unit)
         return integer_check and np.isclose(span_domain_unit % delta_domain_unit, 0)
         
     @staticmethod

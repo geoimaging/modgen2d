@@ -120,7 +120,7 @@ def _plot_property_profile(domain:DiscretizedDomain2D, simulated_profile_np:np.a
         return ax, vmin, vmax
     
 def _plot_lit_domain(domain:DiscretizedDomain2D, lithological_matrix:np.array, gwt_depth, ax=None, 
-                     discrete_point_size=0, white_edges_size=1, plot_gwt = True, gwt_kw={}, legend=True, try_clean_legend=False,
+                     discrete_point_size=0, white_edges_size=1, plot_gwt = True, water_alpha = 0.4, gwt_kw={}, legend=True, try_clean_legend=False,
                     id2material_dict = None, title='Lithological Domain',
                     color_map = {
                             'def': plt.get_cmap('tab20', 10),      # For integer values
@@ -177,7 +177,21 @@ def _plot_lit_domain(domain:DiscretizedDomain2D, lithological_matrix:np.array, g
         gwt_handle, gwt_label = _draw_water_table(
             ax, y_level = gwt_depth + origin_z, x_min = 0 + origin_x, x_max=span_x + origin_x,
             **gwt_kw)
-
+        
+        water_top = gwt_depth + origin_z
+        water_bottom = span_z + origin_z
+        
+        ax.fill_between(
+        [0 + origin_x, span_x + origin_x],
+        water_top,
+        water_bottom,
+        color='blue',
+        alpha=water_alpha,
+        zorder=0  # keep it behind scatter if needed
+    )
+        
+        
+        
     x_data, z_data = np.meshgrid(x_centers, z_centers, indexing='ij')
     if discrete_point_size!=0:
         ax.scatter(x_data.flatten() + origin_x, z_data.flatten() + origin_z, 
@@ -201,12 +215,12 @@ def _plot_lit_domain(domain:DiscretizedDomain2D, lithological_matrix:np.array, g
     handles = [plt.Line2D([0], [0], marker='s', color=color_mapping[value], markersize=10, linestyle='') for value in unique_values]
     labels = unique_values
 
-    if id2material_dict is not None:
+    if try_clean_legend:
+        labels = _get_clean_legend_labels(labels)
+    elif id2material_dict is not None:
         labels = [id2material_dict[label][1] if label in id2material_dict else label for label in labels]
         labels = [lbl.decode('utf-8') if isinstance(lbl, bytes) else lbl for lbl in labels]
-    elif try_clean_legend:
-        labels = _get_clean_legend_labels(labels)
-
+    
     if gwt_handle is not None:
         handles.append(gwt_handle)
         labels = list(labels) + [gwt_label]

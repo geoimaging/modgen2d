@@ -190,7 +190,8 @@ class GeneratedModel2D:
 
         return new_profile_instance
     
-    def plot_lit_domain(self, ax=None, discrete_point_size=0, white_edges_size=0, plot_gwt=True, gwt_kw = {}, legend=True, try_clean_legend=False,
+    def plot_lit_domain(self, ax=None, discrete_point_size=0, white_edges_size=0, 
+                        plot_gwt=True, water_alpha=0.4, gwt_kw = {}, legend=True, try_clean_legend=False,
                         use_lit_id2material_dict = True, title='Lithological Domain',
                         plot_interfaces = False, plot_interfaces_kw={},
                         color_map = {
@@ -234,7 +235,7 @@ class GeneratedModel2D:
             lit_id2material_dict = None 
         
         ax = self.lit_domain.plot(ax=ax, discrete_point_size=discrete_point_size, white_edges_size=white_edges_size,
-                                  plot_gwt=plot_gwt, gwt_kw=gwt_kw, legend=legend, try_clean_legend=try_clean_legend,
+                                  plot_gwt=plot_gwt, water_alpha=water_alpha, gwt_kw=gwt_kw, legend=legend, try_clean_legend=try_clean_legend,
                id2material_dict = lit_id2material_dict, title=title, plot_interfaces=plot_interfaces, plot_interfaces_kw=plot_interfaces_kw,
                color_map = color_map)
 
