@@ -50,7 +50,7 @@ class DiscretizedDomain2D():
         #     self._dim = 1 #2d
         
         if length_config is None:
-            length_config = LengthConfig() # Default config - cm, m
+            length_config = LengthConfig("m", max_grid_density=100) # Default config - cm, m
         
         self.length_config = length_config
         
@@ -100,7 +100,7 @@ class DiscretizedDomain2D():
             self.length_config.to_domain_length_unit(new_dx), 
             self.length_config.to_domain_length_unit(new_dz)
             ]
-        return self.is_valid_mesh(self._spans_in_domain_len_units, new_dhs_in_domain_len_units)
+        return self.is_valid_mesh(self._spans_in_domain_len_units, new_dhs_in_domain_len_units, self._origins_in_domain_len_units)
 
     def remesh(self, new_dx:float = None, new_dz:float = None):#, inplace=True):
         """

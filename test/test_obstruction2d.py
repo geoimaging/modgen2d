@@ -1,9 +1,9 @@
 import modgen2d
 import numpy as np
-from testing_tools import unittest, TestCase
+from .testing_tools import unittest, TestCase
 
 class TestObstruction2D(TestCase):
-    @classmethod
+    # @classmethod
     def setUp(self):
         self.obs2D1 = modgen2d.obstruction2d.Obstruction2D(dl=0.5, ref_xz_symbolic=['c', 'C'], snap_to_dl=True)  #Should be same as above
         self.obs2D2 = modgen2d.obstruction2d.Obstruction2D(dl=0.45, ref_xz_symbolic=('C', 0), snap_to_dl=False)  #Should be same as above
@@ -178,7 +178,7 @@ class TestObstruction2D(TestCase):
                              [1, 1, 1, 1, 1, 1, 1, 1],
                              [1, 1, 1, 1, 1, 1, 1, 1],
                              [0, 1, 1, 1, 1, 1, 1, 0],
-                             [0, 0, 1, 1, 1, 1, 0, 0]])  ##Bichar gara
+                             [0, 0, 1, 1, 1, 1, 0, 0]])  
         self.assertArrayAlmostEqual(self.obs2D1.get_ref_xz_in_unit_length(), 
                     np.array([2, 2]))
         
@@ -196,8 +196,37 @@ class TestObstruction2D(TestCase):
                     np.array([0.8, 1.12]))
         
     def test_merge_shapes(self):
-        pass
+        obs1 = modgen2d.obstruction2d.Obstruction2D(dl=0.5)
+        obs2 = modgen2d.obstruction2d.Obstruction2D(dl=0.5)
+
+        obs1.rectangle_2d(1, 1, 1)
+        obs2.rectangle_2d(2, 1, 2)
+
+        obs1.merge_shapes(obs2)
+
+        self.assertEqual(
+            obs1.grid2d[0,0],
+            2
+        )
+
+        self.assertTupleEqual(
+            obs1.grid2d.shape,
+            (4,2)
+        )
     
+    def test_snap_to_dl(self):
+        obs = modgen2d.obstruction2d.Obstruction2D(
+            dl=0.5,
+            snap_to_dl=True
+        )
+
+        obs.rectangle_2d(2.3, 1.2)
+
+        self.assertTupleEqual(
+            obs.grid2d.shape,
+            (5,2)
+        )
+        
     def test_obs_description(self):
         pass    
     
@@ -224,6 +253,40 @@ class TestObstruction2D(TestCase):
         self.assertRaises(ValueError, self.obs2D2.query_points_in_obstruction, [[1,2,3], [4,5,7]])
         self.assertRaises(TypeError, self.obs2D2.query_points_in_obstruction, query_points, ['0',3])
         self.assertRaises(TypeError, self.obs2D2.query_points_in_obstruction, [['1','2']])
-        
+    
+    def test_expand_grid(self):
+        self.obs2D1.rectangle_2d(1, 1, 1)
+        self.obs2D1.expand_grid(5, 4)
+        self.assertTupleEqual(
+            self.obs2D1.grid2d.shape,
+            (5, 4)
+        )
+
+        self.assertEqual(
+            self.obs2D1.grid2d[0,0],
+            1
+        )
+    
+    def test_get_config_and_from_config(self):
+        self.obs2D1.rectangle_2d(2, 3, 1)
+
+        config = self.obs2D1.get_config
+        recreated = modgen2d.obstruction2d.Obstruction2D.from_config(config)
+
+        self.assertArrayEqual(
+            recreated.grid2d,
+            self.obs2D1.grid2d
+        )
+
+        self.assertEqual(
+            recreated.description,
+            self.obs2D1.description
+        )
+
+        self.assertEqual(
+            recreated.dl,
+            self.obs2D1.dl
+        )
+            
 if __name__ == "__main__":
     unittest.main()

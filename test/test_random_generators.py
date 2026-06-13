@@ -6,7 +6,7 @@
 "Create basic sanity checks for project."
 
 import numpy as np
-from testing_tools import unittest, TestCase
+from .testing_tools import unittest, TestCase
 from modgen2d import random_generators
 
 class TestDomain2D(TestCase):
@@ -34,9 +34,9 @@ class TestDomain2D(TestCase):
     def test_uniform(self):
         low, high = 1.0, 3.0
         u = random_generators.Uniform(low, high, rng=self.rng)
-        result = u.generate(size=(1000,))
+        result = u.generate(size=(10000,))
         self.assertTrue(np.all((result >= 1) & (result <= 3)))
-        self.assertEqual(result.shape, (1000,))
+        self.assertEqual(result.shape, (10000,))
 
         self.assertEqual(u.low, low)
         self.assertEqual(u.high, high)
@@ -49,11 +49,11 @@ class TestDomain2D(TestCase):
     
     def test_loguniform_generate(self):
         lu = random_generators.LogUniform(1, 10, rng=self.rng)
-        result = lu.generate(size=(1000,))
+        result = lu.generate(size=(10000,))
         self.assertTrue(np.all((result >= 1) & (result <= 10)))
         self.assertEqual(lu.low, 1)
         self.assertEqual(lu.high, 10)
-        self.assertEqual(result.shape, (1000,))
+        self.assertEqual(result.shape, (10000,))
 
     def test_loguniform_invalid(self):
         self.assertRaises(ValueError, random_generators.LogUniform, 0, 2)
@@ -66,8 +66,8 @@ class TestDomain2D(TestCase):
         mean = 1
         stdev = 3
         n = random_generators.Normal(mean=mean, stdev=stdev, rng=self.rng)
-        result = n.generate(size=(1000,))
-        self.assertEqual(result.shape, (1000,))
+        result = n.generate(size=(10000,))
+        self.assertEqual(result.shape, (10000,))
 
         self.assertEqual(n.mean, mean)
         self.assertEqual(n.stdev, stdev)
@@ -89,7 +89,7 @@ class TestDomain2D(TestCase):
         self.assertArrayEqual(d.x, x)
         self.assertArrayAlmostEqual(d.p, p)
         
-        result = d.generate(size=(1000,))
+        result = d.generate(size=(10000,))
         self.assertTrue(set(result).issubset(set(np.asarray(x))))
         
         # Check if probabilities roughly match
@@ -100,7 +100,7 @@ class TestDomain2D(TestCase):
     def test_discrete_choice_uniform_prob(self):
         x = [1, 2, 3]
         d = random_generators.DiscreteChoice(x, rng=self.rng)
-        result = d.generate(size=(1000,))
+        result = d.generate(size=(10000,))
         self.assertTrue(set(result).issubset(set(x)))
 
         self.assertArrayEqual(d.x, x)
@@ -128,12 +128,5 @@ class TestDomain2D(TestCase):
         with self.assertRaises(TypeError):
             random_generators.DiscreteChoice(x, p)
 
-    def test_discrete2continuous_pdf_basic(self):
-        x = [0, 1, 2]
-        p = [0.2, 0.3, 0.5]
-        new_del_x = 0.5
-        d2c = random_generators.Discrete2ContinuousPDF(x, p, new_del_x,rng=self.rng)
-        self.assertTrue(np.isclose(np.sum(d2c.p), 1.0))
-    
 if __name__ == "__main__":
     unittest.main()

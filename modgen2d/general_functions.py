@@ -77,13 +77,15 @@ def validate_feature_ids_list(features_ids_list:list):
     """
     if 'def' not in features_ids_list:
         raise KeyError("Key must contain 'def'")
-    
-    invalid = [
-        k for k in features_ids_list
-        if k != 'def' and not is_valid_feature_id(k) # only one underscore allowed at end
-    ]
+
+    invalid = []
+    for k in features_ids_list:
+        feature_check, _ = is_valid_feature_id(k)
+        if k != 'def' and not feature_check:
+            invalid.append(k)
+
     if invalid:
-        raise KeyError(f"Invalid keys (must end with '_', no digits, no other underscores): {invalid}")
+        raise KeyError(f"Invalid keys (must have no digits, no other underscores, not 'def', >8letters): {invalid}")
 
 def format_lith_ids(feature_id, vals):
     if feature_id == 'def':

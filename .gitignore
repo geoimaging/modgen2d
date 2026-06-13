@@ -22,3 +22,4 @@ docs/_build
 docs_auto
 generated_h5_files
 uncleaned_notebooks
+test/deprecated
