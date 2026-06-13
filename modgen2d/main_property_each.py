@@ -14,12 +14,8 @@ class MainProperty:
     Manages a primary material property across all features and materials.
 
     This class organizes property distributions by feature ID, material type, and wet/dry state.
-    """
-    def __init__(self, main_property_name, features_config:FeaturesConfig, layer0_flag:bool=False, description=''):
-        """
-        Initializes the 'MainProperty' class. 
-        
-        Note: Must have a layer0 (int/floats, optional): Default property values for air/water(layer0). (Default: None; i.e. Error generated when this value is ever to be used.)
+    
+    Note: Must have a layer0 (int/floats, optional): Default property values for air/water(layer0). (Default: None; i.e. Error generated when this value is ever to be used.)
 
         Parameters
         ----------
@@ -37,7 +33,10 @@ class MainProperty:
         -----
         Hierarchy:
         Main_Properties_Set >> MainProperty instances >> Feature_ID >> material >> wet/dry_properties (Property instance.)
-        
+    """
+    def __init__(self, main_property_name, features_config:FeaturesConfig, layer0_flag:bool=False, description=''):
+        """
+        Initializes the 'MainProperty' class. 
         """
         self._locked = False  #Locked to no edit (IE Checked.)
         

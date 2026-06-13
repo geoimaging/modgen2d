@@ -25,26 +25,26 @@ class DiscretizedInterfaces2D(DiscretizedInterfaces2DReadOnly):
     Interfaces are defined on a discretized 2D domain and may represent soil–soil or surface–soil boundaries.
 
     Once locked, the instance becomes immutable.
+    
+    Parameters
+    ----------
+    domain : DiscretizedDomain2D
+        The DiscretizedDomain2D instance describing the spans and dhs of the domain.
+    n_soil_layers: int
+        Number of soil layers.
+    generate_surface:bool
+        Whether a surface interface is present.
+    roughness_multiplier : list, optional
+        Roughness scaling factors per interface.
+    remesh_interp_method : str, optional
+        Interpolation method used during remeshing. (default: 'linear')
+    rng : numpy.random.Generator, optional
+        Random number generator.
     """
     
     def __init__(self, domain: DiscretizedDomain2D, n_soil_layers: int, generate_surface:bool, remesh_interp_method = 'linear', rng=np.random.default_rng()):
         """
         Initializes the 'InterfaceCreator' class instance. 
-        
-        Parameters
-        ----------
-        domain : DiscretizedDomain2D
-            The DiscretizedDomain2D instance describing the spans and dhs of the domain.
-        n_soil_layers: int
-            Number of soil layers.
-        generate_surface:bool
-            Whether a surface interface is present.
-        roughness_multiplier : list, optional
-            Roughness scaling factors per interface.
-        remesh_interp_method : str, optional
-            Interpolation method used during remeshing. (default: 'linear')
-        rng : numpy.random.Generator, optional
-            Random number generator.
         """
         super().__init__(domain, n_soil_layers, generate_surface, remesh_interp_method, rng)
     
@@ -65,17 +65,19 @@ class DiscretizedInterfaces2D(DiscretizedInterfaces2DReadOnly):
         ----------
         command_object : AbstractRoughInterfaceGenerator | AbstractSmoother | AbstractDepthUpdater | str
             The command to apply. Can be:
+            
             - 'None' : No change
             - `AbstractRoughInterfaceGenerator` instance: generates rough interfaces and updates 
-            `interfaces_matrix` and `_adj_roughness_multipliers`.
+              `interfaces_matrix` and `_adj_roughness_multipliers`.
             - `AbstractSmoother` instance: smooths existing interfaces and updates `interfaces_matrix`.
             - `AbstractDepthUpdater` instance: updates interface depths and updates `interfaces_matrix` and `_ref_x`.
             - `'erosion'` or `'reverse_erosion'` : Resolves overlapping interfaces in `interfaces_matrix`.
             - `'adjust_surface_top_to_zero'`: adjusts the top surface interface to zero.
+        
         **kwargs : dict
             Additional keyword arguments passed to the underlying command method.
 
-        Returnsd
+        Returns
         -------
         self
             Returns the object itself to allow method chaining.
@@ -89,7 +91,7 @@ class DiscretizedInterfaces2D(DiscretizedInterfaces2DReadOnly):
         -----
         - This method modifies `self` in-place and does not return a value.
         - For multi-output commands (e.g., rough interface generation or depth updating), the 
-        outputs are automatically applied to the corresponding attributes of `self`.
+          outputs are automatically applied to the corresponding attributes of `self`.
         - String commands are dispatched internally to the corresponding methods.
         """
         

@@ -17,21 +17,21 @@ from scipy.interpolate import RegularGridInterpolator
 class _Obstruction2DFunctions:
     """
     Base utilities for 2D obstruction grids.
+    
+    Parameters
+    ----------
+    dl : float
+        Grid spacing for the obstruction.
+    ref_xz_symbolic : list of length 2, optional
+        Acceptable values: ['o', 'c'] or ['O', 'C'] or ['0', 'c'], etc. [0, '0', 'O', 'o'] and [1, 'c', 'C']
+        Example: ['o','c'] means x is at 0 and z is at center. Note: 'C' means center of grid, which might not be center of obstacles (depends on snap.)
+    snap_to_dl : bool, optional
+        If True, geometry dimensions are snapped to multiples
+        of the grid spacing.
     """
     def __init__(self, dl:float, ref_xz_symbolic = ['c', 'c'], snap_to_dl:bool=True):
         """
         Functions only.
-
-        Parameters
-        ----------
-        dl : float
-            Grid spacing for the obstruction.
-        ref_xz_symbolic : list of length 2, optional
-            Acceptable values: ['o', 'c'] or ['O', 'C'] or ['0', 'c'], etc. [0, '0', 'O', 'o'] and [1, 'c', 'C']
-            Example: ['o','c'] means x is at 0 and z is at center. Note: 'C' means center of grid, which might not be center of obstacles (depends on snap.)
-        snap_to_dl : bool, optional
-            If True, geometry dimensions are snapped to multiples
-            of the grid spacing.
         """
         if dl<=0:
             raise ValueError("Obstacles grid step size must be greater than zero")

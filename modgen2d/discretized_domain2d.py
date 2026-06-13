@@ -13,26 +13,26 @@ class DiscretizedDomain2D():
 
     The domain is defined along x- and z-directions, with centers computed
     for each element.
+    
+    Parameters
+    ----------
+    span_x, span_z : float
+        Domain size in the x-direction and z-direction respectively (physical units).
+    dx, dz : float
+        Discretization step in x-direction ans z-direction (physical units).
+    length_config : LengthConfig, optional
+        LengthConfig configuration for conversion. Defaults to ``LengthConfig()`` -> physical units is "m", and min_dl = 0.0001.
+    origin_x : float
+        Origin for x Note: (end_x = origin_x + span_x). For z: Origin is always zero.
+    Raises
+    ------
+    ValueError
+        If the discretization is invalid (spans not divisible by steps).
     """
     
     def __init__(self, span_x: float, span_z: float, dx: float, dz: float, length_config:LengthConfig = None, origin_x=0):
         """
         Initialize a DiscretizedDomain2D class object.
-        
-        Parameters
-        ----------
-        span_x, span_z : float
-            Domain size in the x-direction and z-direction respectively (physical units).
-        dx, dz : float
-            Discretization step in x-direction ans z-direction (physical units).
-        length_config : LengthConfig, optional
-            LengthConfig configuration for conversion. Defaults to ``LengthConfig()`` -> physical units is "m", and min_dl = 0.0001.
-        origin_x : float
-            Origin for x Note: (end_x = origin_x + span_x). For z: Origin is always zero.
-        Raises
-        ------
-        ValueError
-            If the discretization is invalid (spans not divisible by steps).
         """
         span_z = float(span_z)
         dz = float(dz)
@@ -95,7 +95,17 @@ class DiscretizedDomain2D():
             return False
         
     def can_domain_be_remeshed(self, new_dx: float, new_dz: float):
-        """Check if the domain can be remeshed."""
+        """
+        Check if the domain can be remeshed.
+        
+        Parameters
+        ----------
+        new_dx : float, optional
+            New x discretization. Defaults to current dx.
+        new_dz : float, optional
+            New z discretization. Defaults to current dz.
+            
+        """
         new_dhs_in_domain_len_units = [
             self.length_config.to_domain_length_unit(new_dx), 
             self.length_config.to_domain_length_unit(new_dz)

@@ -5,5 +5,6 @@ LithologicalDomain2DCollection
 
 .. autoclass:: LithologicalDomain2DCollection
    :members:
+   :inherited-members:
    :undoc-members:
    :show-inheritance:

@@ -10,11 +10,7 @@ class PropertyDistribution:
     """
         Defines the probabilistic distribution of a material property.
         A property is described by a mean distribution and an optional standard deviation (or coefficient of variation) distribution.
-    """
-    def __init__(self, property_name, mean_distribution, stdev_distribution=None, stdev_type = 'stdev', mean_slope_with_depth_distribution = None, description = ''):
-        """
-        Initializes the 'PropertyDistribution' object.
-
+    
         Parameters
         ----------
         property_name : str
@@ -31,6 +27,11 @@ class PropertyDistribution:
             Random generator defining the slope of mean value (w/ depth). None, if not provided!
         description : str, optional
             Human-readable description of conditions or assumptions.
+    
+    """
+    def __init__(self, property_name, mean_distribution, stdev_distribution=None, stdev_type = 'stdev', mean_slope_with_depth_distribution = None, description = ''):
+        """
+        Initializes the 'PropertyDistribution' object.
         """
         self._property_name = property_name
         self._check_distribution(mean_distribution)

@@ -1,7 +1,7 @@
 DiscretizedInterfaces2DFromDict
 ===============================
 
-.. currentmodule:: modgen2d.discretized_interfaces2d_from_dict
+.. currentmodule:: modgen2d.interface._from_dict
 
 .. autoclass:: DiscretizedInterfaces2DFromDict
    :members:

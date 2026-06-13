@@ -25,17 +25,17 @@ from modgen2d._plots import _plot_lit_domain
 class LithologicalDomain2DReadOnly():
     """
     Class representing a read-only 2D lithological domain with layer IDs.
+    
+    Parameters
+    ----------
+    domain : DiscretizedDomain2D
+        Domain in which the lithological interfaces are defined.
+    name : str
+        Name of the lithological domain.
     """
     def __init__(self, domain:DiscretizedDomain2D, name: str):
         """
         Initialize a 'LithologicalDomain2DReadOnly' instance.
-
-        Parameters
-        ----------
-        domain : DiscretizedDomain2D
-            Domain in which the lithological interfaces are defined.
-        name : str
-            Name of the lithological domain.
         """
         self.domain = domain
         self.name = name

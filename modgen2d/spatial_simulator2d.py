@@ -8,20 +8,23 @@ import warnings
 import pandas as pd
 
 class SpatialSimulator2D(ABC):
+    """
+    Initialize a spatial simulator.
+
+    Parameters
+    ----------
+    theta_x : float or None
+        Correlation length in the x-direction.
+    theta_z : float or None
+        Correlation length in the z-direction.
+    simulated_val_for_ignored_lit_property : int, default=-99999
+        Constant value assigned to ignored lithological IDs.
+    rng : numpy.random.Generator, optional
+        Random number generator.
+    """
     def __init__(self, theta_x, theta_z, simulated_val_for_ignored_lit_property=-99999, rng=np.random.default_rng()):
         """
         Initialize a spatial simulator.
-
-        Parameters
-        ----------
-        theta_x : float or None
-            Correlation length in the x-direction.
-        theta_z : float or None
-            Correlation length in the z-direction.
-        simulated_val_for_ignored_lit_property : int, default=-99999
-            Constant value assigned to ignored lithological IDs.
-        rng : numpy.random.Generator, optional
-            Random number generator.
         """
         # Validate theta_x and theta_z
         if theta_x is not None and not isinstance(theta_x, (int, float)):
@@ -522,6 +525,13 @@ class ConstantSimulator(SpatialSimulator2D):
     Deterministic non-spatial simulator.
 
     Produces values using only the specified mean function.
+
+    Parameters
+    ----------
+    simulated_val_for_ignored_lit_property : int, default=-99999
+        Constant value assigned to ignored lithological IDs.
+    rng : numpy.random.Generator, optional
+        Random number generator.
     """
     def __init__(self, simulated_val_for_ignored_lit_property=-99999, rng=np.random.default_rng()):
         super().__init__(None, None, simulated_val_for_ignored_lit_property, rng)
@@ -540,6 +550,17 @@ class CovarianceDecompositionSimulator(SpatialSimulator2D):
 
     Generates Gaussian random fields using exponential correlation
     functions and Cholesky decomposition.
+    
+    Parameters
+    ----------
+    theta_x : float or None
+        Correlation length in the x-direction.
+    theta_z : float or None
+        Correlation length in the z-direction.
+    simulated_val_for_ignored_lit_property : int, default=-99999
+        Constant value assigned to ignored lithological IDs.
+    rng : numpy.random.Generator, optional
+        Random number generator.
     """
     def __init__(self, theta_x, theta_z, simulated_val_for_ignored_lit_property=-99999, rng=np.random.default_rng()):
         super().__init__(theta_x, theta_z, simulated_val_for_ignored_lit_property, rng)
