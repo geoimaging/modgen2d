@@ -25,6 +25,19 @@ class GeneratedModel2D:
         Dictionary mapping lithological IDs (str) to arrays of material properties.
     simulated_val_for_ignored_lit_property : int, default=-99999
         Value used for ignored lithological IDs during simulation.
+        
+    Attributes
+    ----------
+    lit_domain : LithologicalDomain2D
+        Lithological domain associated with the generated model.
+    lit_order : int
+        Lithological ordering index inherited from the source domain.
+    gwt_depth : float
+        Groundwater table depth.
+    lit_id2material_dict : dict
+        Mapping between lithological identifiers and material definitions.
+    simulated_profiles : dict[str, numpy.ndarray]
+        Dictionary of simulated property fields.
     """
     def __init__(self, lithological_domain_instance:LithologicalDomain2D, gwt_depth, lit_id2material_dict, simulated_val_for_ignored_lit_property=-99999):
         """
@@ -54,7 +67,11 @@ class GeneratedModel2D:
     @property
     def simulated_val_for_ignored_lit_property(self):
         """
-        int: The value used for ignored lithological IDs in simulated profiles.
+        int
+            Placeholder value assigned to ignored lithological regions.
+
+        Cells associated with ignored lithological identifiers are assigned
+        this value in all simulated property fields.
         """
         return self._simulated_val_for_ignored_lit_property
 

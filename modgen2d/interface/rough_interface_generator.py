@@ -15,20 +15,30 @@ class AbstractRoughInterfaceGenerator(ABC):
     Abstract base class for rough interface generators.
 
     Concrete subclasses must implement the generate_rough_interfaces method.
+    
+    Parameters
+    ----------
+    generator_params : dict
+        Dictionary containing parameters specific to the interface
+        generation method.
+    generate_surface:bool
+        Whether a surface interface is present.
+    roughness_multipliers : array-like
+        Scaling factor applied to each interface.
+        
+    Attributes
+    ----------
+    generator_params : dict
+        Dictionary containing parameters specific to the interface
+        generation method.
+    generate_surface:bool
+        Whether a surface interface is present.
+    roughness_multipliers : array-like
+        Scaling factor applied to each interface.
     """
     def __init__(self, generator_params:dict, generate_surface:bool, roughness_multipliers:list):
         """
         Initialize the rough interface generator.
-
-        Parameters
-        ----------
-        generator_params : dict
-            Dictionary containing parameters specific to the interface
-            generation method.
-        generate_surface:bool
-            Whether a surface interface is present.
-        roughness_multipliers : array-like
-            Scaling factor applied to each interface.
         """
         self.generator_params = generator_params
         

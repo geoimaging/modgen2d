@@ -101,6 +101,14 @@ class GlobalSoilInterfaceConfig(metaclass=_StrictProtectedMeta):
     
     @_internal_classmethod
     def get_interface_instance(cls):
+        """
+        Return the current discretized_interface2d_instance.
+
+        Returns
+        -------
+        DiscretizedInterface2D
+            current DiscretizedInterface2D instance.
+        """
         return cls._discretized_interface2d_instance
 
     @_internal_classmethod    
@@ -124,6 +132,7 @@ class GlobalSoilInterfaceConfig(metaclass=_StrictProtectedMeta):
     
     @classproperty
     def get_config(cls):
+        """Return class configuration."""
         self_config = {}
         self_config['_discretized_interface2d_instance'] =  cls.get_interface_instance().get_config
         self_config['_revision_id'] = cls.get_revision_id()

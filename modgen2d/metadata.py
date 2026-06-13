@@ -5,4 +5,9 @@
 
 """Metadata for modgen2d."""
 
-__version__ = "0.0.2"
+from importlib.metadata import version, PackageNotFoundError
+
+try:
+    __version__ = version("modgen2d")
+except PackageNotFoundError:
+    __version__ = "unknown"

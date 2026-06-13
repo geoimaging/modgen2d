@@ -1,3 +1,5 @@
+from functools import wraps
+
 class _StrictProtectedMeta(type):
     def __new__(mcs, name, bases, namespace):
         cls = super().__new__(mcs, name, bases, namespace)
@@ -76,6 +78,7 @@ class _StrictProtectedMeta_old(type):
         return super().__setattr__(name, value)
 
 def _internal_classmethod(method):
+    @wraps(method)
     def wrapper(cls, *args, **kwargs):
         prev_access = cls._allow_internal_access
         prev_write = cls._allow_internal_write

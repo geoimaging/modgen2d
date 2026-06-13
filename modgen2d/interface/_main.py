@@ -40,6 +40,24 @@ class DiscretizedInterfaces2D(DiscretizedInterfaces2DReadOnly):
         Interpolation method used during remeshing. (default: 'linear')
     rng : numpy.random.Generator, optional
         Random number generator.
+        
+    Attributes
+    ----------
+    domain : DiscretizedDomain2D
+        Domain associated with the interfaces.
+    interfaces_matrix : numpy.ndarray
+        Interface depth matrix of shape
+        ``(n_interface_x_points, n_soil_layers)``.
+    n_soil_layers : int
+        Number of soil layers.
+    n_soil_soil_interfaces : int
+        Number of soil-soil interfaces.
+    generate_surface : bool
+        Whether a surface interface is present.
+    remesh_interp_method : str
+        Interpolation method used during remeshing.
+    rng : numpy.random.Generator
+        Random number generator.
     """
     
     def __init__(self, domain: DiscretizedDomain2D, n_soil_layers: int, generate_surface:bool, remesh_interp_method = 'linear', rng=np.random.default_rng()):

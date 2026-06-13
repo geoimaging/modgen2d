@@ -21,6 +21,15 @@ class LengthConfig:
         If both provided, performs additional check if they are consistent (Must be inverse of min_dl.) 
         Used as a conversion factor from the external 'physical' unit to the internal 'domain' unit.
 
+    Attributes
+    ----------
+    physical_length_unit : str
+        The physical measurement unit used by the user (e.g., 'm').
+    min_dl: float
+        Minimum spatial increment (dl) allowed by the model for stable remeshing.
+    max_grid_density : int
+        Maximum grid density (inverse of min_dl)
+
     Raises
     ------
     TypeError
