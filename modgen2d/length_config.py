@@ -96,7 +96,9 @@ class LengthConfig:
             if not isclose(max_grid_density, 1/min_dl):
                 raise ValueError(
                     f"max_grid_density = {max_grid_density} and min_dl {min_dl} must be inverse to each other."
-                )   
+                )
+        else:
+            max_grid_density = 1/min_dl
                    
         log_val = log10(max_grid_density)
         if not isclose(log_val, round(log_val)):

@@ -1,6 +1,6 @@
 import numpy as np
 from pathlib import Path
-from testing_tools import TestCase, unittest, get_full_path
+from .testing_tools import TestCase, unittest, get_full_path
 # Assuming the original TestCase class is in a module named `testing_tools`
 # from testing_tools import TestCase, get_full_path  
 

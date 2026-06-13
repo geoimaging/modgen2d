@@ -63,7 +63,7 @@ class DiscretizedInterfaces2DReadOnly:
         self._ref_x = None #Reference point x used during updating interfaces,
         self._overlap_resolving_technique = 'erosion' # Default: Changed as per arg. in .processing_interface(simulate_erosion=____)
         self._adjust_top_surface_zero = False # Sent to True if used .adjust_top_of_surface_interface_to_zero is used ever.
-        self._adj_roughness_multipliers = None # Replaced with actual adj. multiplier once rough generator is used.
+        self._adj_roughness_multipliers = [1.] # Replaced with actual adj. multiplier once rough generator is used.
 
     @property
     def shape(self):

@@ -1,10 +1,11 @@
 import modgen2d
 import numpy as np
-from testing_tools import unittest, TestCase
+from .testing_tools import unittest, TestCase
 import modgen2d.general_functions as f
 from modgen2d.features_config import FeaturesConfig
 from modgen2d.random_generators import RandomGeneratorAbstract, DiscreteChoice, Constant
 from modgen2d.main_property_each import PropertyDistribution, MainProperty
+
 class TestPropertyDistribution(TestCase):
     
     def setUp(self):
@@ -31,7 +32,7 @@ class TestPropertyDistribution(TestCase):
     def test_property_distribution_valid_w_stdev(self):
         mean = Constant(10)
         stdev = Constant(2)
-        pd = PropertyDistribution("vs", mean, stdev, "cov", "Shear Wave Velocity")
+        pd = PropertyDistribution("vs", mean, stdev, "cov", description="Shear Wave Velocity")
         
         self.assertEqual(pd.property_name, "vs")
         self.assertEqual(pd.stdev_type, "cov")
@@ -57,11 +58,42 @@ class TestPropertyDistribution(TestCase):
         self.assertEqual(mp.layer0_flag, False)
         self.assertEqual(mp.description, 'ShearWaveVelocity')
         self.assertEqual(mp.locked, False)
+        
+        self.assertIn("def", mp.main_property_dist)
+        self.assertIn("utils", mp.main_property_dist)
+        self.assertIn("sand", mp.main_property_dist["def"])
+        self.assertIn("metal", mp.main_property_dist["utils"])
+        self.assertIn("plastic", mp.main_property_dist["utils"])
+        self.assertNotIn("layer0", mp.main_property_dist["def"])
 
+    def test_init_with_layer0(self):
+        mp = MainProperty("Vs", self.fc, True, "ShearWaveVelocity")
+
+        self.assertTrue(mp.layer0_flag)
+        self.assertIn("layer0", mp.main_property_dist["def"])
+        self.assertNotIn("layer0", mp.main_property_dist["utils"])
+
+    def test_init_invalids(self):
+        with self.assertRaises(ValueError):
+            MainProperty(5, self.fc)
+            
     def test_add_material_property_of_feature(self):
         mp = MainProperty("Vs", self.fc, False, 'ShearWaveVelocity')
         mp.add_material_property_of_feature("def", "sand", self.dist)
         self.assertIn("sand", mp.main_property_dist["def"])
+        self.assertIn("both", mp.main_property_dist["def"]["sand"])
+        self.assertEqual(mp.main_property_dist["def"]["sand"]["both"], self.dist)
+    
+    def test_add_material_property_of_feature_wet_and_dry(self):
+        dry_dist = PropertyDistribution("Vs", Constant(20), None, "cov")
+        
+        mp = MainProperty("Vs", self.fc, False, "ShearWaveVelocity")
+        mp.add_material_property_of_feature("utils", "metal", self.dist, dry_dist)
+
+        self.assertIn("wet", mp.main_property_dist["utils"]["metal"])
+        self.assertIn("dry", mp.main_property_dist["utils"]["metal"])
+        self.assertEqual(mp.main_property_dist["utils"]["metal"]["wet"], self.dist)
+        self.assertEqual(mp.main_property_dist["utils"]["metal"]["dry"], dry_dist)
         
     def test_add_material_property_of_feature_invalids(self):
         
@@ -138,6 +170,28 @@ class TestPropertyDistribution(TestCase):
         self.assertEqual(out["dry"]["stdev_or_cov"], 0)
         self.assertEqual(out["dry"]["stdev_type"], "cov")
 
-        
+    def test_locked_object_cannot_be_edited(self):
+        mp = MainProperty("Vs", self.fc, False, "ShearWaveVelocity")
+
+        mp.add_material_property_of_feature("def", "sand", self.dist)
+        mp.add_material_property_of_feature("utils", "metal", self.dist)
+        mp.add_material_property_of_feature("utils", "plastic", self.dist)
+
+        mp.lock_and_check()
+        self.assertTrue(mp.locked)
+
+        with self.assertRaises(RuntimeError):
+            mp.add_material_property_of_feature("def", "sand", self.dist)
+
+        mp.unlock()
+        self.assertFalse(mp.locked)
+
+    def test_generate_sample_dict_before_lock_error(self):
+        mp = MainProperty("Vs", self.fc, False, "ShearWaveVelocity")
+        mp.add_material_property_of_feature("def", "sand", self.dist)
+
+        with self.assertRaises(RuntimeError):
+            mp.generate_sample_dict("def", "sand")
+              
 if __name__ == "__main__":
     unittest.main()

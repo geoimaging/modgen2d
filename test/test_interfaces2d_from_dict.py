@@ -5,87 +5,118 @@
 
 "Create basic sanity checks for project."
 
-import modgen2d
-from modgen2d import discretized_interfaces2d
-from modgen2d.interface.rough_interface_generator import NormalInterfaceGen, UniformInterfaceGen, FBMInterfaceGen
-
 import numpy as np
-from testing_tools import unittest, TestCase
+import modgen2d
+from .testing_tools import unittest, TestCase
 
-class TestBoundaryCreator(TestCase):
+from modgen2d.interface import DiscretizedInterfaces2DFromDict
+from modgen2d.interface.rough_interface_generator import UniformInterfaceGen
+
+
+class TestDiscretizedInterfaces2DFromDict(TestCase):
+
     def setUp(self):
-        # 2D domain with default units
-        self.domain2D1 = modgen2d.discretized_domain2d.DiscretizedDomain2D(
+        self.domain = modgen2d.discretized_domain2d.DiscretizedDomain2D(
             span_x=5, span_z=4, dx=1, dz=1
         )
-    
-    def test_default_creator(self):
-        interfaces_settings_dict=         {
-            'generate_surface':True,
-            'rough_interface_creator_instance': 'to_define',
-            'rough_interface_generator_scale':[1,2,1,0.2,1,2],   # factor applied to surface interface
-            'interfaces_depths_generation':'random', 
-            'interfaces_depth_reference_point_x':None, 
-            'filter_settings': {
-                'filter_window_length':3, 
-                'filter_polyorder':2,
-            },
-            'processing_settings': {
-                'simulate_erosion': True,
-            }
-        }
-        
-        gen_dict = {'fbm':FBMInterfaceGen(0.6,4,'daviesharte'),
-                    'uniform':UniformInterfaceGen(4.5),
-                    'normal':UniformInterfaceGen(2)}
-        for gen_option in ['fbm', 'normal', 'uniform']:
-            interfaces_settings_dict['rough_interface_creator_instance'] = gen_dict[gen_option]
-            interface_instance = modgen2d.discretized_interfaces2d_from_dict.DiscretizedInterfaces2DFromDict(
-                self.domain2D1, 3, interfaces_settings_dict, rng=np.random.default_rng(2))
-        
-            self.assertTupleEqual(interface_instance.interfaces_matrix.shape, (7,3))
-            
-        interfaces_settings_dict['interfaces_depths_generation'] = np.array([0,8,9])
-        interfaces_settings_dict['interfaces_depth_reference_point_x']=2.1
-        interface_instance = modgen2d.discretized_interfaces2d_from_dict.DiscretizedInterfaces2DFromDict(
-                self.domain2D1, 3, interfaces_settings_dict,  rng = np.random.default_rng(2))
-        
-        self.assertTupleEqual(interface_instance.interfaces_matrix.shape, (7,3))
 
-    def test_no_interface(self): #TODO
-        interfaces_settings_dict=         {
-            'generator_settings_dict':{
-                'generator_option':'uniform',    # options: 'uniform', 'normal', 'fbm'
-                'max_dz_per_unit_length':4.5,   # Required for 'uniform'
-                'stdev_in_unit_length':2,                         # Required for 'normal'
-                'H':0.6, 'length':4, 'method':'daviesharte',  # Required for 'fbm'
+    def get_base_settings(self):
+        return {
+            "generate_surface": True,
+            "rough_interface_generator_instance": UniformInterfaceGen(
+                1.5, True, [1, 1, 1]
+            ),
+            "savgol2d_smoother_settings": {
+                "filter_window_length": 3,
+                "filter_polyorder": 1,
             },
-            'surface_factor':0.5,                # factor applied to surface interface
-            'interfaces_depths_generation':'random', 
-            'interfaces_depth_reference_point_x':None, 
-            'filter_settings': {
-                'filter_window_length':3, 
-                'filter_polyorder':2,
-            },
-            'processing_settings': {
-                'prioritize_lower_interface': True,
-            }
+            "interfaces_depths_updater": "equidistant",
+            "interfaces_depth_reference_point_x": None,
+            "overlapping_resolver_technique": "erosion",
+            "adjust_surface_top_to_zero": True,
         }
-        for gen_option in ['fbm', 'normal', 'uniform']:
-            interfaces_settings_dict['generator_settings_dict']['generator_option'] = gen_option
-            A, B = modgen2d.discretized_interfaces2d_from_dict.generate_interfaces_from_interfaces_settings_dict(
-                self.domain2D1, 0, interfaces_settings_dict,  np.random.default_rng(2))
-        
-            self.assertTupleEqual(A.interfaces_matrix.shape, (7,0))
-            self.assertTupleEqual(B.interfaces_matrix.shape, (7,1))
-            
-        interfaces_settings_dict['interfaces_depths_generation'] = np.array([])
-        interfaces_settings_dict['interfaces_depth_reference_point_x']=2.1
-        A, B = modgen2d.discretized_interfaces2d_from_dict.generate_interfaces_from_interfaces_settings_dict(
-                self.domain2D1, 0, interfaces_settings_dict,  np.random.default_rng(2))
-        
-        self.assertTupleEqual(A.interfaces_matrix.shape, (7,0))
-        self.assertTupleEqual(B.interfaces_matrix.shape, (7,1))
+
+    def test_from_dict_valid(self):
+        obj = DiscretizedInterfaces2DFromDict(
+            self.domain, 3, self.get_base_settings(),
+            rng=np.random.default_rng(2)
+        )
+
+        self.assertTupleEqual(obj.interfaces_matrix.shape, (7, 3))
+        self.assertFalse(np.isnan(obj.interfaces_matrix).any())
+        self.assertTrue(obj._locked)
+
+        overlap, _ = obj.check_if_overlapping_interfaces()
+        self.assertFalse(overlap)
+
+    def test_from_dict_manual_depths(self):
+        settings = self.get_base_settings()
+        settings["interfaces_depths_updater"] = np.array([0.0, 1.5, 3.0])
+        settings["interfaces_depth_reference_point_x"] = 2.5
+
+        obj = DiscretizedInterfaces2DFromDict(
+            self.domain, 3, settings,
+            rng=np.random.default_rng(2)
+        )
+
+        self.assertTupleEqual(obj.interfaces_matrix.shape, (7, 3))
+        self.assertEqual(obj._ref_x, 2.5)
+
+    def test_from_dict_no_surface(self):
+        settings = {
+            "generate_surface": False,
+            "rough_interface_generator_instance": UniformInterfaceGen(
+                1.5, False, [0, 1, 1]
+            ),
+            "savgol2d_smoother_settings": {
+                "filter_window_length": 3,
+                "filter_polyorder": 1,
+            },
+            "interfaces_depths_updater": "equidistant",
+            "interfaces_depth_reference_point_x": None,
+            "overlapping_resolver_technique": "erosion",
+            "adjust_surface_top_to_zero": False,
+        }
+
+        obj = DiscretizedInterfaces2DFromDict(
+            self.domain, 3, settings,
+            rng=np.random.default_rng(2)
+        )
+
+        self.assertTupleEqual(obj.interfaces_matrix.shape, (7, 3))
+        self.assertTrue(np.allclose(obj.interfaces_matrix[:, 0], 0.0))
+
+    def test_missing_required_key(self):
+        settings = self.get_base_settings()
+        del settings["interfaces_depth_reference_point_x"]
+
+        with self.assertRaises(KeyError):
+            DiscretizedInterfaces2DFromDict(
+                self.domain, 3, settings,
+                rng=np.random.default_rng(2)
+            )
+
+    def test_unknown_key(self):
+        settings = self.get_base_settings()
+        settings["bad_key"] = 123
+
+        with self.assertRaises(KeyError):
+            DiscretizedInterfaces2DFromDict(
+                self.domain, 3, settings,
+                rng=np.random.default_rng(2)
+            )
+
+    def test_surface_flag_mismatch(self):
+        settings = self.get_base_settings()
+        settings["rough_interface_generator_instance"] = UniformInterfaceGen(
+            1.5, False, [0, 1, 1]
+        )
+
+        with self.assertRaises(ValueError):
+            DiscretizedInterfaces2DFromDict(
+                self.domain, 3, settings,
+                rng=np.random.default_rng(2)
+            )
         
 if __name__ == "__main__":
     unittest.main()

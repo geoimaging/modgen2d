@@ -1,6 +1,6 @@
 from modgen2d.features_config import FeaturesConfig
 import numpy as np
-from testing_tools import unittest, TestCase
+from .testing_tools import unittest, TestCase
 from modgen2d.random_generators import DiscreteChoice, Constant
 
 class TestFeaturesConfig(TestCase):
