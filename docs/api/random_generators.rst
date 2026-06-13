@@ -28,11 +28,6 @@ random_generators
    :undoc-members:
    :show-inheritance:
 
-.. autoclass:: Discrete2ContinuousPDF
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 .. autoclass:: DiscreteChoice
    :members:
    :undoc-members:

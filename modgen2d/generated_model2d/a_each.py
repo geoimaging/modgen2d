@@ -14,21 +14,21 @@ class GeneratedModel2D:
     """
     Represents a 2D lithological domain with associated simulated property profiles.
     Accessible via: `modgen2d.GeneratedModel2D`.
+    
+    Parameters
+    ----------
+    lithological_domain_instance : LithologicalDomain2D
+        Instance of a 2D lithological domain.
+    gwt_depth : float
+        Depth of the groundwater table for wet/dry classification.
+    lit_id2material_dict : dict
+        Dictionary mapping lithological IDs (str) to arrays of material properties.
+    simulated_val_for_ignored_lit_property : int, default=-99999
+        Value used for ignored lithological IDs during simulation.
     """
     def __init__(self, lithological_domain_instance:LithologicalDomain2D, gwt_depth, lit_id2material_dict, simulated_val_for_ignored_lit_property=-99999):
         """
         Initializes 'GeneratedModel2D' object instance.
-
-        Parameters
-        ----------
-        lithological_domain_instance : LithologicalDomain2D
-            Instance of a 2D lithological domain.
-        gwt_depth : float
-            Depth of the groundwater table for wet/dry classification.
-        lit_id2material_dict : dict
-            Dictionary mapping lithological IDs (str) to arrays of material properties.
-        simulated_val_for_ignored_lit_property : int, default=-99999
-            Value used for ignored lithological IDs during simulation.
         """
         self.lit_domain = lithological_domain_instance
         self.lit_order = lithological_domain_instance.lit_order

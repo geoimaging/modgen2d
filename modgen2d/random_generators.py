@@ -4,7 +4,6 @@
 
 """Random number generator utilities."""
 
-
 import matplotlib.pyplot as plt
 import numpy as np
 from abc import ABC, abstractmethod
@@ -14,16 +13,16 @@ class RandomGeneratorAbstract(ABC):
     Abstract base class for random generators.
 
     All random generators must implement the ``generate`` method.
+    
+    Parameters
+    ----------
+    rng : numpy.random.Generator, optional
+        NumPy random number generator instance. If None, a default
+        generator is created.
     """
     def __init__(self, rng=None):
         """
         Initializes the random generator.
-        
-        Parameters
-        ----------
-        rng : numpy.random.Generator, optional
-            NumPy random number generator instance. If None, a default
-            generator is created.
         """
         self.rng = rng or np.random.default_rng()
 
@@ -91,17 +90,17 @@ class Constant(RandomGeneratorAbstract):
     Constant-valued random generator.
 
     Always returns the same value.
+    
+    Parameters
+    ----------
+    val : float
+        Constant value to return.
+    rng : numpy.random.Generator, optional
+        Random generator (unused but kept for interface consistency).
     """
     def __init__(self, val, rng=None):
         """
         Initialize a constant generator.
-
-        Parameters
-        ----------
-        val : float
-            Constant value to return.
-        rng : numpy.random.Generator, optional
-            Random generator (unused but kept for interface consistency).
         """
         super().__init__(rng)
         
@@ -136,19 +135,19 @@ class Constant(RandomGeneratorAbstract):
 class Uniform(RandomGeneratorAbstract):
     """
     Uniform random generator.
+    
+    Parameters
+    ----------
+    low : float
+        Lower bound of the distribution.
+    high : float
+        Upper bound of the distribution.
+    rng : numpy.random.Generator, optional
+        Random number generator.
     """
     def __init__(self, low: float, high: float, rng=None):
         """
         Initialize a uniform distribution.
-
-        Parameters
-        ----------
-        low : float
-            Lower bound of the distribution.
-        high : float
-            Upper bound of the distribution.
-        rng : numpy.random.Generator, optional
-            Random number generator.
         """
         super().__init__(rng)
     
@@ -187,19 +186,19 @@ class Uniform(RandomGeneratorAbstract):
 class LogUniform(Uniform):
     """
     Log-uniform random generator.
+    
+    Parameters
+    ----------
+    low : float
+        Lower bound of the distribution.
+    high : float
+        Upper bound of the distribution.
+    rng : numpy.random.Generator, optional
+        Random number generator.
     """
     def __init__(self, low: float, high:float, rng=None):
         """
         Initialize a LogUniform distribution.
-
-        Parameters
-        ----------
-        low : float
-            Lower bound of the distribution.
-        high : float
-            Upper bound of the distribution.
-        rng : numpy.random.Generator, optional
-            Random number generator.
         """
         super().__init__(low, high, rng)
         
@@ -232,19 +231,19 @@ class LogUniform(Uniform):
 class Normal(RandomGeneratorAbstract):
     """
     Normal (Gaussian) random generator.
+    
+    Parameters
+    ----------
+    mean : float
+        Mean of the distribution.
+    stdev : float
+        Standard deviation of the distribution.
+    rng : numpy.random.Generator, optional
+        Random number generator.
     """
     def __init__(self, mean:float, stdev: float, rng=None):
         """
         Initialize a normal distribution.
-
-        Parameters
-        ----------
-        mean : float
-            Mean of the distribution.
-        stdev : float
-            Standard deviation of the distribution.
-        rng : numpy.random.Generator, optional
-            Random number generator.
         """
         super().__init__(rng)
         
@@ -283,20 +282,20 @@ class Normal(RandomGeneratorAbstract):
 class DiscreteChoice(RandomGeneratorAbstract):
     """
     Discrete random choice generator.
+    
+    Parameters
+    ----------
+    x : array-like
+        Possible discrete values (all numeric or all strings).
+    p : array-like, optional
+        Probabilities associated with each value. Must sum to 1.
+        If None, a uniform distribution is used.
+    rng : numpy.random.Generator, optional
+        Random number generator.
     """
     def __init__(self, x, p = None, rng=None):
         """
         Initialize a discrete choice distribution.
-
-        Parameters
-        ----------
-        x : array-like
-            Possible discrete values (all numeric or all strings).
-        p : array-like, optional
-            Probabilities associated with each value. Must sum to 1.
-            If None, a uniform distribution is used.
-        rng : numpy.random.Generator, optional
-            Random number generator.
         """
         super().__init__(rng)
         

@@ -1,9 +1,10 @@
 DiscretizedInterfaces2D
 =======================
 
-.. currentmodule:: modgen2d.discretized_interfaces2d
+.. currentmodule:: modgen2d.interface._main
 
 .. autoclass:: DiscretizedInterfaces2D
    :members:
+   :inherited-members:
    :undoc-members:
    :show-inheritance:

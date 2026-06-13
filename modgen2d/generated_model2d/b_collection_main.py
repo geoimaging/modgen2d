@@ -20,24 +20,23 @@ class GeneratedProfileCollection2DReadOnly:
     """
     Read-only collection of 2D generated property profiles over lithological domains. 
     Accessible via: `modgen2d.GeneratedProfileCollection2DReadOnly`.
+    Parameters
+    ----------
+    main_properties_config_instance : MainPropertiesConfig
+        Locked instance containing sampled property definitions.
+    lithological_domain2d_collection : LithologicalDomain2DCollection
+        Locked collection of lithological domains.
+    spatial_simulator2d_instance : SpatialSimulator2D
+        Simulator instance used for generating spatially correlated profiles.
+
+    Raises
+    ------
+    TypeError
+        If main_properties_config_instance or lithological_domain2d_collection are not locked.
     """
     def __init__(self, main_properties_config_instance: MainPropertiesConfig, lithological_domain2d_collection: LithologicalDomain2DCollection, spatial_simulator2d_instance:SpatialSimulator2D):
         """
         Initialize the 'GeneratedProfileCollection2DReadOnly' object.
-
-        Parameters
-        ----------
-        main_properties_config_instance : MainPropertiesConfig
-            Locked instance containing sampled property definitions.
-        lithological_domain2d_collection : LithologicalDomain2DCollection
-            Locked collection of lithological domains.
-        spatial_simulator2d_instance : SpatialSimulator2D
-            Simulator instance used for generating spatially correlated profiles.
-
-        Raises
-        ------
-        TypeError
-            If main_properties_config_instance or lithological_domain2d_collection are not locked.
         """
         if not main_properties_config_instance._locked:
             raise TypeError("main_properties_config_instance is not locked yet. Use .lock_and_generate_sample_properties first.")
@@ -446,8 +445,28 @@ class GeneratedProfileCollection2D(GeneratedProfileCollection2DReadOnly):
     Editable subclass of `GeneratedProfileCollection2DReadOnly` for generating
     and managing 2D spatial property profiles.
     Accessible via: `modgen2d.GeneratedProfileCollection2D`.
+    
+    Parameters
+    ----------
+    main_properties_config_instance : MainPropertiesConfig
+        Locked instance containing sampled property definitions.
+    lithological_domain2d_collection : LithologicalDomain2DCollection
+        Locked collection of lithological domains.
+    spatial_simulator2d_instance : SpatialSimulator2D
+        Simulator instance used for generating spatially correlated profiles.
+
+    Raises
+    ------
+    TypeError
+        If main_properties_config_instance or lithological_domain2d_collection are not locked.
     """
     def __init__(self, main_properties_config_instance: MainPropertiesConfig, lithological_domain2d_collection: LithologicalDomain2DCollection, spatial_simulator2d_instance:SpatialSimulator2D):
+        """
+        Initialize the GeneratedProfileCollection2D instance.
+        """
+        super().__init__(main_properties_config_instance, lithological_domain2d_collection, spatial_simulator2d_instance)
+    
+    def delete_simulated_property_profile(self, property_name):
         """
         Delete a simulated property profile across all sets and merged model.
 
@@ -461,9 +480,6 @@ class GeneratedProfileCollection2D(GeneratedProfileCollection2DReadOnly):
         ValueError
             If the property does not exist.
         """
-        super().__init__(main_properties_config_instance, lithological_domain2d_collection, spatial_simulator2d_instance)
-    
-    def delete_simulated_property_profile(self, property_name):
         if property_name not in self.get_simulated_properties:
             raise ValueError(f"{property_name} is not generated yet. Generated Keys: {self.get_simulated_properties}")
         for _, set_name in enumerate(self.generated_model2d_set.keys()):

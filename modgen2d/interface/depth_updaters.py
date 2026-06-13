@@ -70,17 +70,16 @@ class OneBoreholeDepthUpdater(AbstractDepthUpdater):
     """
     Applies a depth update to the interface based on 1D borehole.
 
+    Parameters
+    ----------
+    ref_depths : array_like
+        Reference depths for each interface.
+    ref_x : float, optional
+        Reference x-coordinate to align depths. Defaults to first grid point if None.
     """
     def __init__(self, ref_depths, ref_x=None):
         """
         Updates interface depths using a 1D borehole reference.
-
-        Parameters
-        ----------
-        ref_depths : array_like
-            Reference depths for each interface.
-        ref_x : float, optional
-            Reference x-coordinate to align depths. Defaults to first grid point if None.
         """
         updater_params = {'ref_x': ref_x}
         self.ref_depths = ref_depths
@@ -137,16 +136,17 @@ class OneBoreholeDepthUpdater(AbstractDepthUpdater):
 class EquidistantDepthUpdater(OneBoreholeDepthUpdater):
     """
     Sets interface depths to equally spaced intervals along the vertical span.
+    
+    Parameters
+    ----------
+    ref_x: float, optional
+        Reference x-coordinate for initialization. Will save the reference point, in case merged with surface (later).
+        If None, first point in the x_centers.
+    
     """
     def __init__(self, ref_x=None):
         """
         Initialize the equidistant depth updater.
-
-        Parameters
-        ----------
-        ref_x: float, optional
-            Reference x-coordinate for initialization. Will save the reference point, in case merged with surface (later).
-            If None, first point in the x_centers.
         """
         super().__init__(None, ref_x)
        
@@ -173,16 +173,17 @@ class EquidistantDepthUpdater(OneBoreholeDepthUpdater):
 class RandomDepthUpdater(OneBoreholeDepthUpdater): 
     """
     Sets interface depths randomly along the vertical span (sorted).
+    
+    Parameters
+    ----------
+    ref_x: float, optional
+        Reference x-coordinate for initialization. Will save the reference point, in case merged with surface (later).
+        If None, first point in the x_centers.
+    
     """
     def __init__(self, ref_x=None):
         """
         Initialize the equidistant depth updater.
-
-        Parameters
-        ----------
-        ref_x: float, optional
-            Reference x-coordinate for initialization. Will save the reference point, in case merged with surface (later).
-            If None, first point in the x_centers.
         """
         super().__init__(None, ref_x)
        

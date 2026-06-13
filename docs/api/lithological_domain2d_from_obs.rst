@@ -5,5 +5,6 @@ LithologicalDomain2DFromObstruction2D
 
 .. autoclass:: LithologicalDomain2DFromObstruction2D
    :members:
+   :inherited-members:
    :undoc-members:
    :show-inheritance:

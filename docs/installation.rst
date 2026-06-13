@@ -11,6 +11,6 @@ Or from source:
 
 .. code-block:: bash
 
-   git clone <TBD> https://github.com/TBD/modgen2d.git
+   git clone https://github.com/geoimaging/modgen2d
    cd modgen2d
    pip install .

@@ -6,21 +6,20 @@ from .depth_updaters import RandomDepthUpdater, OneBoreholeDepthUpdater, Equidis
 from .interface_smoother import SavGol2DSmoother
 
 class DiscretizedInterfaces2DFromDict(DiscretizedInterfaces2D):
-    """Generate discretized 2D interfaces from a configuration dictionary."""
-    def __init__(self, domain: DiscretizedDomain2D, n_soil_layers: int, interfaces_settings_dict:dict, remesh_interp_method = 'linear', rng=np.random.default_rng()):
-        """
-        Generate soil and surface interfaces from a settings dictionary.
-        
-        Parameters
-        ----------
-        domain : DiscretizedDomain2D
-            Discretized domain instance describing the model domain.
-        n_soil_layers : int
-            Number of soil layers in the model.
-        interfaces_settings_dict : dict
-            Dictionary defining interface generation settings.
+    """
+    Generate discretized 2D interfaces from a configuration dictionary.
+    
+    Parameters
+    ----------
+    domain : DiscretizedDomain2D
+        Discretized domain instance describing the model domain.
+    n_soil_layers : int
+        Number of soil layers in the model.
+    interfaces_settings_dict : dict
+        Dictionary defining interface generation settings.
 
-            Example format:
+        Example format::
+        
             {
                 'generate_surface':True,
                 'rough_interface_generator_instance':rough_interface_generator_instance: AbstractRoughInterfaceCreator
@@ -35,10 +34,14 @@ class DiscretizedInterfaces2DFromDict(DiscretizedInterfaces2D):
                 }
             }
 
-        remesh_interp_method : str, optional
-            Interpolation method for remeshing, by default 'linear'.
-        rng : numpy.random.Generator, optional
-            Random number generator.
+    remesh_interp_method : str, optional
+        Interpolation method for remeshing, by default 'linear'.
+    rng : numpy.random.Generator, optional
+        Random number generator.
+    """
+    def __init__(self, domain: DiscretizedDomain2D, n_soil_layers: int, interfaces_settings_dict:dict, remesh_interp_method = 'linear', rng=np.random.default_rng()):
+        """
+        Generate soil and surface interfaces from a settings dictionary.
         """
 
         required_keys = ['generate_surface', 'rough_interface_generator_instance', 'interfaces_depths_updater', 'interfaces_depth_reference_point_x']

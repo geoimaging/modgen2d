@@ -22,20 +22,20 @@ class LithologicalDomain2D(LithologicalDomain2DReadOnly):
 
     Provides methods to refresh the domain, merge with obstruction-based domains,
     and validate consistency with the global interface configuration.
+    
+    Parameters
+    ----------
+    domain : DiscretizedDomain2D, optional
+        Discretized domain to use for the lithology. If None, the domain from
+        GlobalSoilInterfaceConfig's merged interface is used.
+    gwt_depth : float, optional
+        Groundwater table depth. If None, assumed at the bottom of the domain.
+    name : str, optional
+        Name of the lithological domain.
     """
     def __init__(self, domain:DiscretizedDomain2D=None, gwt_depth=None, name:str = ''): 
         """
         Initialize a 'LithologicalDomain2D' instance from the 'GlobalSoilInterfaceConfig'.
-
-        Parameters
-        ----------
-        domain : DiscretizedDomain2D, optional
-            Discretized domain to use for the lithology. If None, the domain from
-            GlobalSoilInterfaceConfig's merged interface is used.
-        gwt_depth : float, optional
-            Groundwater table depth. If None, assumed at the bottom of the domain.
-        name : str, optional
-            Name of the lithological domain.
         """
         self.name = name
         discretizedInterfaces2D_instance = GlobalSoilInterfaceConfig.get_interface_instance()

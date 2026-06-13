@@ -4,7 +4,45 @@ from math import log10, isclose
 
 class LengthConfig:
     """Manage the physical length unit and minimum spatial resolution
-    used by the computational model."""
+    used by the computational model.
+    
+    Parameters
+    ----------
+    physical_length_unit : str, optional
+        The physical measurement unit used by the user (e.g., 'm').
+        Represents real-world scale, and one to be used externally throughout.
+    min_dl: float, optional
+        Minimum spatial increment (dl) allowed by the model for stable remeshing.
+        It's 'inverse' must be 10^N where N is a whole number. 
+        All dl values must be multiples of this value. 
+        Can be set to None if max_grid_density is provided.
+    max_grid_density : int, optional
+        If min_dl is None, then max_grid_density is used. 
+        If both provided, performs additional check if they are consistent (Must be inverse of min_dl.) 
+        Used as a conversion factor from the external 'physical' unit to the internal 'domain' unit.
+
+    Raises
+    ------
+    TypeError
+        If inputs have invalid types.
+    ValueError
+        If inputs are invalid.
+    
+    Notes
+    -----
+    - Users specify all model parameters and geometry in **length units** (e.g., meters).
+    - Users must provide either min_dl or max_grid_density
+    - Internally, discretized domain dimensions are internally converted to **domain length units** for computation,
+      ensuring that domain spans and grid sizes remain integer-based.
+
+    Examples
+    --------
+    >>> u = LengthConfig("m", 0.01)
+    >>> u.to_domain_length_unit(1.25)
+    125
+    >>> u.to_physical_length_unit(250)
+    2.5
+    """
     
     def __init__(
         self,
@@ -14,43 +52,6 @@ class LengthConfig:
     ):
         """
         Initialize a ModelResolution class object. 
-
-        Parameters
-        ----------
-        physical_length_unit : str, optional
-            The physical measurement unit used by the user (e.g., 'm').
-            Represents real-world scale, and one to be used externally throughout.
-        min_dl: float, optional
-            Minimum spatial increment (dl) allowed by the model for stable remeshing.
-            It's 'inverse' must be 10^N where N is a whole number. 
-            All dl values must be multiples of this value. 
-            Can be set to None if max_grid_density is provided.
-        max_grid_density : int, optional
-            If min_dl is None, then max_grid_density is used. 
-            If both provided, performs additional check if they are consistent (Must be inverse of min_dl.) 
-            Used as a conversion factor from the external 'physical' unit to the internal 'domain' unit.
-
-        Raises
-        ------
-        TypeError
-            If inputs have invalid types.
-        ValueError
-            If inputs are invalid.
-        
-        Notes
-        -----
-        - Users specify all model parameters and geometry in **length units** (e.g., meters).
-        - Users must provide either min_dl or max_grid_density
-        - Internally, discretized domain dimensions are internally converted to **domain length units** for computation,
-        ensuring that domain spans and grid sizes remain integer-based.
-
-        Examples
-        --------
-        >>> u = Units("m", 0.0001)
-        >>> u.to_domain_physical_length_unit(1.25)
-        125
-        >>> u.to_physical(250)
-        2.5
         """
         self.__set_model_resolutions(physical_length_unit, min_dl, max_grid_density)
 

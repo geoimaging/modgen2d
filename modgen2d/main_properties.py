@@ -22,6 +22,19 @@ class MainPropertiesConfig:
     - Registration of main properties
     - Sampling of material properties per lithological ID
     - Consistency with a locked lithological domain
+    
+    Parameters
+    ----------
+    features_config : FeaturesConfig
+        Configuration describing all feature IDs and their
+        material-type random generators.
+    layer0_flag : bool, optional
+        Whether a special `layer0` handling is enabled, by default False.
+
+    Raises
+    ------
+    TypeError
+        If `features_config` is not a FeaturesConfig instance.
 
     Notes
     -----
@@ -35,19 +48,6 @@ class MainPropertiesConfig:
     def __init__(self, features_config:FeaturesConfig, layer0_flag:bool=False):
         """
         Initialize the 'MainPropertiesConfig' class object.
-
-        Parameters
-        ----------
-        features_config : FeaturesConfig
-            Configuration describing all feature IDs and their
-            material-type random generators.
-        layer0_flag : bool, optional
-            Whether a special `layer0` handling is enabled, by default False.
-
-        Raises
-        ------
-        TypeError
-            If `features_config` is not a FeaturesConfig instance.
         """
         
         if not isinstance(features_config, FeaturesConfig):

@@ -19,17 +19,17 @@ class LithologicalDomain2DFromObstruction2D(LithologicalDomain2DReadOnly):
     """
     Represents a 2D lithological domain generated from obstruction data (utilities, pipes, etc.).
     This class allows merging multiple 2D obstruction datasets into a lithological matrix.
+    
+    Parameters
+    ----------
+    domain : DiscretizedDomain2D
+        Discretized spatial domain for the lithological matrix.
+    name : str, optional
+        Name of the lithological domain.
     """
     def __init__(self, domain:DiscretizedDomain2D, name: str=''):
         """
         Initialize a 'LithologicalDomain2DFromObstruction2D' instance.
-
-        Parameters
-        ----------
-        domain : DiscretizedDomain2D
-            Discretized spatial domain for the lithological matrix.
-        name : str, optional
-            Name of the lithological domain.
         """
         super().__init__(domain, name)
         self.domain = domain

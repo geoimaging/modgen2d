@@ -5,5 +5,6 @@ Obstruction2D
 
 .. autoclass:: Obstruction2D
    :members:
+   :inherited-members:
    :undoc-members:
    :show-inheritance:
