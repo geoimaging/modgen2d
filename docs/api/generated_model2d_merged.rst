@@ -5,6 +5,5 @@ GeneratedModel2DMerged
 
 .. autoclass:: GeneratedModel2DMerged
    :members:
-   :inherited-members:
    :undoc-members:
    :show-inheritance:

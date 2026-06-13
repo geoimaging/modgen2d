@@ -65,35 +65,93 @@ class MainPropertiesConfig:
     
     @property
     def features_config(self):
+        """
+        FeaturesConfig
+            Configuration defining feature IDs, material types,
+            and their associated probability distributions.
+        """
         return self._features_config
     
     def get_feature_ids(self):
+        """
+        Return all configured feature identifiers.
+
+        Returns
+        -------
+        list
+            List of feature IDs defined in the associated
+            ``FeaturesConfig`` instance.
+        """
         return self.features_config.get_feature_ids()
     
     @property
     def layer0_flag(self):
+        """
+        bool
+            Whether special handling for ``layer0`` is enabled.
+        """
         return self._layer0_flag
         
     @property
     def main_properties(self):
+        """
+        dict[str, MainProperty]
+            Dictionary of registered main property definitions.
+        """
         return self._main_properties
     
     def get_main_properties_names(self):
+        """
+        Return the names of all registered main properties.
+
+        Returns
+        -------
+        list[str]
+            Registered main property names.
+        """
         return list(self.main_properties.keys())
     
     @property
     def lit_id2material_dict(self):
+        """
+        dict
+            Mapping between lithological IDs and sampled material types.
+
+        Generated when
+        ``lock_and_generate_sample_properties()`` is called.
+        """
         return self._lit_id2material_dict
     
     @property
     def sampled_properties(self):
+        """
+        dict
+            Nested dictionary containing sampled material property values
+            for every lithological ID and main property.
+        """
         return self._sampled_properties
     
     @property
     def unique_code(self):
+        """
+        int
+            Random identifier associated with the current sampled-property
+            realization.
+        """
         return self._unique_code
     
     def unlock(self):
+        """
+        Reset all generated samples and unlock the configuration.
+
+        This method clears:
+
+        - sampled material types
+        - sampled property values
+        - consistency identifiers
+
+        allowing a new realization to be generated.
+        """
         self._locked = False
         self._lit_id2material_dict = {}
         self._sampled_properties = {}
@@ -294,7 +352,16 @@ def check_consistent_with_lit_domain2d_collection(lit_domain2d_collection_instan
 
 class AuxillaryProperties:
     """
-    Collection of all auxillary properties, not generated properties but required for model generation like number of layers, etc. (Optional)
+    Container for auxiliary model-generation parameters.
+
+    Auxiliary properties are not spatially generated material
+    properties. Instead, they represent supporting parameters
+    used during model generation, such as:
+
+    - number of layers
+    - average layer thickness
+    - characteristic dimensions
+    - user-defined generation controls
     """
     def __init__(self):
         """
@@ -322,6 +389,9 @@ class AuxillaryProperties:
         self.aux_properties[name] = randomGeneratorInstance_mean
             
     def print(self):
+        """
+        Print the names of all registered auxiliary properties.
+        """
         print(f"Additional_Properties: {self.aux_properties.keys()}")
         
 

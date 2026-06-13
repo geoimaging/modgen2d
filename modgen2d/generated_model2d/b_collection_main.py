@@ -63,22 +63,35 @@ class GeneratedProfileCollection2DReadOnly:
         
     @property
     def generated_properties_list(self):
-        """List of generated property names."""
+        """
+        list[str]
+            Names of generated property fields.
+        """
         return self._generated_properties_list
     
     @property
     def sampled_properties(self):
-        """List of generated property names."""
+        """
+        dict
+            Sampled property definitions grouped by property name.
+        """
         return self._sampled_properties
     
     @property
     def lit_id2material_dict(self):
-        """Dictionary of sampled property definitions."""
+        """
+        dict
+            Mapping between lithological identifiers and sampled
+            material types.
+        """
         return self._lit_id2material_dict
     
     @property
     def spatial_simulator2d_instance(self):
-        """Get the 'SpatialSimulator2D' instance used for simulations."""
+        """
+        SpatialSimulator2D
+            Spatial simulator used to generate property fields.
+        """
         return self._spatial_simulator2d_instance
 
     def change_spatial_simulator_type(self, new_simulator_class):
@@ -94,22 +107,47 @@ class GeneratedProfileCollection2DReadOnly:
         
     @property
     def main_properties_unique_code(self):
-        """Unique code of the main property configuration."""
+        """
+        int
+            Unique identifier associated with the sampled property
+            realization.
+        """
         return self._main_properties_unique_code
     
     def get_generated_model2d(self, set_name):
+        """
+        Return a generated model by set name.
+
+        Parameters
+        ----------
+        set_name : str or None
+            Name of the lithological set. If None, the merged model
+            is returned.
+
+        Returns
+        -------
+        GeneratedModel2D
+            Requested generated model.
+        """
         if set_name is None:
             return self.merged_generated_model2d
         return self._generated_model2d_set[set_name]
     
     @property
     def generated_model2d_set(self):
-        """Dictionary mapping set names to 'GeneratedModel2D' instances."""
+        """
+        dict[str, GeneratedModel2D]
+            Generated models indexed by lithological set name.
+        """
         return self._generated_model2d_set
     
     @property
     def merged_generated_model2d(self):
-        """Merged 'GeneratedModel2D' object across all sets."""
+        """
+        GeneratedModel2D
+            Merged generated model containing all simulated property
+            fields.
+        """
         return self._merged_generated_model2d
     
     @property
@@ -187,15 +225,13 @@ class GeneratedProfileCollection2DReadOnly:
         
     def get_ordered_set_names_dict(self):
         """
-        Returns an ordered mapping of lithological set orders to set names.
+        Return lithological sets sorted by lithological order.
 
         Returns
         -------
-        tuple
-            ordered_set_names_dict : dict
-                Mapping of lithological order (int) → set name (str), sorted by order.
-            lit_domain_set : dict
-                Mapping of set names to their `LithologicalDomain2D` instances.
+        tuple[dict[int, str], dict[str, LithologicalDomain2D]]
+            Ordered mapping of lithological order to set name and
+            corresponding lithological domains.
         """
         # Get ordered and lit_domain_set
         ordered_set_names_dict = {}
@@ -225,6 +261,14 @@ class GeneratedProfileCollection2DReadOnly:
 
     @property
     def get_config(self):
+        """
+        Export configuration.
+
+        Returns
+        -------
+        dict
+            Serializable configuration.
+        """
         self_config = {}
         self_config['_read_only'] = self._read_only
         self_config['properties_metadata'] = {}

@@ -12,6 +12,18 @@ class GeneratedModel2DMerged(GeneratedModel2D):
     in a `GeneratedProfileCollection2D`.
     Accessible via: `modgen2d.GeneratedModel2DMerged`.
     
+    Attributes
+    ----------
+    lit_domain : LithologicalDomain2D
+        Lithological domain associated with the generated model.
+    lit_order : int
+        Lithological ordering index inherited from the source domain.
+    gwt_depth : float
+        Groundwater table depth.
+    lit_id2material_dict : dict
+        Mapping between lithological identifiers and material definitions.
+    simulated_profiles : dict[str, numpy.ndarray]
+        Dictionary of simulated property fields.
     """
     def __init__(self, generated_model_collection:GeneratedProfileCollection2D):
         """

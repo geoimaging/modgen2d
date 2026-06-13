@@ -12,18 +12,22 @@ class AbstractSmoother(ABC):
     Abstract base class for smoothing interfaces.
 
     Concrete subclasses must implement the generate_smooth_interfaces method.
+    
+    Parameters
+    ----------
+    generator_params : dict
+        Dictionary containing parameters specific to the interface
+        smoothing method.
+        
+    Attributes
+    ----------
+    generator_params : dict
+        Dictionary containing parameters specific to the interface
+        smoothing method.
     """
     def __init__(self, generator_params:dict):
         """
         Initialize the rough interface generator.
-
-        Parameters
-        ----------
-        generator_params : dict
-            Dictionary containing parameters specific to the interface
-            smoothing method.
-        rng : numpy.random.Generator, optional
-            Random number generator used for stochastic sampling.
         """
         self.generator_params = generator_params
     

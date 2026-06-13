@@ -4,13 +4,13 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "modgen2d"
-version = "0.1.0"
-description = "Generating 2D models."
+version = "1.0.0"
+description = "Advancing Subsurface Simulation with ModGen2D: An Open-Source Python Package for the Stochastic Generation of Complex Geologic Models"
 readme = "README.md"
 requires-python = ">=3.11"
 
 authors = [{ name = "Sanish Bhochhibhoya", email = "sbhochhi@vt.edu" }]
-license = { text = "MIT" }
+license = { text = "GPL-3.0-only" }
 
 dependencies = [
     "numpy",
@@ -26,5 +26,6 @@ dev = ["pytest", "sphinx", "coverage"]
 
 # Random placeholder as not public yet.
 [project.urls]
-Homepage = "https://randomfornow.com/modgen2d"
-Issues = "https://randomfornow.com/modgen2d/issues"
+Homepage = "https://github.com/geoimaging/modgen2d"
+Repository = "https://github.com/geoimaging/modgen2d"
+Issues = "https://github.com/geoimaging/modgen2d/issues"

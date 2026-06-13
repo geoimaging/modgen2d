@@ -75,13 +75,47 @@ class DiscretizedDomain2D():
         
     @staticmethod
     def is_valid_discretization(span_domain_unit, delta_domain_unit, origin_domain_unit):
-        """ Check if a span is divisible by a discretization step."""
+        """
+        Check whether a span is compatible with a discretization step.
+
+        Parameters
+        ----------
+        span_domain_unit : int
+            Span length in domain units.
+        delta_domain_unit : int
+            Discretization size in domain units.
+        origin_domain_unit : int
+            Domain origin in domain units.
+
+        Returns
+        -------
+        bool
+            True if the span and discretization are integer-valued and
+            the span is exactly divisible by the discretization step.
+        """
         integer_check = is_integer_value(span_domain_unit) and is_integer_value(delta_domain_unit) and is_integer_value(origin_domain_unit)
         return integer_check and np.isclose(span_domain_unit % delta_domain_unit, 0)
         
     @staticmethod
     def is_valid_mesh(spans_domain_unit, dhs_domain_unit, origins_domain_unit):
-        """Validate mesh spans and discretization steps."""
+        """
+        Validate mesh spans and discretization steps.
+        
+        Parameters
+        ----------
+        span_domain_unit : int
+            Span length in domain units.
+        delta_domain_unit : int
+            Discretization size in domain units.
+        origin_domain_unit : int
+            Domain origin in domain units.
+            
+        Returns
+        -------
+        bool
+            True if all spans and discretization intervals are positive and each
+            span is divisible by the corresponding discretization interval.
+        """
         try:
             for span, dh, origin in zip(spans_domain_unit, dhs_domain_unit, origins_domain_unit):
                 if span <= 0:
@@ -105,6 +139,10 @@ class DiscretizedDomain2D():
         new_dz : float, optional
             New z discretization. Defaults to current dz.
             
+        Returns
+        -------
+        bool
+            True if the proposed discretization produces a valid mesh.
         """
         new_dhs_in_domain_len_units = [
             self.length_config.to_domain_length_unit(new_dx), 
@@ -114,7 +152,7 @@ class DiscretizedDomain2D():
 
     def remesh(self, new_dx:float = None, new_dz:float = None):#, inplace=True):
         """
-        Return a new remeshed domain.
+        Return a new domain with updated discretization intervals.
 
         Parameters
         ----------
@@ -142,7 +180,23 @@ class DiscretizedDomain2D():
     
     @staticmethod
     def get_minimum_domain(domain2d_list:list):
-        """Return a domain with minimum discretization. """
+        """
+        Return a domain using the finest discretization from a list of domains.
+
+        All input domains must have equivalent spans, origins, and length
+        configuration. The returned domain uses the smallest x- and z-direction
+        discretization intervals found in the input list.
+
+        Parameters
+        ----------
+        domain2d_list : list of DiscretizedDomain2D
+            Domains to compare.
+
+        Returns
+        -------
+        DiscretizedDomain2D
+            Domain with the finest discretization.
+        """
         first = True
         for lit_domain in domain2d_list:
             if not isinstance(lit_domain, DiscretizedDomain2D):
@@ -234,26 +288,54 @@ class DiscretizedDomain2D():
         
     @property
     def spans(self):
+        """
+        list[float]
+            Domain spans ``[span_x, span_z]`` in physical length units.
+        """
         return [i/self.length_config.max_grid_density for i in self._spans_in_domain_len_units]
 
     @property
     def dhs(self):
+        """
+        list[float]
+            Discretization intervals ``[dx, dz]`` in physical length units.
+        """
         return [i/self.length_config.max_grid_density for i in self._dhs_in_domain_len_units]
     
     @property
     def origins(self):
+        """
+        list[float]
+            Domain origins ``[origin_x, origin_z]`` in physical length units.
+        """
         return [i/self.length_config.max_grid_density for i in self._origins_in_domain_len_units]
     
     @property
     def x_edges(self):
+        """
+        numpy.ndarray
+            Coordinates of element edges in the x-direction.
+        """
         return self.origins[0] + np.arange(0, self.shape[0] + 1) * self.dhs[0]
     
     @property
     def z_edges(self):
-        return self.origins[0] + np.arange(0, self.shape[1] + 1) * self.dhs[1]
+        """
+        numpy.ndarray
+            Coordinates of element edges in the z-direction.
+        """
+        return self.origins[1] + np.arange(0, self.shape[1] + 1) * self.dhs[1]
     
     @property
     def get_interface_x_centers(self):
+        """
+        numpy.ndarray
+            Extended x-center coordinates used for interface definitions.
+
+        The returned array includes one additional point before and after the
+        regular x-center coordinates. These extra points help avoid edge issues
+        during interface remeshing.
+        """
         dx = self.dhs[0]
         return np.concatenate([ ## 2 extra points for interfaces (Useful for remeshing, no criss crossing after remeshing).
             np.array([self.x_centers[0] - dx]),
@@ -263,6 +345,11 @@ class DiscretizedDomain2D():
         
     @property
     def interface_shape(self):
+        """
+        tuple[int, int]
+            Shape used for interface arrays. The x-direction includes two extra
+            points relative to the domain shape.
+        """
         return (self.shape[0]+2, self.shape[1])
         
     @property

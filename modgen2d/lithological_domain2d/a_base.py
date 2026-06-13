@@ -59,7 +59,13 @@ class LithologicalDomain2DReadOnly():
         
     @property
     def lithological_matrix(self):
-        """Get the lithological matrix (2D numpy array)."""
+        """
+        numpy.ndarray
+            Two-dimensional matrix of lithological identifiers.
+
+        Each entry represents the lithological ID assigned to the
+        corresponding cell in the discretized domain.
+        """
         return self._lithological_matrix
 
     @lithological_matrix.setter
@@ -160,18 +166,49 @@ class LithologicalDomain2DReadOnly():
         return True
     
     @staticmethod
-    def check_for_Xs(lit_matrix_vavaluelue):
-        """Check if 'X' placeholders exist in the lithological matrix."""
-        return "X" in np.unique(np.asarray(lit_matrix_vavaluelue, dtype=str))
+    def check_for_Xs(lit_matrix_value):
+        """
+        Check whether a lithological matrix contains unresolved placeholders.
+
+        Parameters
+        ----------
+        lit_matrix_value : array-like
+            Lithological matrix to inspect.
+
+        Returns
+        -------
+        bool
+            True if the matrix contains the placeholder value ``"X"``.
+        """
+        return "X" in np.unique(np.asarray(lit_matrix_value, dtype=str))
 
     def print(self):
+        """
+        Print a summary of the lithological domain.
+        """
         print(f"N_x_coord = {self.lithological_matrix.shape[0]}, N_z_coord = {self.lithological_matrix.shape[1]}")
         print(f"Expected lit_ids: {self.lit_ids_expected}")
         print("Layered Matrix : \n", self.lithological_matrix.T) 
     
-    ##TODO add unittests
     def get_feature_id_and_lit_val(self):
-        
+        """
+        Group lithological identifiers by feature type.
+
+        Returns
+        -------
+        dict
+            Dictionary where keys are feature prefixes and values are
+            lists of associated lithological indices.
+
+        Examples
+        --------
+        ``["0", "1", "U_1", "U_2"]`` becomes::
+
+            {
+                "def": [0, 1],
+                "U": [1, 2]
+            }
+        """
         self._validate_lithological_matrix()
         
         if not self.lit_ids_expected:

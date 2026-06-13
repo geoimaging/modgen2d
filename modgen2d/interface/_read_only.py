@@ -20,26 +20,44 @@ class DiscretizedInterfaces2DReadOnly:
     Interfaces are defined on a discretized 2D domain and may represent soil–soil or surface–soil boundaries.
 
     Once locked, the instance becomes immutable.
+    
+    Parameters
+    ----------
+    domain : DiscretizedDomain2D
+        The DiscretizedDomain2D instance describing the spans and dhs of the domain.
+    n_soil_layers: int
+        Number of soil layers.
+    generate_surface:bool
+        Whether a surface interface is present.
+    roughness_multiplier : list, optional
+        Roughness scaling factors per interface.
+    remesh_interp_method : str, optional
+        Interpolation method used during remeshing. (default: 'linear')
+    rng : numpy.random.Generator, optional
+        Random number generator.
+        
+    Attributes
+    ----------
+    domain : DiscretizedDomain2D
+        Domain associated with the interfaces.
+    interfaces_matrix : numpy.ndarray
+        Interface depth matrix of shape
+        ``(n_interface_x_points, n_soil_layers)``.
+    n_soil_layers : int
+        Number of soil layers.
+    n_soil_soil_interfaces : int
+        Number of soil-soil interfaces.
+    generate_surface : bool
+        Whether a surface interface is present.
+    remesh_interp_method : str
+        Interpolation method used during remeshing.
+    rng : numpy.random.Generator
+        Random number generator.
     """
     
     def __init__(self, domain: DiscretizedDomain2D, n_soil_layers: int, generate_surface:bool, remesh_interp_method = 'linear', rng=np.random.default_rng()):
         """
         Initializes the 'InterfaceCreator' class instance. 
-        
-        Parameters
-        ----------
-        domain : DiscretizedDomain2D
-            The DiscretizedDomain2D instance describing the spans and dhs of the domain.
-        n_soil_layers: int
-            Number of soil layers.
-        generate_surface:bool
-            Whether a surface interface is present.
-        roughness_multiplier : list, optional
-            Roughness scaling factors per interface.
-        remesh_interp_method : str, optional
-            Interpolation method used during remeshing. (default: 'linear')
-        rng : numpy.random.Generator, optional
-            Random number generator.
         """
         n_soil_layers = int(n_soil_layers)
         blank_interfaces = np.ones((domain.interface_shape[0], 
@@ -67,12 +85,33 @@ class DiscretizedInterfaces2DReadOnly:
 
     @property
     def shape(self):
+        """
+        tuple[int, int]
+            Shape of the interface matrix as
+            ``(n_interface_x_points, n_soil_layers)``.
+        """
         return (len(self.domain.get_interface_x_centers), self.n_soil_layers)
 
     def is_surface_interface(self):
+        """
+        Check whether the object contains only a surface interface.
+
+        Returns
+        -------
+        bool
+            True if the object contains exactly one interface.
+        """
         return self.n_soil_layers==1
     
     def check_if_surface_is_okay(self):
+        """
+        Check whether the surface interface satisfies elevation constraints.
+
+        Returns
+        -------
+        bool
+            True if the minimum surface elevation is non-negative.
+        """
         return not np.abs(np.min(self.interfaces_matrix)) <= -1e-2
     
     def lock_interfaces(self):
@@ -178,6 +217,20 @@ class DiscretizedInterfaces2DReadOnly:
         self._overlap_resolving_technique = overlap_resolving_technique
     
     def check_if_overlapping_interfaces(self):
+        """
+        Detect overlapping interfaces.
+
+        Overlap occurs when a deeper interface becomes shallower
+        than the interface above it.
+
+        Returns
+        -------
+        tuple[bool, float]
+            has_overlap : bool
+                True if overlapping interfaces exist.
+            min_abs_diff : float
+                Minimum absolute separation between adjacent interfaces.
+        """
         diffs = np.diff(self.interfaces_matrix)
 
         # Not enough interfaces → no overlap possible
@@ -190,6 +243,15 @@ class DiscretizedInterfaces2DReadOnly:
         return has_overlap, min_abs_diff
 
     def adjust_top_of_surface_interface_to_zero(self):
+        """
+        Shift all interfaces vertically so that the shallowest point
+        of the surface interface is located at zero depth.
+
+        Raises
+        ------
+        SyntaxError
+            If the adjustment fails to produce a valid surface.
+        """
         interfaces_matrix = self.interfaces_matrix
         top_interface = interfaces_matrix[:,0]
         top_depth = np.min(top_interface)
@@ -256,6 +318,26 @@ class DiscretizedInterfaces2DReadOnly:
         return new
      
     def plot(self, ax=None, plot_extents=True, legend=False, **kwargs):
+        """
+        Plot all interfaces.
+
+        Parameters
+        ----------
+        ax : matplotlib.axes.Axes, optional
+            Axes on which to draw the interfaces.
+        plot_extents : bool, default=True
+            Plot domain top and bottom boundaries.
+        legend : bool, default=False
+            Display interface legend.
+        **kwargs
+            Additional keyword arguments passed to
+            ``matplotlib.axes.Axes.plot``.
+
+        Returns
+        -------
+        matplotlib.axes.Axes
+            Axes containing the interface plot.
+        """
         if ax is None:
             fig, ax = plt.subplots(figsize=[8,8])
 
@@ -303,8 +385,12 @@ class DiscretizedInterfaces2DReadOnly:
 
     def clone(self):
         """
-        Create a shallow clone of this object, copying all attributes
-        except ones explicitly remeshed later.
+        Create a shallow copy of the interface object.
+
+        Returns
+        -------
+        DiscretizedInterfaces2DReadOnly
+            Shallow clone of the current instance.
         """
         new = object.__new__(self.__class__)
         new.__dict__ = self.__dict__.copy()
@@ -312,8 +398,26 @@ class DiscretizedInterfaces2DReadOnly:
 
     def get_surface_and_subsurface_interfaces(self, relative_to_surface=False) -> "DiscretizedInterfaces2DReadOnly":
         """
-        Seperate surface interface and return main and surface interface after seperating.
-        Surface interface is the top interface.
+        Separate surface and subsurface interfaces.
+
+        Parameters
+        ----------
+        relative_to_surface : bool, default=False
+            If True, subsurface interfaces are converted to depths
+            relative to the surface interface.
+
+        Returns
+        -------
+        tuple
+            soil_interface_instance :
+                Interface object containing soil-soil interfaces.
+            surface_interface_instance :
+                Interface object containing only the surface interface.
+
+        Raises
+        ------
+        ValueError
+            If no soil-soil interfaces exist.
         """
         if self.n_soil_layers == 1:
             raise ValueError("Surface interface cannot be seperated, provided the interface class has no soil-soil interfaces. Need at least one to seperate.")
@@ -344,8 +448,6 @@ class DiscretizedInterfaces2DReadOnly:
             surface_interface_instance.lock_interfaces()
             
         return soil_interface_instance, surface_interface_instance
-    
-    
     
     @property
     def get_config(self):

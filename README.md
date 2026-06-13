@@ -6,7 +6,7 @@
 
 -   [About _ModGen2D_](#about-modgen2d)
 -   [Getting Started](#getting-started)
-    - [Installation Guide for _FWIPrePostAI_](#installation-guide-for-modgen2d)
+    - [Installation Guide for _ModGen2D_](#installation-guide-for-modgen2d)
     - [Using _ModGen2D_](#using-modgen2d)
     - [Provided Examples in `examples` directory.](#provided-examples-in-example-directory)
 
@@ -25,12 +25,7 @@ If you use these tools in your research or consulting, we ask you please cite th
    Verify that Python version 3.11 or later is installed on your system. If not, please follow the detailed installation instructions provided [here](https://jpvantassel.github.io/python3-course/#/intro/installing_python).
 
 2. Download the Repository.\
-Obtain a local copy of the FWIPrePostAI repository, either by downloading the repository as a .zip file and extracting its contents, or cloning the repository via Git.
-
-3. Install Required Python Packages.\
-Navigate to the repository directory and install the necessary Python dependencies using the following command:\
-`python -m pip install -r requirements.txt`\
-For users unfamiliar with pip, a comprehensive tutorial is available [here](https://jpvantassel.github.io/python3-course/#/intro/pip).
+Install using 'pip install modgen2d'. You can also obtain a local copy of the ModGen2D repository, either by downloading the repository as a .zip file and extracting its contents, or cloning the repository via Git.
 
 ### Using _ModGen2D_
 

@@ -72,7 +72,7 @@ class PropertyDistribution:
         """
         
         if not isinstance(distribution_to_check, RandomGeneratorAbstract):
-            raise TypeError(f"set_dist must be an instance of a subclass of a RandomGenerator class.")
+            raise TypeError(f"distribution_to_check must be an instance of a subclass of a RandomGenerator class.")
             
     def check_class(self):
         """
@@ -96,29 +96,59 @@ class PropertyDistribution:
             
     @property
     def property_name(self):
+        """
+        str
+            Name of the material property.
+        """
         return self._property_name
     
     @property
     def mean_distribution(self):
+        """
+        RandomGeneratorAbstract
+            Random generator used to sample the mean property value.
+        """
         return self._mean_distribution
 
     @property
     def stdev_distribution(self):
+        """
+        RandomGeneratorAbstract or None
+            Random generator used to sample standard deviation or coefficient
+            of variation.
+        """
         return self._stdev_distribution
 
     @property
     def stdev_type(self):
+        """
+        {"stdev", "cov"}
+            Type of variability represented by ``stdev_distribution``.
+        """
         return self._stdev_type
 
     @property
     def mean_slope_with_depth_distribution(self):
+        """
+        RandomGeneratorAbstract or None
+            Random generator used to sample the depth-dependent slope of the
+            mean property value.
+        """
         return self._mean_slope_with_depth_distribution
     
     @property
     def description(self):
+        """
+        str
+            Human-readable description of the property distribution.
+        """
         return self._description
 
     @property
     def check(self):
+        """
+        bool
+            True if the object has passed internal validation.
+        """
         return self._check
       

@@ -11,17 +11,24 @@ class LithologicalDomain2DCollection:
     A class for generating and managing geotechnical lithological profiles in 2D.
     Supports interface-based and obstruction-based lithological domains, including
     merging, ordering, validation, and serialization.
+    
+    Parameters
+    ----------
+    valid_feature_ids : list
+        List of valid feature IDs for validation against lithological domains.
+    interface_set_name : str, default "def"
+        Name for the interface-based lithology set.
+        
+    Attributes
+    ----------
+    interface_set_name : str
+        Name assigned to the interface-derived lithological domain.
+    valid_feature_ids : list[str]
+        List of valid feature identifiers.
     """
     def __init__(self, valid_feature_ids, interface_set_name:str="def"):
         """
         Initializes the LithologicalDomain2DCollection.
-
-        Parameters
-        ----------
-        valid_feature_ids : list
-            List of valid feature IDs for validation against lithological domains.
-        interface_set_name : str, default "def"
-            Name for the interface-based lithology set.
         """
         self.interface_config_revision_id = GlobalSoilInterfaceConfig.get_revision_id()
         self.interface_set_name = interface_set_name
@@ -40,29 +47,44 @@ class LithologicalDomain2DCollection:
     
     @property
     def all_lit_ids(self):
-        """Returns a dictionary mapping lithology prefixes to all associated IDs."""
+        """
+        dict
+            Mapping of feature identifiers to lithological values.
+        """
         return self._all_lit_ids
     
     @property
     def gwt_depth(self):
-        """Returns the groundwater table (GWT) depth associated with the merged domain."""
+        """
+        float or None
+            Groundwater table depth associated with the merged domain.
+        """
         return self._gwt_depth
     
     @property
     def lit_domain_set(self):
-        """Returns the set of all 'LithologicalDomain2D' instance in dictionary form with 'set name' as keys."""
+        """
+        dict[str, LithologicalDomain2DReadOnly]
+            Collection of registered lithological domains.
+        """
         return self._lit_domain_set
     
     @property
     def merged_lit_domain(self):
-        """Returns the merged 'LithologicalDomain2D' instance after locking."""
+        """
+        LithologicalDomain2DReadOnly or None
+            Merged lithological domain generated during locking.
+        """
         if self._merged_lit_domain is None:
             warnings.warn("Merged lit domain of the collection is None. Lock the collection first.")
         return self._merged_lit_domain
     
     @property
     def unique_code(self):
-        """Returns the unique code assigned to the locked collection."""
+        """
+        int
+            Unique identifier assigned after locking.
+        """
         return self._unique_code
     
     def unlock(self, delete_all_sets=False):

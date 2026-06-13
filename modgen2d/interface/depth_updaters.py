@@ -16,16 +16,22 @@ class AbstractDepthUpdater(ABC):
 
     Subclasses must implement `update_interfaces_depths` to define
     how interface depths are initialized or modified.
+    
+    Parameters
+    ----------
+    updater_params : dict
+        Dictionary containing parameters specific to the interface
+        depth updater.
+        
+    Attributes
+    ----------
+    updater_params : dict
+        Dictionary containing parameters specific to the interface
+        depth updater.
     """
     def __init__(self, updater_params:dict):
         """
-        Initialize the rough interface generator.
-
-        Parameters
-        ----------
-        updater_params : dict
-            Dictionary containing parameters specific to the interface
-            depth updater.
+        Initialize the depth updater.
         """
         self.updater_params = updater_params
     
