@@ -22,9 +22,8 @@ dependencies = [
 
 # Optional dev dependencies
 [project.optional-dependencies]
-dev = ["pytest", "sphinx", "coverage"]
+dev = ["pytest", "sphinx", "sphinx-rtd-theme", "coverage"]
 
-# Random placeholder as not public yet.
 [project.urls]
 Homepage = "https://github.com/geoimaging/modgen2d"
 Repository = "https://github.com/geoimaging/modgen2d"
