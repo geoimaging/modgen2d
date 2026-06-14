@@ -1,13 +1,7 @@
 Installation
 ============
 
-You can install modgen2d via pip:
-
-.. code-block:: bash
-
-   pip install modgen2d
-
-Or from source:
+You can install modgen2d via source:
 
 .. code-block:: bash
 

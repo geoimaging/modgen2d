@@ -28,3 +28,4 @@ dev = ["pytest", "sphinx", "sphinx-rtd-theme", "coverage"]
 Homepage = "https://github.com/geoimaging/modgen2d"
 Repository = "https://github.com/geoimaging/modgen2d"
 Issues = "https://github.com/geoimaging/modgen2d/issues"
+Documentation = "https://modgen2d.readthedocs.io/en/latest/"
