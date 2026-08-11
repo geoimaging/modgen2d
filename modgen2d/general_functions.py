@@ -154,6 +154,36 @@ class FixedKeyDict(dict):
         
         super().__setitem__(key, value)
 
+def check_for_zero_sigma(processed_property_dict_layer_id):
+    """
+    Check if the layer_id has zero stdev_or_cov value in all its possible case.
+        {'wet': {'mean': float, 'mean_slope_with_depth': float (optional), 'stdev_or_cov': float, 'stdev_type':string}, 
+         'dry': {'mean': float, 'mean_slope_with_depth': float (optional), 'stdev_or_cov': float, 'stdev_type':string}},
+    Or,
+        {'both': {'mean': float, 'mean_slope_with_depth': float (optional), 'stdev_or_cov': float, 'stdev_type':string}},                      
+
+    Parameters:
+    processed_property_dict : dict
+        Dictionary wet/dry/both and their corresponding mean and standard deviation values as nested dictionaries.
+    
+    Returns:
+    True if zero stdev_or_cov in all cases, else False
+    """
+    
+    # Validate the dictionary through validate_processed_property_dict
+    keys = set(processed_property_dict_layer_id.keys())
+    optional_key = 'layer0_air'
+    keys.discard(optional_key)
+
+    valid_sets = [{'wet', 'dry'}, {'both'}]
+    assert keys in valid_sets, f"Invalid key combination: {keys}"   ## Though already in more detail validated using validate_processed_property_dict
+     
+    for k in keys:
+        stdev_val = processed_property_dict_layer_id[k]['stdev_or_cov']
+        if stdev_val!=0:
+            return False
+    return True
+    
 def validate_processed_property_dict(processed_property_dict):
     """
     Validates if the given dictionary follows the required format:

@@ -1,7 +1,7 @@
 import numpy as np
 from .testing_tools import unittest, TestCase
-from modgen2d.spatial_simulator2d import CovarianceDecompositionSimulator, ConstantSimulator, SpatialSimulator2D, check_for_zero_sigma
-from modgen2d.general_functions import validate_processed_property_dict
+from modgen2d.spatial_simulator2d import CovarianceDecompositionSimulator, ConstantSimulator, SpatialSimulator2DAbstract
+from modgen2d.general_functions import validate_processed_property_dict, check_for_zero_sigma
 
 class TestSpatialSimulator2D(TestCase):
     
@@ -46,35 +46,35 @@ class TestSpatialSimulator2D(TestCase):
         self.assertTrue(np.all(eigvals > 0))  # positive definite
     
     def test_get_means_am_bm(self):
-        a, b = SpatialSimulator2D.get_means_am_bm(5)
+        a, b = SpatialSimulator2DAbstract.get_means_am_bm(5)
         self.assertEqual(a, 5)
         self.assertEqual(b, 0)
 
-        a, b = SpatialSimulator2D.get_means_am_bm([2, 3])
+        a, b = SpatialSimulator2DAbstract.get_means_am_bm([2, 3])
         self.assertEqual(a, 2)
         self.assertEqual(b, 3)
 
     def test_get_means_am_bm_invalid(self):
         with self.assertRaises(ValueError):
-            SpatialSimulator2D.get_means_am_bm([1, 2, 3])
+            SpatialSimulator2DAbstract.get_means_am_bm([1, 2, 3])
 
     def test_check_points_valid(self):
-        pts = SpatialSimulator2D.check_points(self.points)
+        pts = SpatialSimulator2DAbstract.check_points(self.points)
         self.assertArrayEqual(pts, self.points)
 
     def test_check_points_invalid_shape(self):
         with self.assertRaises(ValueError):
-            SpatialSimulator2D.check_points([1, 2, 3])
+            SpatialSimulator2DAbstract.check_points([1, 2, 3])
             
         with self.assertRaises(ValueError):
-            SpatialSimulator2D.check_points(np.array([1, 2]))
+            SpatialSimulator2DAbstract.check_points(np.array([1, 2]))
 
         with self.assertRaises(ValueError):
-            SpatialSimulator2D.check_points(np.array([[[1, 2]]]))
+            SpatialSimulator2DAbstract.check_points(np.array([[[1, 2]]]))
 
     def test_check_points_non_numeric(self):
         with self.assertRaises(TypeError):
-            SpatialSimulator2D.check_points([["a", "b"]])
+            SpatialSimulator2DAbstract.check_points([["a", "b"]])
 
     def test_single_point_simulation(self):
         sim = CovarianceDecompositionSimulator(1.0, 1.0, rng=self.rng)
