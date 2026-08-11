@@ -89,26 +89,26 @@ class TestSpatialSimulator2D(TestCase):
         with self.assertRaises(TypeError):
             CovarianceDecompositionSimulator(1.0, "z", rng=self.rng)
 
-    def test_change_spatial_simulator_type(self):
-        cov_sim = CovarianceDecompositionSimulator(
-            1.0,
-            2.0,
-            simulated_val_for_ignored_lit_property=-999,
-            rng=np.random.default_rng(42),
-        )
+    # def test_change_spatial_simulator_type(self):
+    #     cov_sim = CovarianceDecompositionSimulator(
+    #         1.0,
+    #         2.0,
+    #         simulated_val_for_ignored_lit_property=-999,
+    #         rng=np.random.default_rng(42),
+    #     )
 
-        const_sim = cov_sim.change_spatial_simulator_type(ConstantSimulator)
+    #     const_sim = cov_sim.change_spatial_simulator_type(ConstantSimulator)
 
-        self.assertIsInstance(const_sim, ConstantSimulator)
-        self.assertEqual(const_sim.theta_x, 1.0)
-        self.assertEqual(const_sim.theta_z, 2.0)
-        self.assertEqual(const_sim.simulated_val_for_ignored_lit_property, -999)
+    #     self.assertIsInstance(const_sim, ConstantSimulator)
+    #     self.assertEqual(const_sim.theta_x, 1.0)
+    #     self.assertEqual(const_sim.theta_z, 2.0)
+    #     self.assertEqual(const_sim.simulated_val_for_ignored_lit_property, -999)
 
-    def test_change_spatial_simulator_type_invalid(self):
-        cov_sim = CovarianceDecompositionSimulator(1.0, 1.0, rng=self.rng)
+    # def test_change_spatial_simulator_type_invalid(self):
+    #     cov_sim = CovarianceDecompositionSimulator(1.0, 1.0, rng=self.rng)
 
-        with self.assertRaises(TypeError):
-            cov_sim.change_spatial_simulator_type(dict)
+    #     with self.assertRaises(TypeError):
+    #         cov_sim.change_spatial_simulator_type(dict)
 
     def test_get_config_and_from_config(self):
         cov_sim = CovarianceDecompositionSimulator(
@@ -121,10 +121,14 @@ class TestSpatialSimulator2D(TestCase):
         config = cov_sim.get_config
         recreated = CovarianceDecompositionSimulator.from_config(config)
 
-        self.assertEqual(recreated.theta_x, 1.0)
-        self.assertEqual(recreated.theta_z, 2.0)
+        params_expected = {'theta_x': 1.0,
+                           'theta_z': 2.0,
+                            }
+        self.assertEqual(recreated.params, params_expected)
         self.assertEqual(recreated.simulated_val_for_ignored_lit_property, -999)
         self.assertEqual(config["simulator_type_name"], "CovarianceDecompositionSimulator")
+        self.assertEqual(recreated.reloadable, True)
+        self.assertEqual(recreated.allow_simulation, True)
 
     def test_check_for_zero_sigma_both(self):
         prop = {

@@ -13,29 +13,42 @@ class SpatialSimulator2D(ABC):
 
     Parameters
     ----------
-    theta_x : float or None
-        Correlation length in the x-direction.
-    theta_z : float or None
-        Correlation length in the z-direction.
+    params : dict
+        Simulator-specific parameters. Every value must be a finite float or a boolean.
+        An empty dictionary is allowed.
     simulated_val_for_ignored_lit_property : int, default=-99999
         Constant value assigned to ignored lithological IDs.
     rng : numpy.random.Generator, optional
         Random number generator.
     """
-    def __init__(self, theta_x, theta_z, simulated_val_for_ignored_lit_property=-99999, rng=np.random.default_rng()):
+    def __init__(self, params, simulated_val_for_ignored_lit_property=-99999, rng=np.random.default_rng(), description = ''):
         """
         Initialize a spatial simulator.
         """
-        # Validate theta_x and theta_z
-        if theta_x is not None and not isinstance(theta_x, (int, float)):
-            raise TypeError("theta_x must be float or None.")
-        if theta_z is not None and not isinstance(theta_z, (int, float)):
-            raise TypeError("theta_z must be float or None.")
+        # Validate params is a dict
+        invalid_keys = [
+            key
+            for key, value in params.items()
+            if not isinstance(value, (bool, int, float, np.number))
+            or not np.isfinite(value)
+        ]
+        
+        if invalid_keys:
+            raise TypeError(
+                "All values in params must be finite numeric values or booleans. "
+                f"Invalid parameters: {invalid_keys}."
+            )
+        
+        self.params = {
+            key: value if isinstance(value, (bool, np.bool_)) else float(value)
+            for key, value in params.items()
+        }
 
-        self.theta_x = theta_x
-        self.theta_z = theta_z
+        self.description = description
         self.simulated_val_for_ignored_lit_property = int(simulated_val_for_ignored_lit_property) #integer check in generated profiles 
         self.rng = rng
+        self.reloadable = False #Only true for covariance decomposition with default (exponential) method.
+        self.allow_simulation = True #False when reloaded with non-reloadable simulator.
 
     @abstractmethod
     def simulate(self, points, mean=0, sigma=1):
@@ -63,43 +76,19 @@ class SpatialSimulator2D(ABC):
             Simulated field values at the given points.
         """
         pass
-    
-    def change_spatial_simulator_type(self, new_simulator_class):
-        """
-        Convert the simulator to another simulator type.
 
-        The internal state and RNG are preserved.
+    def _invalid_simulation_message(self):
+        return (
+            "The saved simulator could not be fully restored and/or is not "
+            "currently allowed to simulate because `allow_simulation` is False. "
+            "Replace it using "
+            "`.change_spatial_simulator_type(new_simulator)`. "
+            f"Previously saved simulator type: "
+            f"{self.__class__.__name__}; "
+            f"description: {self.description or 'none'}; "
+            f"parameters: {self.params}."
+        )
 
-        Parameters
-        ----------
-        new_simulator_class : type
-            Subclass of :class:`SpatialSimulator2D`.
-
-        Returns
-        -------
-        SpatialSimulator2D
-            New simulator instance of the requested type.
-        """
-        if not issubclass(new_simulator_class, SpatialSimulator2D):
-            raise TypeError(
-                f"{new_simulator_class.__name__} is not a SpatialSimulator2D"
-            )
-
-        # clone RNG deterministically
-        rng = np.random.default_rng()
-        rng.bit_generator.state = self.rng.bit_generator.state
-
-        # bypass __init__
-        obj = new_simulator_class.__new__(new_simulator_class)
-
-        # copy common state
-        obj.theta_x = self.theta_x
-        obj.theta_z = self.theta_z
-        obj.simulated_val_for_ignored_lit_property = self.simulated_val_for_ignored_lit_property
-        obj.rng = rng
-
-        return obj
-    
     def simulate_zvals_lit_profile_from_lithological_domain(self, lithologicalDomain_class:LithologicalDomain2D, gwt_depth=None, 
                                                         generate_non_spatial_profile=False, 
                                                         ignore_lithological_ids=['X']):
@@ -122,6 +111,8 @@ class SpatialSimulator2D(ABC):
         numpy.ndarray
             2D array of standardized simulated values.
         """
+        if not self.allow_simulation:
+            raise ValueError(self._invalid_simulation_message())
         
         #if porcessed_property_dict is None: Then simulated profiles with mean 0 and standard dev 1.
 
@@ -210,7 +201,8 @@ class SpatialSimulator2D(ABC):
         numpy.ndarray
             A 2D array representing the simulated spatially correlated random field.
         """
-        
+        if not self.allow_simulation:
+            raise ValueError(self._invalid_simulation_message())
         #if porcessed_property_dict is None: Then simulated profiles with mean 0 and standard dev 1.
 
         layer_mat = lithologicalDomain_class.lithological_matrix
@@ -392,6 +384,8 @@ class SpatialSimulator2D(ABC):
         numpy.ndarray
             A 2D array representing the simulated spatially correlated random field.
         """
+        if not self.allow_simulation:
+            raise ValueError(self._invalid_simulation_message())
         simulated_zvals_lit_profile = self.simulate_zvals_lit_profile_from_lithological_domain(
             lithologicalDomain_class=lithologicalDomain_class, gwt_depth=gwt_depth,
             generate_non_spatial_profile=False, ignore_lithological_ids=ignore_lithological_ids)
@@ -470,10 +464,12 @@ class SpatialSimulator2D(ABC):
             Serializable simulator configuration.
         """
         return {
-            'theta_x': self.theta_x,
-            'theta_z': self.theta_z,
+            'params': self.params,
+            'description': self.description,
             'simulated_val_for_ignored_lit_property': self.simulated_val_for_ignored_lit_property,
             'rng_state': self.rng.bit_generator.state,
+            'reloadable': self.reloadable,
+            'allow_simulation': self.allow_simulation,
             'simulator_type_name':self.__class__.__name__
         }
         
@@ -495,23 +491,58 @@ class SpatialSimulator2D(ABC):
         if not isinstance(config_dict, dict):
             raise TypeError("Expected a dictionary.")
         try:
-            theta_x, theta_z = config_dict['theta_x'], config_dict['theta_z']
+            # Support both the current nested format and the previous flat format.
+            if "params" in config_dict:
+                params = config_dict["params"]
+            
+                if not isinstance(params, dict):
+                    raise TypeError("config_dict['params'] must be a dictionary.")
+            
+                if any(key in config_dict for key in ("theta_x", "theta_z")):
+                    raise ValueError(
+                        "theta_x and theta_z cannot be provided both inside "
+                        "'params' and at the top level."
+                    )
+            
+                params = params.copy()
+            
+            else:
+                params = {}
+            
+                if "theta_x" in config_dict:
+                    params["theta_x"] = config_dict["theta_x"]
+            
+                if "theta_z" in config_dict:
+                    params["theta_z"] = config_dict["theta_z"]
+
+            description = config_dict.get('description', '')            
+            reloadable = config_dict.get('reloadable', False)    
+            allow_simulation = config_dict.get('allow_simulation', False)    
+            
             simulated_val_for_ignored_lit_property = config_dict['simulated_val_for_ignored_lit_property']
             rng = np.random.default_rng()
             rng.bit_generator.state = config_dict['rng_state']
             obj = cls.__new__(cls) #Note cannot be used with ABC but works with any subclasses.
-            obj.theta_x = theta_x
-            obj.theta_z = theta_z
+            obj.params = params
+            obj.description = description
             obj.simulated_val_for_ignored_lit_property = simulated_val_for_ignored_lit_property
             obj.rng = rng
-            
-            expected = cls.__name__
-            actual = config_dict.get('simulator_type_name')
-            if obj.__class__.__name__ != config_dict['simulator_type_name']:
-                warnings.warn(f"Loading simulator as '{expected}' but config was saved from '{actual}'. Use  .change_spatial_simulator_type({actual})",
-                RuntimeWarning
-            )
-            
+            obj.reloadable = reloadable
+            obj.allow_simulation = reloadable and allow_simulation
+
+            # expected = cls.__name__
+            # actual = config_dict.get('simulator_type_name')
+            # if obj.__class__.__name__ != config_dict['simulator_type_name']:
+            #     warnings.warn(f"Loading simulator as '{expected}' but config was saved from '{actual}'. Use  .change_spatial_simulator_type({actual})",
+            #     RuntimeWarning
+            # )
+
+            if not (obj.reloadable and obj.allow_simulation):
+                warnings.warn(
+                    self._invalid_simulation_message(),
+                    RuntimeWarning,
+                    stacklevel=2,
+                )
             return obj
         
         except (KeyError, TypeError) as e:
@@ -534,7 +565,7 @@ class ConstantSimulator(SpatialSimulator2D):
         Random number generator.
     """
     def __init__(self, simulated_val_for_ignored_lit_property=-99999, rng=np.random.default_rng()):
-        super().__init__(None, None, simulated_val_for_ignored_lit_property, rng)
+        super().__init__({}, simulated_val_for_ignored_lit_property, rng, description = '')
     
     def simulate(self, points, mean=0, sigma=None):
         a_m, b_m = self.get_means_am_bm(mean)    
@@ -563,8 +594,20 @@ class CovarianceDecompositionSimulator(SpatialSimulator2D):
         Random number generator.
     """
     def __init__(self, theta_x, theta_z, simulated_val_for_ignored_lit_property=-99999, rng=np.random.default_rng()):
-        super().__init__(theta_x, theta_z, simulated_val_for_ignored_lit_property, rng)
-        self.default_simulator_type=True  #To use in loading gen_model_collection from config, so dont use True for any other case.
+        
+        # Validate theta_x and theta_z
+        if not isinstance(theta_x, (int, float)):
+            raise TypeError("theta_x must be float.")
+        if not isinstance(theta_z, (int, float)):
+            raise TypeError("theta_z must be float.")
+            
+        params = {'theta_x': theta_x,
+                  'theta_z': theta_z,
+                 }
+        
+        description = "Default CovarianceDecompositionSimualator with Exponential correlation function"
+        super().__init__(params, simulated_val_for_ignored_lit_property, rng)
+        self.reloadable=True  #To use in loading gen_model_collection from config, so dont use True for any other case.
     
     def _compute_correlation_matrix(self, points):
         """
@@ -581,8 +624,11 @@ class CovarianceDecompositionSimulator(SpatialSimulator2D):
         dx = np.abs(x - x.T)
         dz = np.abs(z - z.T)
 
+        theta_x = self.params['theta_x']
+        theta_z = self.params['theta_z']
+
         # Correlation matrix (σ=1)
-        R = np.exp(-2 * dx / self.theta_x) * np.exp(-2 * dz / self.theta_z)
+        R = np.exp(-2 * dx / theta_x) * np.exp(-2 * dz / theta_z)
 
         # Cholesky of correlation matrix
         L_R = np.linalg.cholesky(R)
