@@ -11,7 +11,7 @@ from .metadata import __version__
 from .length_config import LengthConfig
 from .discretized_domain2d import DiscretizedDomain2D
 from . import interface
-from . import random_generators, spatial_simulator2d_abstract, spatial_simulator2d
+from . import random_generators, spatial_simulator2d
 from .interface.global_soil_interface_config import GlobalSoilInterfaceConfig
 from .features_config import FeaturesConfig
 from .generated_model2d import GeneratedModel2D, GeneratedModel2DMerged, GeneratedProfileCollection2DReadOnly, GeneratedProfileCollection2D

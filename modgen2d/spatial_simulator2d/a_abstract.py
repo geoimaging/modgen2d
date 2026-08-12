@@ -2,8 +2,8 @@
 
 import numpy as np
 from abc import ABC, abstractmethod
-from modgen2d.lithological_domain2d import LithologicalDomain2D
-import modgen2d.general_functions as f
+from ..lithological_domain2d import LithologicalDomain2D
+from .. import general_functions as f
 import warnings
 import pandas as pd
 
