@@ -33,7 +33,6 @@ class CovarianceDecompositionSimulator(SpatialSimulator2DAbstract):
                   'theta_z': theta_z,
                  }
         
-        description = "Default CovarianceDecompositionSimualator with Exponential correlation function"
         super().__init__(params, simulated_val_for_ignored_lit_property, rng)
         self.reloadable=True  #To use in loading gen_model_collection from config, so dont use True for any other case.
     

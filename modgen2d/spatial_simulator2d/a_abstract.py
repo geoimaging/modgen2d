@@ -21,7 +21,7 @@ class SpatialSimulator2DAbstract(ABC):
     rng : numpy.random.Generator, optional
         Random number generator.
     """
-    def __init__(self, params, simulated_val_for_ignored_lit_property=-99999, rng=np.random.default_rng(), description = ''):
+    def __init__(self, params, simulated_val_for_ignored_lit_property=-99999, rng=np.random.default_rng()):
         """
         Initialize a spatial simulator.
         """
@@ -44,7 +44,6 @@ class SpatialSimulator2DAbstract(ABC):
             for key, value in params.items()
         }
 
-        self.description = description
         self.simulated_val_for_ignored_lit_property = int(simulated_val_for_ignored_lit_property) #integer check in generated profiles 
         self.rng = rng
         self.reloadable = False #Only true for covariance decomposition with default (exponential) method.
@@ -85,7 +84,6 @@ class SpatialSimulator2DAbstract(ABC):
             "`.change_spatial_simulator_type(new_simulator)`. "
             f"Previously saved simulator type: "
             f"{self.__class__.__name__}; "
-            f"description: {self.description or 'none'}; "
             f"parameters: {self.params}."
         )
 
@@ -465,7 +463,6 @@ class SpatialSimulator2DAbstract(ABC):
         """
         return {
             'params': self.params,
-            'description': self.description,
             'simulated_val_for_ignored_lit_property': self.simulated_val_for_ignored_lit_property,
             'rng_state': self.rng.bit_generator.state,
             'reloadable': self.reloadable,
@@ -515,7 +512,6 @@ class SpatialSimulator2DAbstract(ABC):
                 if "theta_z" in config_dict:
                     params["theta_z"] = config_dict["theta_z"]
 
-            description = config_dict.get('description', '')            
             reloadable = config_dict.get('reloadable', False)    
             allow_simulation = config_dict.get('allow_simulation', False)    
             
@@ -524,7 +520,6 @@ class SpatialSimulator2DAbstract(ABC):
             rng.bit_generator.state = config_dict['rng_state']
             obj = cls.__new__(cls) #Note cannot be used with ABC but works with any subclasses.
             obj.params = params
-            obj.description = description
             obj.simulated_val_for_ignored_lit_property = simulated_val_for_ignored_lit_property
             obj.rng = rng
             obj.reloadable = reloadable
