@@ -17,8 +17,10 @@ ConstantSimulator
     Deterministic simulator that evaluates only the prescribed mean trend.
 CovarianceDecompositionSimulator
     Gaussian random-field simulator based on covariance decomposition.
-GSToolsRandomizationSimulator
+GSToolsSimulator
     Scalable Gaussian random-field simulator based on GSTools.
+load_simulator_from_config
+    Function that load the correct spatial simulator.
 """
 
 # PUBLIC API — this is the only file users ever see
@@ -26,11 +28,13 @@ GSToolsRandomizationSimulator
 from .a_abstract import SpatialSimulator2DAbstract
 from .b_constant import ConstantSimulator
 from .b_covdec import CovarianceDecompositionSimulator
-# from .b_gstools import GSToolsRandomizationSimulator
+from .b_gstools import GSToolsSimulator
+from .c_loader import load_simulator_from_config
 
 __all__ = [
     "SpatialSimulator2DAbstract",
     "ConstantSimulator",
     "CovarianceDecompositionSimulator",
-    # "GSToolsRandomizationSimulator",
+    "GSToolsSimulator",
+    "load_simulator_from_config",
 ]

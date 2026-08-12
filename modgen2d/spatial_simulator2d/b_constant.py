@@ -16,10 +16,13 @@ class ConstantSimulator(SpatialSimulator2DAbstract):
     rng : numpy.random.Generator, optional
         Random number generator.
     """
-    def __init__(self, simulated_val_for_ignored_lit_property=-99999, rng=np.random.default_rng()):
+    def __init__(self, simulated_val_for_ignored_lit_property=-99999, rng=None):
         super().__init__({}, simulated_val_for_ignored_lit_property, rng)
     
     def simulate(self, points, mean=0, sigma=None):
+        if not self.allow_simulation:
+            raise RuntimeError(self._invalid_simulation_message())
+            
         a_m, b_m = self.get_means_am_bm(mean)    
         pts = self.check_points(points)
         z = pts[:, 1]      # extract z column

@@ -1,6 +1,6 @@
 import numpy as np
 from .testing_tools import unittest, TestCase
-from modgen2d.spatial_simulator2d import CovarianceDecompositionSimulator, ConstantSimulator, SpatialSimulator2DAbstract
+from modgen2d.spatial_simulator2d import CovarianceDecompositionSimulator, ConstantSimulator, SpatialSimulator2DAbstract, load_simulator_from_config
 from modgen2d.general_functions import validate_processed_property_dict, check_for_zero_sigma
 
 class TestSpatialSimulator2D(TestCase):
@@ -119,7 +119,7 @@ class TestSpatialSimulator2D(TestCase):
         )
 
         config = cov_sim.get_config
-        recreated = CovarianceDecompositionSimulator.from_config(config)
+        recreated = load_simulator_from_config(config)
 
         params_expected = {'theta_x': 1.0,
                            'theta_z': 2.0,
@@ -127,7 +127,6 @@ class TestSpatialSimulator2D(TestCase):
         self.assertEqual(recreated.params, params_expected)
         self.assertEqual(recreated.simulated_val_for_ignored_lit_property, -999)
         self.assertEqual(config["simulator_type_name"], "CovarianceDecompositionSimulator")
-        self.assertEqual(recreated.reloadable, True)
         self.assertEqual(recreated.allow_simulation, True)
 
     def test_check_for_zero_sigma_both(self):

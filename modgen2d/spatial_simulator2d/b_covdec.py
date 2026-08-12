@@ -21,20 +21,31 @@ class CovarianceDecompositionSimulator(SpatialSimulator2DAbstract):
     rng : numpy.random.Generator, optional
         Random number generator.
     """
-    def __init__(self, theta_x, theta_z, simulated_val_for_ignored_lit_property=-99999, rng=np.random.default_rng()):
+    def __init__(self, theta_x, theta_z, simulated_val_for_ignored_lit_property=-99999, rng=None):
         
         # Validate theta_x and theta_z
-        if not isinstance(theta_x, (int, float)):
-            raise TypeError("theta_x must be float.")
-        if not isinstance(theta_z, (int, float)):
-            raise TypeError("theta_z must be float.")
+        for name, value in {
+            "theta_x": theta_x,
+            "theta_z": theta_z,
+        }.items():
+            if (
+                isinstance(value, (bool, np.bool_))
+                or not isinstance(value, (int, float, np.number))
+            ):
+                raise TypeError(
+                    f"{name} must be a numeric scalar."
+                )
+        
+            if not np.isfinite(value) or value <= 0:
+                raise ValueError(
+                    f"{name} must be finite and greater than zero."
+                )
             
         params = {'theta_x': theta_x,
                   'theta_z': theta_z,
                  }
         
         super().__init__(params, simulated_val_for_ignored_lit_property, rng)
-        self.reloadable=True  #To use in loading gen_model_collection from config, so dont use True for any other case.
     
     def _compute_correlation_matrix(self, points):
         """
@@ -72,6 +83,9 @@ class CovarianceDecompositionSimulator(SpatialSimulator2DAbstract):
         sigma : float
             Standard deviation scaling for the field.
         """
+        if not self.allow_simulation:
+            raise RuntimeError(self._invalid_simulation_message())
+            
         # Step 1: Compute linear mean trend
         pts = self.check_points(points)
         

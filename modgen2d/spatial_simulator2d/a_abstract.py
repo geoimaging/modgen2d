@@ -21,11 +21,14 @@ class SpatialSimulator2DAbstract(ABC):
     rng : numpy.random.Generator, optional
         Random number generator.
     """
-    def __init__(self, params, simulated_val_for_ignored_lit_property=-99999, rng=np.random.default_rng()):
+    def __init__(self, params, simulated_val_for_ignored_lit_property=-99999, rng=None):
         """
         Initialize a spatial simulator.
         """
         # Validate params is a dict
+        if not isinstance(params, dict):
+            raise TypeError("params must be a dictionary.")
+             
         invalid_keys = [
             key
             for key, value in params.items()
@@ -38,16 +41,22 @@ class SpatialSimulator2DAbstract(ABC):
                 "All values in params must be finite numeric values or booleans. "
                 f"Invalid parameters: {invalid_keys}."
             )
-        
+
         self.params = {
             key: value if isinstance(value, (bool, np.bool_)) else float(value)
             for key, value in params.items()
         }
 
+        if rng is None:
+            rng = np.random.default_rng()
+        elif not isinstance(rng, np.random.Generator):
+            raise TypeError(
+                "rng must be a numpy.random.Generator or None."
+            )
+
         self.simulated_val_for_ignored_lit_property = int(simulated_val_for_ignored_lit_property) #integer check in generated profiles 
         self.rng = rng
-        self.reloadable = False #Only true for covariance decomposition with default (exponential) method.
-        self.allow_simulation = True #False when reloaded with non-reloadable simulator.
+        self.allow_simulation = True #False when issue with loading.
 
     @abstractmethod
     def simulate(self, points, mean=0, sigma=1):
@@ -110,7 +119,7 @@ class SpatialSimulator2DAbstract(ABC):
             2D array of standardized simulated values.
         """
         if not self.allow_simulation:
-            raise ValueError(self._invalid_simulation_message())
+            raise RuntimeError(self._invalid_simulation_message())
         
         #if porcessed_property_dict is None: Then simulated profiles with mean 0 and standard dev 1.
 
@@ -200,7 +209,7 @@ class SpatialSimulator2DAbstract(ABC):
             A 2D array representing the simulated spatially correlated random field.
         """
         if not self.allow_simulation:
-            raise ValueError(self._invalid_simulation_message())
+            raise RuntimeError(self._invalid_simulation_message())
         #if porcessed_property_dict is None: Then simulated profiles with mean 0 and standard dev 1.
 
         layer_mat = lithologicalDomain_class.lithological_matrix
@@ -383,7 +392,7 @@ class SpatialSimulator2DAbstract(ABC):
             A 2D array representing the simulated spatially correlated random field.
         """
         if not self.allow_simulation:
-            raise ValueError(self._invalid_simulation_message())
+            raise RuntimeError(self._invalid_simulation_message())
         simulated_zvals_lit_profile = self.simulate_zvals_lit_profile_from_lithological_domain(
             lithologicalDomain_class=lithologicalDomain_class, gwt_depth=gwt_depth,
             generate_non_spatial_profile=False, ignore_lithological_ids=ignore_lithological_ids)
@@ -465,7 +474,6 @@ class SpatialSimulator2DAbstract(ABC):
             'params': self.params,
             'simulated_val_for_ignored_lit_property': self.simulated_val_for_ignored_lit_property,
             'rng_state': self.rng.bit_generator.state,
-            'reloadable': self.reloadable,
             'allow_simulation': self.allow_simulation,
             'simulator_type_name':self.__class__.__name__
         }
@@ -489,60 +497,22 @@ class SpatialSimulator2DAbstract(ABC):
             raise TypeError("Expected a dictionary.")
         try:
             # Support both the current nested format and the previous flat format.
-            if "params" in config_dict:
-                params = config_dict["params"]
-            
-                if not isinstance(params, dict):
-                    raise TypeError("config_dict['params'] must be a dictionary.")
-            
-                if any(key in config_dict for key in ("theta_x", "theta_z")):
-                    raise ValueError(
-                        "theta_x and theta_z cannot be provided both inside "
-                        "'params' and at the top level."
-                    )
-            
-                params = params.copy()
-            
-            else:
-                params = {}
-            
-                if "theta_x" in config_dict:
-                    params["theta_x"] = config_dict["theta_x"]
-            
-                if "theta_z" in config_dict:
-                    params["theta_z"] = config_dict["theta_z"]
-
-            reloadable = config_dict.get('reloadable', False)    
-            allow_simulation = config_dict.get('allow_simulation', False)    
-            
+              
+            params = config_dict['params']
             simulated_val_for_ignored_lit_property = config_dict['simulated_val_for_ignored_lit_property']
             rng = np.random.default_rng()
             rng.bit_generator.state = config_dict['rng_state']
+
+            allow_simulation = config_dict['allow_simulation']
+
             obj = cls.__new__(cls) #Note cannot be used with ABC but works with any subclasses.
             obj.params = params
             obj.simulated_val_for_ignored_lit_property = simulated_val_for_ignored_lit_property
             obj.rng = rng
-            obj.reloadable = reloadable
-            obj.allow_simulation = reloadable and allow_simulation
+            obj.allow_simulation = allow_simulation
 
-            # expected = cls.__name__
-            # actual = config_dict.get('simulator_type_name')
-            # if obj.__class__.__name__ != config_dict['simulator_type_name']:
-            #     warnings.warn(f"Loading simulator as '{expected}' but config was saved from '{actual}'. Use  .change_spatial_simulator_type({actual})",
-            #     RuntimeWarning
-            # )
-
-            if not (obj.reloadable and obj.allow_simulation):
-                warnings.warn(
-                    self._invalid_simulation_message(),
-                    RuntimeWarning,
-                    stacklevel=2,
-                )
             return obj
         
         except (KeyError, TypeError) as e:
-            raise ValueError(f"Invalid config dictionary: {e}")   
-        
-        # fOR EQUAL CHECK.. CHECK THE TYPE TOO.
-        # FOR LATER SAVE; CHANGE TYPE IF NEEDED.
+            raise ValueError(f"Invalid config dictionary: {e}")
         

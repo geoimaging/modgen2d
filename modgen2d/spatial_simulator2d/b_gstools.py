@@ -116,6 +116,9 @@ class GSToolsSimulator(SpatialSimulator2DAbstract):
         numpy.ndarray, shape (n,)
             Simulated values in the same order as ``points``.
         """
+        if not self.allow_simulation:
+            raise RuntimeError(self._invalid_simulation_message())
+            
         pts = self.check_points(points)
         a_m, b_m = self.get_means_am_bm(mean)
         mean_vector = a_m + b_m * pts[:, 1]

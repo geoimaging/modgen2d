@@ -9,7 +9,7 @@ import warnings
 # from IPython.display import clear_output
 import numpy as np
 import modgen2d.general_functions as f
-from modgen2d.spatial_simulator2d import CovarianceDecompositionSimulator, SpatialSimulator2D    
+from modgen2d.spatial_simulator2d import CovarianceDecompositionSimulator, SpatialSimulator2DAbstract, load_simulator_from_config    
 from modgen2d.generated_model2d import GeneratedModel2D
 from modgen2d.lithological_domain2d import LithologicalDomain2DCollection, LithologicalDomain2DReadOnly
 from modgen2d.main_properties import MainPropertiesConfig
@@ -26,7 +26,7 @@ class GeneratedProfileCollection2DReadOnly:
         Locked instance containing sampled property definitions.
     lithological_domain2d_collection : LithologicalDomain2DCollection
         Locked collection of lithological domains.
-    spatial_simulator2d_instance : SpatialSimulator2D
+    spatial_simulator2d_instance : SpatialSimulator2DAbstract
         Simulator instance used for generating spatially correlated profiles.
 
     Raises
@@ -34,7 +34,7 @@ class GeneratedProfileCollection2DReadOnly:
     TypeError
         If main_properties_config_instance or lithological_domain2d_collection are not locked.
     """
-    def __init__(self, main_properties_config_instance: MainPropertiesConfig, lithological_domain2d_collection: LithologicalDomain2DCollection, spatial_simulator2d_instance:SpatialSimulator2D):
+    def __init__(self, main_properties_config_instance: MainPropertiesConfig, lithological_domain2d_collection: LithologicalDomain2DCollection, spatial_simulator2d_instance:SpatialSimulator2DAbstract):
         """
         Initialize the 'GeneratedProfileCollection2DReadOnly' object.
         """
@@ -89,7 +89,7 @@ class GeneratedProfileCollection2DReadOnly:
     @property
     def spatial_simulator2d_instance(self):
         """
-        SpatialSimulator2D
+        SpatialSimulator2DAbstract
             Spatial simulator used to generate property fields.
         """
         return self._spatial_simulator2d_instance
@@ -324,7 +324,8 @@ class GeneratedProfileCollection2DReadOnly:
         obj._lit_id2material_dict = config_dict['properties_metadata']['_lit_id2material_dict']
         obj._main_properties_unique_code = config_dict['properties_metadata']['_main_properties_unique_code']
         obj._sampled_properties = config_dict['properties_metadata']['_sampled_properties']
-        obj._spatial_simulator2d_instance = CovarianceDecompositionSimulator.from_config(config_dict['_spatial_simulator2d_instance'])
+        obj._spatial_simulator2d_instance = load_simulator_from_config(config_dict['_spatial_simulator2d_instance'])
+       # CovarianceDecompositionSimulator.from_config(config_dict['_spatial_simulator2d_instance'])
 
         expected = CovarianceDecompositionSimulator.__name__
         actual = config_dict['_spatial_simulator2d_instance']['simulator_type_name']
@@ -496,7 +497,7 @@ class GeneratedProfileCollection2D(GeneratedProfileCollection2DReadOnly):
         Locked instance containing sampled property definitions.
     lithological_domain2d_collection : LithologicalDomain2DCollection
         Locked collection of lithological domains.
-    spatial_simulator2d_instance : SpatialSimulator2D
+    spatial_simulator2d_instance : SpatialSimulator2DAbstract
         Simulator instance used for generating spatially correlated profiles.
 
     Raises
@@ -504,7 +505,7 @@ class GeneratedProfileCollection2D(GeneratedProfileCollection2DReadOnly):
     TypeError
         If main_properties_config_instance or lithological_domain2d_collection are not locked.
     """
-    def __init__(self, main_properties_config_instance: MainPropertiesConfig, lithological_domain2d_collection: LithologicalDomain2DCollection, spatial_simulator2d_instance:SpatialSimulator2D):
+    def __init__(self, main_properties_config_instance: MainPropertiesConfig, lithological_domain2d_collection: LithologicalDomain2DCollection, spatial_simulator2d_instance:SpatialSimulator2DAbstract):
         """
         Initialize the GeneratedProfileCollection2D instance.
         """
