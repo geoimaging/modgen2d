@@ -306,7 +306,101 @@ class TestGeneralFunctions(TestCase):
 
         b["y"][2]["z"] = "clay"
         self.assertFalse(f.deep_object_equivalent(a, b))
-    
+
+    def test_check_for_zero_sigma_both(self):
+        prop = {
+            "both": {
+                "mean": 10,
+                "mean_slope_with_depth": 0,
+                "stdev_or_cov": 0,
+                "stdev_type": "stdev",
+            }
+        }
+
+        self.assertTrue(f.check_for_zero_sigma(prop))
+
+    def test_check_for_zero_sigma_wet_dry(self):
+        prop = {
+            "wet": {
+                "mean": 10,
+                "mean_slope_with_depth": 0,
+                "stdev_or_cov": 0,
+                "stdev_type": "stdev",
+            },
+            "dry": {
+                "mean": 8,
+                "mean_slope_with_depth": 0,
+                "stdev_or_cov": 1,
+                "stdev_type": "stdev",
+            },
+        }
+
+        self.assertFalse(f.check_for_zero_sigma(prop))
+
+    def test_check_for_zero_sigma_invalid_keys(self):
+        prop = {
+            "wet": {
+                "mean": 10,
+                "stdev_or_cov": 0,
+                "stdev_type": "stdev",
+            }
+        }
+
+        with self.assertRaises(AssertionError):
+            f.check_for_zero_sigma(prop)
+            
+    def test_validate_valid(self):
+        prop = {
+            "L1": {
+                "wet": {"mean": 10, "stdev_or_cov": 0.2, "stdev_type": "cov"},
+                "dry": {"mean": 8, "stdev_or_cov": 1.5, "stdev_type": "stdev"},
+            }
+        }
+
+        validated = f.validate_processed_property_dict(prop)
+        self.assertEqual(validated["L1"]["wet"]["mean_slope_with_depth"], 0.0)
+        self.assertEqual(validated["L1"]["dry"]["mean_slope_with_depth"], 0.0)
+
+        prop = {
+            "L2": {
+                "both": {"mean": 5, "mean_bm": 1.2, "stdev_or_cov": 0.1, "stdev_type": "cov"}
+            }
+        }
+
+        validated = f.validate_processed_property_dict(prop)
+        self.assertEqual(validated["L2"]["both"]["mean"], 5)
+
+    def test_validate_missing(self):
+        prop = {
+            "L1": {
+                "both": {"stdev_or_cov": 1.0, "stdev_type": "stdev"}
+            }
+        }
+
+        with self.assertRaises(AssertionError):
+            f.validate_processed_property_dict(prop)
+
+        prop = {
+            "L1": {
+                "both": {"mean": 5, "stdev_or_cov": 1.0, "stdev_type": "variance"}
+            }
+        }
+
+        with self.assertRaises(AssertionError):
+            f.validate_processed_property_dict(prop)
+
+        prop = {
+            "L1": {
+                "wet": {"mean": 5, "stdev_or_cov": 1.0, "stdev_type": "stdev"}
+                # missing dry
+            }
+        }
+
+        with self.assertRaises(AssertionError):
+            f.validate_processed_property_dict(prop)
+
+        with self.assertRaises(AssertionError):
+            f.validate_processed_property_dict(["not", "a", "dict"])
         
 if __name__ == "__main__":
     unittest.main()

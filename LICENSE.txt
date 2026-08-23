@@ -1,4 +1,7 @@
-This license applies to fwiprepostai, a Python package for surface wave processing.
+  This license applies to modgen2d, a Python package for generating 2D
+subsurface models with customizable soil properties, utilities, interfaces,
+lithological domains, and spatial correlation.
+
 Copyright (C) 2025 Vantassel, Bhochhibhoya (sbhochhi@vt.edu)
 
                     GNU GENERAL PUBLIC LICENSE

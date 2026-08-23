@@ -45,7 +45,13 @@ class GeneratedModel2DMerged(GeneratedModel2D):
         self.lit_domain, self.simulated_profiles, self.lit_id2material_dict, self.gwt_depth = self.__compute_merged_generated_profiles_fields(generated_model_collection)
         self.lit_order = -1
         self._locked = False #Same
-        
+        self._simulated_val_for_ignored_lit_property = (
+            generated_model_collection
+            .spatial_simulator2d_instance
+            .simulated_val_for_ignored_lit_property
+        )
+    
+    @staticmethod
     def __compute_merged_generated_profiles_fields(generated_model_collection:GeneratedProfileCollection2D):
         try:
             feature_ids = []
@@ -63,7 +69,9 @@ class GeneratedModel2DMerged(GeneratedModel2D):
                 ordered=ordered_set_names_dict, lit_domain_set=lit_domain_set, valid_feature_ids=feature_ids
                 )
             
+            merged_simulated_profiles = {}
             for key in simulated_properties:
+                simulated_profile_merged = None
                 for order_id, set_name in ordered_set_names_dict.items():
                     simulated_profile = generated_model_collection.generated_model2d_set[set_name].simulated_profiles[key]
                     lit_domain = lit_domain_set[set_name]
@@ -73,13 +81,15 @@ class GeneratedModel2DMerged(GeneratedModel2D):
                         
                     # Check ['X' and simulated_val_for_ignored_lit_property]
                     simulated_profile_merged = GeneratedProfileCollection2D.get_merged_simulated_profile(
-                        order_id, current_merged_lit_domain=merged_lit_domain, current_merged_simulated_profile=simulated_profile_merged,
+                        current_merged_lit_domain=merged_lit_domain, current_merged_simulated_profile=simulated_profile_merged,
                         to_merge_lit_domain = lit_domain, to_merge_simulated_profile=simulated_profile, 
                         simulated_val_for_ignored_lit_property=generated_model_collection.generated_model2d_set[set_name].simulated_val_for_ignored_lit_property
                         )
-            
+                merged_simulated_profiles[key] = (
+                    simulated_profile_merged
+                )
             merged_lit_domain.lit_order = -1
-            return merged_lit_domain, simulated_profile_merged, merged_all_lit_ids, gwt
+            return merged_lit_domain, merged_simulated_profiles, generated_model_collection.lit_id2material_dict, gwt
 
         except Exception as e:
             warnings.warn(f"Failed to merge lithological domains: {e}")
