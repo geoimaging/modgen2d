@@ -20,8 +20,10 @@ class SpatialSimulator2DAbstract(ABC):
         Constant value assigned to ignored lithological IDs.
     rng : numpy.random.Generator, optional
         Random number generator.
+    verbose: boolean, optional (default:False)
+        Flag if print current stage of spatial simulation and if warn stdev_inconsistencies.
     """
-    def __init__(self, params, simulated_val_for_ignored_lit_property=-99999, rng=None):
+    def __init__(self, params, simulated_val_for_ignored_lit_property=-99999, rng=None, verbose=False):
         """
         Initialize a spatial simulator.
         """
@@ -57,6 +59,7 @@ class SpatialSimulator2DAbstract(ABC):
         self.simulated_val_for_ignored_lit_property = int(simulated_val_for_ignored_lit_property) #integer check in generated profiles 
         self.rng = rng
         self.allow_simulation = True #False when issue with loading.
+        self.verbose = verbose
 
     @abstractmethod
     def simulate(self, points, mean=0, sigma=1):
@@ -98,7 +101,8 @@ class SpatialSimulator2DAbstract(ABC):
 
     def simulate_zvals_lit_profile_from_lithological_domain(self, lithologicalDomain_class:LithologicalDomain2D, gwt_depth=None, 
                                                         generate_non_spatial_profile=False, 
-                                                        ignore_lithological_ids=['X']):
+                                                        ignore_lithological_ids=['X'],
+                                                        ):
         """
         Simulate standardized spatial fluctuations for a lithological domain.
 
@@ -157,13 +161,16 @@ class SpatialSimulator2DAbstract(ABC):
                 a_m, b_m, sigma = simulated_val_for_ignored_lit_property, 0, 0
             else:
                 if generate_non_spatial_profile:
-                    print("Z-vals: Non-spatial-zero-sigma")
+                    if self.verbose: 
+                        print("Z-vals: Non-spatial-zero-sigma")
                     a_m, b_m, sigma = 0, 0, 0
                 else:    
-                    print("Z-vals: spatial-with-sigma")
+                    if self.verbose: 
+                        print("Z-vals: spatial-with-sigma")
                     a_m, b_m, sigma = 0, 0, 1
                 
-            print(f"Simulating z-vals for Layer ID: {layer_id}")
+            if self.verbose: 
+                print(f"Simulating z-vals for Layer ID: {layer_id}")
             
             coordinates = [[x,z] for z,x in zip(zcoord[z_idx], xcoord[x_idx])]
             simulated_pd_each = pd.DataFrame(coordinates, columns=['x', 'z'])
@@ -183,7 +190,7 @@ class SpatialSimulator2DAbstract(ABC):
         return simulated_2d
    
     def simulate_profile_from_zvals_lit_profile(self, simulated_zvals_lit_profile:np.ndarray, lithologicalDomain_class:LithologicalDomain2D,
-                                                  processed_property_dict:dict, gwt_depth=None, warn_inconsistent_stdev = False,
+                                                  processed_property_dict:dict, gwt_depth=None,
                                                   ignore_lithological_ids=['X']):
         """
         Generate a spatial property field from standardized fluctuations.
@@ -198,8 +205,6 @@ class SpatialSimulator2DAbstract(ABC):
             Dictionary mapping layer IDs to their mean and stddev (wet/dry or both) properties.
         gwt_depth : float, optional
             Groundwater table depth (used for wet/dry classification).
-        warn_inconsistent_stdev : bool, default=True
-            Emit warnings for inconsistent variance assumptions.
         ignore_lithological_ids : list, default=['X']
             Lithological IDs to ignore.
 
@@ -302,7 +307,7 @@ class SpatialSimulator2DAbstract(ABC):
                     mean_slope_with_depth_matrix[mask] = b_m
                     stdev_matrix[mask] = sigma
                     
-                    if warn_inconsistent_stdev:                 
+                    if self.verbose:                 
                         sim_values = simulated_zvals_lit_profile[mask]
                         if sigma == 0 and np.any(sim_values != 0):
                             warnings.warn(
@@ -339,7 +344,7 @@ class SpatialSimulator2DAbstract(ABC):
                     stdev_matrix[mask_wet]   = s_wet
                     stdev_matrix[mask_dry]   = s_dry
 
-                    if warn_inconsistent_stdev:
+                    if self.verbose:
                         # Check wet portion
                         sim_values_wet = simulated_zvals_lit_profile[mask_wet]
                         if s_wet == 0 and np.any(sim_values_wet != 0):
@@ -370,7 +375,7 @@ class SpatialSimulator2DAbstract(ABC):
         return simulated_2d
 
     def simulate_profile_from_lithological_domain(self, lithologicalDomain_class:LithologicalDomain2D,  
-                                                  processed_property_dict=None, gwt_depth=None, warn_inconsistent_stdev=False,
+                                                  processed_property_dict=None, gwt_depth=None,
                                                   ignore_lithological_ids=['X']):
         """
         Simulate a full spatial property field from a lithological domain.
@@ -400,7 +405,7 @@ class SpatialSimulator2DAbstract(ABC):
         simulated_profile = self.simulate_profile_from_zvals_lit_profile(
             simulated_zvals_lit_profile, lithologicalDomain_class=lithologicalDomain_class,
             processed_property_dict=processed_property_dict, gwt_depth=gwt_depth,
-            warn_inconsistent_stdev = warn_inconsistent_stdev, ignore_lithological_ids = ignore_lithological_ids)
+            ignore_lithological_ids = ignore_lithological_ids)
         
         return simulated_profile
     
@@ -475,6 +480,7 @@ class SpatialSimulator2DAbstract(ABC):
             'simulated_val_for_ignored_lit_property': self.simulated_val_for_ignored_lit_property,
             'rng_state': self.rng.bit_generator.state,
             'allow_simulation': self.allow_simulation,
+            'verbose': self.verbose,
             'simulator_type_name':self.__class__.__name__
         }
         
@@ -504,12 +510,14 @@ class SpatialSimulator2DAbstract(ABC):
             rng.bit_generator.state = config_dict['rng_state']
 
             allow_simulation = config_dict['allow_simulation']
+            verbose = config_dict['verbose']
 
             obj = cls.__new__(cls) #Note cannot be used with ABC but works with any subclasses.
             obj.params = params
             obj.simulated_val_for_ignored_lit_property = simulated_val_for_ignored_lit_property
             obj.rng = rng
             obj.allow_simulation = allow_simulation
+            obj.verbose = verbose
 
             return obj
         

@@ -27,6 +27,7 @@ def load_simulator_from_config(config_dict):
                     "'params' and at the top level."
                 )
             allow_simulation = config_dict.get('allow_simulation', False)  
+            verbose = config_dict.get('verbose', False)  
             
         else:  #Old version 
             params = {}
@@ -38,13 +39,14 @@ def load_simulator_from_config(config_dict):
                 params["theta_z"] = config_dict["theta_z"]
                 
             allow_simulation = sim_type in ['ConstantSimulator', 'CovarianceDecompositionSimulator']
-
+            verbose = False
         processed_config_dict = {
             'params': params,
             'simulated_val_for_ignored_lit_property': simulated_val_for_ignored_lit_property,
             'rng_state': config_dict['rng_state'],
             'allow_simulation': allow_simulation,
-            'simulator_type_name':sim_type
+            'verbose':verbose,
+            'simulator_type_name':sim_type,
         }
         
         if sim_type == "ConstantSimulator":

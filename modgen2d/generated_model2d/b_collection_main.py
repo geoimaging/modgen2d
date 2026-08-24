@@ -699,7 +699,7 @@ class GeneratedProfileCollection2D(GeneratedProfileCollection2DReadOnly):
                 
             simulated_profile = self.spatial_simulator2d_instance.simulate_profile_from_zvals_lit_profile(
                 simulated_zvals_lit_profile, lit_domain,
-                processed_property_dict, gwt_depth, warn_inconsistent_stdev = True,
+                processed_property_dict, gwt_depth,
                 ignore_lithological_ids=ignore_lithological_ids,
                 )
             

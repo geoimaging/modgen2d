@@ -21,7 +21,7 @@ class CovarianceDecompositionSimulator(SpatialSimulator2DAbstract):
     rng : numpy.random.Generator, optional
         Random number generator.
     """
-    def __init__(self, theta_x, theta_z, simulated_val_for_ignored_lit_property=-99999, rng=None):
+    def __init__(self, theta_x, theta_z, simulated_val_for_ignored_lit_property=-99999, rng=None, verbose=False):
         
         # Validate theta_x and theta_z
         for name, value in {
@@ -45,7 +45,7 @@ class CovarianceDecompositionSimulator(SpatialSimulator2DAbstract):
                   'theta_z': theta_z,
                  }
         
-        super().__init__(params, simulated_val_for_ignored_lit_property, rng)
+        super().__init__(params, simulated_val_for_ignored_lit_property, rng, verbose)
     
     def _compute_correlation_matrix(self, points):
         """

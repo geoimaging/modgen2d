@@ -16,8 +16,8 @@ class ConstantSimulator(SpatialSimulator2DAbstract):
     rng : numpy.random.Generator, optional
         Random number generator.
     """
-    def __init__(self, simulated_val_for_ignored_lit_property=-99999, rng=None):
-        super().__init__({}, simulated_val_for_ignored_lit_property, rng)
+    def __init__(self, simulated_val_for_ignored_lit_property=-99999, rng=None, verbose=False):
+        super().__init__({}, simulated_val_for_ignored_lit_property, rng, verbose)
     
     def simulate(self, points, mean=0, sigma=None):
         if not self.allow_simulation:

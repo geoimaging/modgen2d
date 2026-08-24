@@ -46,7 +46,8 @@ class GSToolsSimulator(SpatialSimulator2DAbstract):
         theta_z,
         mode_no=1000,
         simulated_val_for_ignored_lit_property=-99999,
-        rng=None
+        rng=None,
+        verbose=False
     ):
         # Validate correlation lengths.
         for name, value in {
@@ -94,7 +95,7 @@ class GSToolsSimulator(SpatialSimulator2DAbstract):
         super().__init__(
             params=params,
             simulated_val_for_ignored_lit_property=simulated_val_for_ignored_lit_property,
-            rng=rng,
+            rng=rng, verbose=verbose
         )
 
     def simulate(self, points, mean=0, sigma=1):
